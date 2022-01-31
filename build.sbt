@@ -24,6 +24,7 @@ val ZioVersion           = "2.0.0-RC2"
 val scalaJavaTimeVersion = "2.3.0"
 
 addCommandAlias("fix", "; all compile:scalafix test:scalafix; all scalafmtSbt scalafmtAll")
+addCommandAlias("fmt", "; all scalafmtSbt scalafmtAll")
 addCommandAlias("check", "; scalafmtSbtCheck; scalafmtCheckAll; compile:scalafix --check; test:scalafix --check")
 
 addCommandAlias(
@@ -49,8 +50,8 @@ lazy val core = project
       "dev.zio" %%% "zio-test-sbt" % ZioVersion % Test
     ),
     testFrameworks := Seq(new TestFramework("zio.test.sbt.ZTestFramework")),
-    Test / fork := true,
-    run / fork  := true
+    Test / fork    := true,
+    run / fork     := true
   )
 
 lazy val docs = project

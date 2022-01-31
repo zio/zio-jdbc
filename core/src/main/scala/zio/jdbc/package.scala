@@ -1,5 +1,3 @@
 package zio
 
-package object jdbc {
-  
-}
+package object jdbc {}
