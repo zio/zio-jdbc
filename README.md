@@ -26,5 +26,5 @@ To learn more about _ZIO JDBC_, check out the following references:
 [link-discord]: https://discord.gg/2ccFBr4
 [link-maintenance]: http://isitmaintained.com/project/zio/zio-jdbc
 [link-zio]: https://zio.dev
-[Stage]: https://img.shields.io/badge/Project%20Stage-Production%20Research-red.svg
+[Stage]: https://img.shields.io/badge/Project%20Stage-Research-red.svg
 [Stage-Page]: https://github.com/zio/zio/wiki/Project-Stages
