@@ -2,70 +2,107 @@ package zio.jdbc
 
 import zio.Chunk
 
-import java.sql.Connection
-import java.sql.PreparedStatement
-import java.sql.Blob
+import java.sql._
 
-final class SqlStatement[+A] private[jdbc] (
-  parts: Chunk[String],
-  args: Chunk[Any],
+final case class SqlStatement[+A] private[jdbc] (
+  private[jdbc] val segments: Chunk[SqlStatement.Segment],
   private[jdbc] val decode: ZResultSet => A
 ) { self =>
+  import SqlStatement.Segment._
+
+  def +(that: SqlStatement[ZResultSet])(implicit ev: A <:< ZResultSet): SqlStatement[ZResultSet] =
+    new SqlStatement(self.segments ++ that.segments, that.decode)
+
   def as[B](implicit decode: JdbcDecoder[B]): SqlStatement[B] =
-    new SqlStatement(parts, args, (rs: ZResultSet) => decode.decode(rs.resultSet))
+    new SqlStatement(segments, (rs: ZResultSet) => decode.decode(rs.resultSet))
 
   def map[B](f: A => B): SqlStatement[B] =
-    new SqlStatement(parts, args, rs => f(decode(rs)))
+    new SqlStatement(segments, rs => f(decode(rs)))
+
+  def values[B](
+    iterable: Iterable[B]
+  )(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlStatement[ZResultSet] =
+    SqlStatement.values +
+      SqlStatement.intersperse(
+        sql""",""",
+        iterable.map(b => SqlStatement.lparen + encode.encode(b) + SqlStatement.rparen)
+      )
+
+  def withDecode[B](f: ZResultSet => B): SqlStatement[B] =
+    SqlStatement(segments, f)
 
   private[jdbc] def toStatement(conn: Connection): PreparedStatement = {
     val stringBuilder = new StringBuilder()
 
-    val partsIterator = parts.iterator
-    val argsArray     = args
+    var i = 0
 
-    var argsIndex = 0
-
-    while (partsIterator.hasNext) {
-      val part = partsIterator.next()
-
-      stringBuilder.append(part)
-
-      if (argsIndex < argsArray.length) {
-        argsIndex += 1
-
-        stringBuilder.append("?")
+    while (i < segments.length) {
+      segments(i) match {
+        case Syntax(value) => stringBuilder.append(value)
+        case _             =>
       }
+      i += 1
     }
 
-    while (argsIndex < argsArray.length) {
-      argsIndex += 1
+    val statement = conn.prepareStatement(stringBuilder.toString)
 
-      stringBuilder.append("?")
-    }
+    i = 0
+    var paramIndex = 1
 
-    val sql = stringBuilder.toString
+    while (i < segments.length) {
+      segments(i) match {
+        case Param(value) =>
+          value match {
+            case v: String                => statement.setString(paramIndex, v)
+            case v: Int                   => statement.setInt(paramIndex, v)
+            case v: Long                  => statement.setLong(paramIndex, v)
+            case v: Short                 => statement.setShort(paramIndex, v)
+            case v: Byte                  => statement.setByte(paramIndex, v)
+            case v: Char                  => statement.setString(paramIndex, v.toString)
+            case v: Double                => statement.setDouble(paramIndex, v)
+            case v: Blob                  => statement.setBlob(paramIndex, v)
+            case v: java.math.BigDecimal  => statement.setBigDecimal(paramIndex, v)
+            case v: scala.math.BigDecimal => statement.setBigDecimal(paramIndex, v.bigDecimal)
+            case v                        => statement.setString(paramIndex, v.toString())
+          }
 
-    val statement = conn.prepareStatement(sql)
+          paramIndex += 1
 
-    argsIndex = 0
-    while (argsIndex < argsArray.length) {
-      argsArray(argsIndex) match {
-        case v: String                => statement.setString(argsIndex + 1, v)
-        case v: Int                   => statement.setInt(argsIndex + 1, v)
-        case v: Long                  => statement.setLong(argsIndex + 1, v)
-        case v: Short                 => statement.setShort(argsIndex + 1, v)
-        case v: Byte                  => statement.setByte(argsIndex + 1, v)
-        case v: Char                  => statement.setString(argsIndex + 1, v.toString)
-        case v: Double                => statement.setDouble(argsIndex + 1, v)
-        case v: Blob                  => statement.setBlob(argsIndex + 1, v)
-        case v: java.math.BigDecimal  => statement.setBigDecimal(argsIndex + 1, v)
-        case v: scala.math.BigDecimal => statement.setBigDecimal(argsIndex + 1, v.bigDecimal)
-        case v                        => statement.setString(argsIndex + 1, v.toString())
+        case Syntax(_) =>
       }
-
-      argsIndex += 1
+      i += 1
     }
 
     statement
   }
+}
+object SqlStatement {
+  val empty: SqlStatement[ZResultSet] = SqlStatement(Chunk.empty, identity(_))
+
+  sealed trait Segment
+  object Segment {
+    final case class Syntax(value: String) extends Segment
+    final case class Param(value: Any)     extends Segment
+  }
+
+  private[jdbc] def intersperse(
+    sep: SqlStatement[ZResultSet],
+    elements: Iterable[SqlStatement[ZResultSet]]
+  ): SqlStatement[ZResultSet] = {
+
+    var first = true
+
+    elements.foldLeft(empty) { (acc, element) =>
+      if (!first) acc + sep + element
+      else {
+        first = false
+        acc + element
+      }
+    }
+  }
+
+  private[jdbc] val identityFn: ZResultSet => ZResultSet = a => a
+  private val values                                     = sql""" VALUES """
+  private val lparen                                     = sql"""("""
+  private val rparen                                     = sql""")"""
 }
