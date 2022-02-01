@@ -4,16 +4,24 @@ import java.sql.ResultSet
 
 import java.sql.Blob
 
+/**
+ * A type class that describes the ability to unsafeDecode a value of type `A` from
+ * a `ResultSet`.
+ */
 trait JdbcDecoder[+A] {
-  def decode(rs: ResultSet): A
+  def unsafeDecode(rs: ResultSet): A
 
-  final def map[B](f: A => B): JdbcDecoder[B] = rs => f(decode(rs))
+  def decodeSafe(rs: ResultSet): Either[Throwable, A] =
+    try Right(unsafeDecode(rs))
+    catch { case e: JdbcDecoderError => Left(e) }
+
+  final def map[B](f: A => B): JdbcDecoder[B] = rs => f(unsafeDecode(rs))
 }
 object JdbcDecoder    {
   def apply[A](implicit decoder: JdbcDecoder[A]): JdbcDecoder[A] = decoder
 
   def apply[A](f: ResultSet => A, expected: String = "value"): JdbcDecoder[A] = new JdbcDecoder[A] {
-    def decode(rs: ResultSet): A =
+    def unsafeDecode(rs: ResultSet): A =
       try f(rs)
       catch {
         case t: Throwable if !t.isInstanceOf[VirtualMachineError] =>
@@ -37,14 +45,14 @@ object JdbcDecoder    {
     a: JdbcColumnDecoder[A],
     b: JdbcColumnDecoder[B]
   ): JdbcDecoder[(A, B)] =
-    JdbcDecoder(rs => (a.decode(1, rs), b.decode(2, rs)))
+    JdbcDecoder(rs => (a.unsafeDecode(1, rs), b.unsafeDecode(2, rs)))
 
   implicit def tuple3Decoder[A, B, C](implicit
     a: JdbcColumnDecoder[A],
     b: JdbcColumnDecoder[B],
     c: JdbcColumnDecoder[C]
   ): JdbcDecoder[(A, B, C)] =
-    JdbcDecoder(rs => (a.decode(1, rs), b.decode(2, rs), c.decode(3, rs)))
+    JdbcDecoder(rs => (a.unsafeDecode(1, rs), b.unsafeDecode(2, rs), c.unsafeDecode(3, rs)))
 
   implicit def tuple4Decoder[A, B, C, D](implicit
     a: JdbcColumnDecoder[A],
@@ -52,7 +60,7 @@ object JdbcDecoder    {
     c: JdbcColumnDecoder[C],
     d: JdbcColumnDecoder[D]
   ): JdbcDecoder[(A, B, C, D)] =
-    JdbcDecoder(rs => (a.decode(1, rs), b.decode(2, rs), c.decode(3, rs), d.decode(4, rs)))
+    JdbcDecoder(rs => (a.unsafeDecode(1, rs), b.unsafeDecode(2, rs), c.unsafeDecode(3, rs), d.unsafeDecode(4, rs)))
 
   implicit def tuple5Decoder[A, B, C, D, E](implicit
     a: JdbcColumnDecoder[A],
@@ -61,7 +69,15 @@ object JdbcDecoder    {
     d: JdbcColumnDecoder[D],
     e: JdbcColumnDecoder[E]
   ): JdbcDecoder[(A, B, C, D, E)] =
-    JdbcDecoder(rs => (a.decode(1, rs), b.decode(2, rs), c.decode(3, rs), d.decode(4, rs), e.decode(5, rs)))
+    JdbcDecoder(rs =>
+      (
+        a.unsafeDecode(1, rs),
+        b.unsafeDecode(2, rs),
+        c.unsafeDecode(3, rs),
+        d.unsafeDecode(4, rs),
+        e.unsafeDecode(5, rs)
+      )
+    )
 
   implicit def tuple6Decoder[A, B, C, D, E, F](implicit
     a: JdbcColumnDecoder[A],
@@ -72,7 +88,14 @@ object JdbcDecoder    {
     f: JdbcColumnDecoder[F]
   ): JdbcDecoder[(A, B, C, D, E, F)] =
     JdbcDecoder(rs =>
-      (a.decode(1, rs), b.decode(2, rs), c.decode(3, rs), d.decode(4, rs), e.decode(5, rs), f.decode(6, rs))
+      (
+        a.unsafeDecode(1, rs),
+        b.unsafeDecode(2, rs),
+        c.unsafeDecode(3, rs),
+        d.unsafeDecode(4, rs),
+        e.unsafeDecode(5, rs),
+        f.unsafeDecode(6, rs)
+      )
     )
 
   implicit def tuple7Decoder[A, B, C, D, E, F, G](implicit
@@ -86,13 +109,13 @@ object JdbcDecoder    {
   ): JdbcDecoder[(A, B, C, D, E, F, G)] =
     JdbcDecoder(rs =>
       (
-        a.decode(1, rs),
-        b.decode(2, rs),
-        c.decode(3, rs),
-        d.decode(4, rs),
-        e.decode(5, rs),
-        f.decode(6, rs),
-        g.decode(7, rs)
+        a.unsafeDecode(1, rs),
+        b.unsafeDecode(2, rs),
+        c.unsafeDecode(3, rs),
+        d.unsafeDecode(4, rs),
+        e.unsafeDecode(5, rs),
+        f.unsafeDecode(6, rs),
+        g.unsafeDecode(7, rs)
       )
     )
 
@@ -108,14 +131,14 @@ object JdbcDecoder    {
   ): JdbcDecoder[(A, B, C, D, E, F, G, H)] =
     JdbcDecoder(rs =>
       (
-        a.decode(1, rs),
-        b.decode(2, rs),
-        c.decode(3, rs),
-        d.decode(4, rs),
-        e.decode(5, rs),
-        f.decode(6, rs),
-        g.decode(7, rs),
-        h.decode(8, rs)
+        a.unsafeDecode(1, rs),
+        b.unsafeDecode(2, rs),
+        c.unsafeDecode(3, rs),
+        d.unsafeDecode(4, rs),
+        e.unsafeDecode(5, rs),
+        f.unsafeDecode(6, rs),
+        g.unsafeDecode(7, rs),
+        h.unsafeDecode(8, rs)
       )
     )
 
@@ -132,15 +155,15 @@ object JdbcDecoder    {
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I)] =
     JdbcDecoder(rs =>
       (
-        a.decode(1, rs),
-        b.decode(2, rs),
-        c.decode(3, rs),
-        d.decode(4, rs),
-        e.decode(5, rs),
-        f.decode(6, rs),
-        g.decode(7, rs),
-        h.decode(8, rs),
-        i.decode(9, rs)
+        a.unsafeDecode(1, rs),
+        b.unsafeDecode(2, rs),
+        c.unsafeDecode(3, rs),
+        d.unsafeDecode(4, rs),
+        e.unsafeDecode(5, rs),
+        f.unsafeDecode(6, rs),
+        g.unsafeDecode(7, rs),
+        h.unsafeDecode(8, rs),
+        i.unsafeDecode(9, rs)
       )
     )
 
@@ -158,16 +181,16 @@ object JdbcDecoder    {
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J)] =
     JdbcDecoder(rs =>
       (
-        a.decode(1, rs),
-        b.decode(2, rs),
-        c.decode(3, rs),
-        d.decode(4, rs),
-        e.decode(5, rs),
-        f.decode(6, rs),
-        g.decode(7, rs),
-        h.decode(8, rs),
-        i.decode(9, rs),
-        j.decode(10, rs)
+        a.unsafeDecode(1, rs),
+        b.unsafeDecode(2, rs),
+        c.unsafeDecode(3, rs),
+        d.unsafeDecode(4, rs),
+        e.unsafeDecode(5, rs),
+        f.unsafeDecode(6, rs),
+        g.unsafeDecode(7, rs),
+        h.unsafeDecode(8, rs),
+        i.unsafeDecode(9, rs),
+        j.unsafeDecode(10, rs)
       )
     )
 
@@ -186,17 +209,17 @@ object JdbcDecoder    {
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J, K)] =
     JdbcDecoder(rs =>
       (
-        a.decode(1, rs),
-        b.decode(2, rs),
-        c.decode(3, rs),
-        d.decode(4, rs),
-        e.decode(5, rs),
-        f.decode(6, rs),
-        g.decode(7, rs),
-        h.decode(8, rs),
-        i.decode(9, rs),
-        j.decode(10, rs),
-        k.decode(11, rs)
+        a.unsafeDecode(1, rs),
+        b.unsafeDecode(2, rs),
+        c.unsafeDecode(3, rs),
+        d.unsafeDecode(4, rs),
+        e.unsafeDecode(5, rs),
+        f.unsafeDecode(6, rs),
+        g.unsafeDecode(7, rs),
+        h.unsafeDecode(8, rs),
+        i.unsafeDecode(9, rs),
+        j.unsafeDecode(10, rs),
+        k.unsafeDecode(11, rs)
       )
     )
 
@@ -216,18 +239,18 @@ object JdbcDecoder    {
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J, K, L)] =
     JdbcDecoder(rs =>
       (
-        a.decode(1, rs),
-        b.decode(2, rs),
-        c.decode(3, rs),
-        d.decode(4, rs),
-        e.decode(5, rs),
-        f.decode(6, rs),
-        g.decode(7, rs),
-        h.decode(8, rs),
-        i.decode(9, rs),
-        j.decode(10, rs),
-        k.decode(11, rs),
-        l.decode(12, rs)
+        a.unsafeDecode(1, rs),
+        b.unsafeDecode(2, rs),
+        c.unsafeDecode(3, rs),
+        d.unsafeDecode(4, rs),
+        e.unsafeDecode(5, rs),
+        f.unsafeDecode(6, rs),
+        g.unsafeDecode(7, rs),
+        h.unsafeDecode(8, rs),
+        i.unsafeDecode(9, rs),
+        j.unsafeDecode(10, rs),
+        k.unsafeDecode(11, rs),
+        l.unsafeDecode(12, rs)
       )
     )
 
@@ -248,19 +271,19 @@ object JdbcDecoder    {
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J, K, L, M)] =
     JdbcDecoder(rs =>
       (
-        a.decode(1, rs),
-        b.decode(2, rs),
-        c.decode(3, rs),
-        d.decode(4, rs),
-        e.decode(5, rs),
-        f.decode(6, rs),
-        g.decode(7, rs),
-        h.decode(8, rs),
-        i.decode(9, rs),
-        j.decode(10, rs),
-        k.decode(11, rs),
-        l.decode(12, rs),
-        m.decode(13, rs)
+        a.unsafeDecode(1, rs),
+        b.unsafeDecode(2, rs),
+        c.unsafeDecode(3, rs),
+        d.unsafeDecode(4, rs),
+        e.unsafeDecode(5, rs),
+        f.unsafeDecode(6, rs),
+        g.unsafeDecode(7, rs),
+        h.unsafeDecode(8, rs),
+        i.unsafeDecode(9, rs),
+        j.unsafeDecode(10, rs),
+        k.unsafeDecode(11, rs),
+        l.unsafeDecode(12, rs),
+        m.unsafeDecode(13, rs)
       )
     )
 
@@ -282,20 +305,20 @@ object JdbcDecoder    {
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N)] =
     JdbcDecoder(rs =>
       (
-        a.decode(1, rs),
-        b.decode(2, rs),
-        c.decode(3, rs),
-        d.decode(4, rs),
-        e.decode(5, rs),
-        f.decode(6, rs),
-        g.decode(7, rs),
-        h.decode(8, rs),
-        i.decode(9, rs),
-        j.decode(10, rs),
-        k.decode(11, rs),
-        l.decode(12, rs),
-        m.decode(13, rs),
-        n.decode(14, rs)
+        a.unsafeDecode(1, rs),
+        b.unsafeDecode(2, rs),
+        c.unsafeDecode(3, rs),
+        d.unsafeDecode(4, rs),
+        e.unsafeDecode(5, rs),
+        f.unsafeDecode(6, rs),
+        g.unsafeDecode(7, rs),
+        h.unsafeDecode(8, rs),
+        i.unsafeDecode(9, rs),
+        j.unsafeDecode(10, rs),
+        k.unsafeDecode(11, rs),
+        l.unsafeDecode(12, rs),
+        m.unsafeDecode(13, rs),
+        n.unsafeDecode(14, rs)
       )
     )
 
@@ -318,21 +341,21 @@ object JdbcDecoder    {
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O)] =
     JdbcDecoder(rs =>
       (
-        a.decode(1, rs),
-        b.decode(2, rs),
-        c.decode(3, rs),
-        d.decode(4, rs),
-        e.decode(5, rs),
-        f.decode(6, rs),
-        g.decode(7, rs),
-        h.decode(8, rs),
-        i.decode(9, rs),
-        j.decode(10, rs),
-        k.decode(11, rs),
-        l.decode(12, rs),
-        m.decode(13, rs),
-        n.decode(14, rs),
-        o.decode(15, rs)
+        a.unsafeDecode(1, rs),
+        b.unsafeDecode(2, rs),
+        c.unsafeDecode(3, rs),
+        d.unsafeDecode(4, rs),
+        e.unsafeDecode(5, rs),
+        f.unsafeDecode(6, rs),
+        g.unsafeDecode(7, rs),
+        h.unsafeDecode(8, rs),
+        i.unsafeDecode(9, rs),
+        j.unsafeDecode(10, rs),
+        k.unsafeDecode(11, rs),
+        l.unsafeDecode(12, rs),
+        m.unsafeDecode(13, rs),
+        n.unsafeDecode(14, rs),
+        o.unsafeDecode(15, rs)
       )
     )
 
@@ -356,22 +379,22 @@ object JdbcDecoder    {
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P)] =
     JdbcDecoder(rs =>
       (
-        a.decode(1, rs),
-        b.decode(2, rs),
-        c.decode(3, rs),
-        d.decode(4, rs),
-        e.decode(5, rs),
-        f.decode(6, rs),
-        g.decode(7, rs),
-        h.decode(8, rs),
-        i.decode(9, rs),
-        j.decode(10, rs),
-        k.decode(11, rs),
-        l.decode(12, rs),
-        m.decode(13, rs),
-        n.decode(14, rs),
-        o.decode(15, rs),
-        p.decode(16, rs)
+        a.unsafeDecode(1, rs),
+        b.unsafeDecode(2, rs),
+        c.unsafeDecode(3, rs),
+        d.unsafeDecode(4, rs),
+        e.unsafeDecode(5, rs),
+        f.unsafeDecode(6, rs),
+        g.unsafeDecode(7, rs),
+        h.unsafeDecode(8, rs),
+        i.unsafeDecode(9, rs),
+        j.unsafeDecode(10, rs),
+        k.unsafeDecode(11, rs),
+        l.unsafeDecode(12, rs),
+        m.unsafeDecode(13, rs),
+        n.unsafeDecode(14, rs),
+        o.unsafeDecode(15, rs),
+        p.unsafeDecode(16, rs)
       )
     )
 
@@ -396,23 +419,23 @@ object JdbcDecoder    {
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q)] =
     JdbcDecoder(rs =>
       (
-        a.decode(1, rs),
-        b.decode(2, rs),
-        c.decode(3, rs),
-        d.decode(4, rs),
-        e.decode(5, rs),
-        f.decode(6, rs),
-        g.decode(7, rs),
-        h.decode(8, rs),
-        i.decode(9, rs),
-        j.decode(10, rs),
-        k.decode(11, rs),
-        l.decode(12, rs),
-        m.decode(13, rs),
-        n.decode(14, rs),
-        o.decode(15, rs),
-        p.decode(16, rs),
-        q.decode(17, rs)
+        a.unsafeDecode(1, rs),
+        b.unsafeDecode(2, rs),
+        c.unsafeDecode(3, rs),
+        d.unsafeDecode(4, rs),
+        e.unsafeDecode(5, rs),
+        f.unsafeDecode(6, rs),
+        g.unsafeDecode(7, rs),
+        h.unsafeDecode(8, rs),
+        i.unsafeDecode(9, rs),
+        j.unsafeDecode(10, rs),
+        k.unsafeDecode(11, rs),
+        l.unsafeDecode(12, rs),
+        m.unsafeDecode(13, rs),
+        n.unsafeDecode(14, rs),
+        o.unsafeDecode(15, rs),
+        p.unsafeDecode(16, rs),
+        q.unsafeDecode(17, rs)
       )
     )
 
@@ -438,24 +461,24 @@ object JdbcDecoder    {
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R)] =
     JdbcDecoder(rs =>
       (
-        a.decode(1, rs),
-        b.decode(2, rs),
-        c.decode(3, rs),
-        d.decode(4, rs),
-        e.decode(5, rs),
-        f.decode(6, rs),
-        g.decode(7, rs),
-        h.decode(8, rs),
-        i.decode(9, rs),
-        j.decode(10, rs),
-        k.decode(11, rs),
-        l.decode(12, rs),
-        m.decode(13, rs),
-        n.decode(14, rs),
-        o.decode(15, rs),
-        p.decode(16, rs),
-        q.decode(17, rs),
-        r.decode(18, rs)
+        a.unsafeDecode(1, rs),
+        b.unsafeDecode(2, rs),
+        c.unsafeDecode(3, rs),
+        d.unsafeDecode(4, rs),
+        e.unsafeDecode(5, rs),
+        f.unsafeDecode(6, rs),
+        g.unsafeDecode(7, rs),
+        h.unsafeDecode(8, rs),
+        i.unsafeDecode(9, rs),
+        j.unsafeDecode(10, rs),
+        k.unsafeDecode(11, rs),
+        l.unsafeDecode(12, rs),
+        m.unsafeDecode(13, rs),
+        n.unsafeDecode(14, rs),
+        o.unsafeDecode(15, rs),
+        p.unsafeDecode(16, rs),
+        q.unsafeDecode(17, rs),
+        r.unsafeDecode(18, rs)
       )
     )
 
@@ -482,25 +505,25 @@ object JdbcDecoder    {
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S)] =
     JdbcDecoder(rs =>
       (
-        a.decode(1, rs),
-        b.decode(2, rs),
-        c.decode(3, rs),
-        d.decode(4, rs),
-        e.decode(5, rs),
-        f.decode(6, rs),
-        g.decode(7, rs),
-        h.decode(8, rs),
-        i.decode(9, rs),
-        j.decode(10, rs),
-        k.decode(11, rs),
-        l.decode(12, rs),
-        m.decode(13, rs),
-        n.decode(14, rs),
-        o.decode(15, rs),
-        p.decode(16, rs),
-        q.decode(17, rs),
-        r.decode(18, rs),
-        s.decode(19, rs)
+        a.unsafeDecode(1, rs),
+        b.unsafeDecode(2, rs),
+        c.unsafeDecode(3, rs),
+        d.unsafeDecode(4, rs),
+        e.unsafeDecode(5, rs),
+        f.unsafeDecode(6, rs),
+        g.unsafeDecode(7, rs),
+        h.unsafeDecode(8, rs),
+        i.unsafeDecode(9, rs),
+        j.unsafeDecode(10, rs),
+        k.unsafeDecode(11, rs),
+        l.unsafeDecode(12, rs),
+        m.unsafeDecode(13, rs),
+        n.unsafeDecode(14, rs),
+        o.unsafeDecode(15, rs),
+        p.unsafeDecode(16, rs),
+        q.unsafeDecode(17, rs),
+        r.unsafeDecode(18, rs),
+        s.unsafeDecode(19, rs)
       )
     )
 
@@ -528,26 +551,26 @@ object JdbcDecoder    {
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T)] =
     JdbcDecoder(rs =>
       (
-        a.decode(1, rs),
-        b.decode(2, rs),
-        c.decode(3, rs),
-        d.decode(4, rs),
-        e.decode(5, rs),
-        f.decode(6, rs),
-        g.decode(7, rs),
-        h.decode(8, rs),
-        i.decode(9, rs),
-        j.decode(10, rs),
-        k.decode(11, rs),
-        l.decode(12, rs),
-        m.decode(13, rs),
-        n.decode(14, rs),
-        o.decode(15, rs),
-        p.decode(16, rs),
-        q.decode(17, rs),
-        r.decode(18, rs),
-        s.decode(19, rs),
-        t.decode(20, rs)
+        a.unsafeDecode(1, rs),
+        b.unsafeDecode(2, rs),
+        c.unsafeDecode(3, rs),
+        d.unsafeDecode(4, rs),
+        e.unsafeDecode(5, rs),
+        f.unsafeDecode(6, rs),
+        g.unsafeDecode(7, rs),
+        h.unsafeDecode(8, rs),
+        i.unsafeDecode(9, rs),
+        j.unsafeDecode(10, rs),
+        k.unsafeDecode(11, rs),
+        l.unsafeDecode(12, rs),
+        m.unsafeDecode(13, rs),
+        n.unsafeDecode(14, rs),
+        o.unsafeDecode(15, rs),
+        p.unsafeDecode(16, rs),
+        q.unsafeDecode(17, rs),
+        r.unsafeDecode(18, rs),
+        s.unsafeDecode(19, rs),
+        t.unsafeDecode(20, rs)
       )
     )
 
@@ -576,27 +599,27 @@ object JdbcDecoder    {
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U)] =
     JdbcDecoder(rs =>
       (
-        a.decode(1, rs),
-        b.decode(2, rs),
-        c.decode(3, rs),
-        d.decode(4, rs),
-        e.decode(5, rs),
-        f.decode(6, rs),
-        g.decode(7, rs),
-        h.decode(8, rs),
-        i.decode(9, rs),
-        j.decode(10, rs),
-        k.decode(11, rs),
-        l.decode(12, rs),
-        m.decode(13, rs),
-        n.decode(14, rs),
-        o.decode(15, rs),
-        p.decode(16, rs),
-        q.decode(17, rs),
-        r.decode(18, rs),
-        s.decode(19, rs),
-        t.decode(20, rs),
-        u.decode(21, rs)
+        a.unsafeDecode(1, rs),
+        b.unsafeDecode(2, rs),
+        c.unsafeDecode(3, rs),
+        d.unsafeDecode(4, rs),
+        e.unsafeDecode(5, rs),
+        f.unsafeDecode(6, rs),
+        g.unsafeDecode(7, rs),
+        h.unsafeDecode(8, rs),
+        i.unsafeDecode(9, rs),
+        j.unsafeDecode(10, rs),
+        k.unsafeDecode(11, rs),
+        l.unsafeDecode(12, rs),
+        m.unsafeDecode(13, rs),
+        n.unsafeDecode(14, rs),
+        o.unsafeDecode(15, rs),
+        p.unsafeDecode(16, rs),
+        q.unsafeDecode(17, rs),
+        r.unsafeDecode(18, rs),
+        s.unsafeDecode(19, rs),
+        t.unsafeDecode(20, rs),
+        u.unsafeDecode(21, rs)
       )
     )
 
@@ -626,28 +649,28 @@ object JdbcDecoder    {
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V)] =
     JdbcDecoder(rs =>
       (
-        a.decode(1, rs),
-        b.decode(2, rs),
-        c.decode(3, rs),
-        d.decode(4, rs),
-        e.decode(5, rs),
-        f.decode(6, rs),
-        g.decode(7, rs),
-        h.decode(8, rs),
-        i.decode(9, rs),
-        j.decode(10, rs),
-        k.decode(11, rs),
-        l.decode(12, rs),
-        m.decode(13, rs),
-        n.decode(14, rs),
-        o.decode(15, rs),
-        p.decode(16, rs),
-        q.decode(17, rs),
-        r.decode(18, rs),
-        s.decode(19, rs),
-        t.decode(20, rs),
-        u.decode(21, rs),
-        v.decode(22, rs)
+        a.unsafeDecode(1, rs),
+        b.unsafeDecode(2, rs),
+        c.unsafeDecode(3, rs),
+        d.unsafeDecode(4, rs),
+        e.unsafeDecode(5, rs),
+        f.unsafeDecode(6, rs),
+        g.unsafeDecode(7, rs),
+        h.unsafeDecode(8, rs),
+        i.unsafeDecode(9, rs),
+        j.unsafeDecode(10, rs),
+        k.unsafeDecode(11, rs),
+        l.unsafeDecode(12, rs),
+        m.unsafeDecode(13, rs),
+        n.unsafeDecode(14, rs),
+        o.unsafeDecode(15, rs),
+        p.unsafeDecode(16, rs),
+        q.unsafeDecode(17, rs),
+        r.unsafeDecode(18, rs),
+        s.unsafeDecode(19, rs),
+        t.unsafeDecode(20, rs),
+        u.unsafeDecode(21, rs),
+        v.unsafeDecode(22, rs)
       )
     )
 }

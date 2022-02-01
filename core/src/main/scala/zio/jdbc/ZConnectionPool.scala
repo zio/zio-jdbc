@@ -3,9 +3,27 @@ package zio.jdbc
 import zio._
 import java.sql.Connection
 import java.io.File
+import java.time
 
+/**
+ * A `ZConnectionPool` represents a pool of connections, and has the ability to
+ * supply a transaction that can be used for executing SQL statements.
+ */
 final case class ZConnectionPool(transaction: ZLayer[Any, Throwable, ZConnection])
 object ZConnectionPool {
+  def h2test: ZLayer[Clock & Random, Throwable, ZConnectionPool] =
+    ZLayer {
+      for {
+        _      <- ZManaged.attempt(Class.forName("org.h2.Driver"))
+        int    <- Random.nextInt.toManaged
+        config  = ZConnectionPoolConfig(10, 20, Schedule.recurs(100), time.Duration.ofDays(Int.MaxValue))
+        acquire = Task.attemptBlocking {
+                    java.sql.DriverManager.getConnection(s"jdbc:h2:mem:test_database_$int")
+                  }
+        zenv   <- make(acquire).build.provideSome[Clock & Random](ZLayer.succeed(config))
+      } yield zenv.get[ZConnectionPool]
+    }
+
   def h2mem(
     database: String,
     props: Map[String, String] = Map()

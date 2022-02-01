@@ -1,15 +1,25 @@
 package zio.jdbc
 
-import java.sql.ResultSet
-import java.sql.Blob
+import java.sql._
 
+/**
+ * A type class that describes the ability to decode an `A` from a particular
+ * column in a result set.
+ */
 trait JdbcColumnDecoder[+A] {
-  def decode(column: Int, resultSet: ResultSet): A
+  def unsafeDecode(column: Int, resultSet: ResultSet): A
+
+  final def decode(column: Int, resultSet: ResultSet): Either[Throwable, A] =
+    try Right(unsafeDecode(column, resultSet))
+    catch {
+      case e: JdbcDecoderError => Left(e)
+      case e: SQLException     => Left(e)
+    }
 }
 object JdbcColumnDecoder    {
   def apply[A](f: (Int, ResultSet) => A): JdbcColumnDecoder[A] =
     new JdbcColumnDecoder[A] {
-      def decode(column: Int, resultSet: ResultSet): A = f(column, resultSet)
+      def unsafeDecode(column: Int, resultSet: ResultSet): A = f(column, resultSet)
     }
 
   implicit val stringDecoder: JdbcColumnDecoder[String] =
@@ -48,6 +58,6 @@ object JdbcColumnDecoder    {
   implicit def optionDecoder[A](implicit decoder: JdbcColumnDecoder[A]): JdbcColumnDecoder[Option[A]] =
     JdbcColumnDecoder((column, resultSet) =>
       if (resultSet.getObject(column) == null) None
-      else Some(decoder.decode(column, resultSet))
+      else Some(decoder.unsafeDecode(column, resultSet))
     )
 }

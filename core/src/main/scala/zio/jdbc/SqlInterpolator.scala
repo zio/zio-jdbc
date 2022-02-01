@@ -2,9 +2,14 @@ package zio.jdbc
 
 import zio.ChunkBuilder
 
+/**
+ * An interpolator for SQL strings, which produces `Sql` values.
+ *
+ * @param context The `StringContext` on which the string interpolator is added.
+ */
 final class SqlInterpolator(val context: StringContext) extends AnyVal {
-  def sql(params: Any*): SqlStatement[ZResultSet] = {
-    import SqlStatement.Segment
+  def sql(params: Any*): Sql[ZResultSet] = {
+    import Sql.Segment
 
     val chunkBuilder = ChunkBuilder.make[Segment]()
 
@@ -22,6 +27,6 @@ final class SqlInterpolator(val context: StringContext) extends AnyVal {
     while (paramsIterator.hasNext)
       chunkBuilder += Segment.Param(paramsIterator.next())
 
-    new SqlStatement(chunkBuilder.result(), identity(_))
+    new Sql(chunkBuilder.result(), Sql.identityFn)
   }
 }
