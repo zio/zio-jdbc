@@ -13,8 +13,8 @@ import zio.Chunk
  * @param decode
  */
 final case class Sql[+A](
-  val segments: Chunk[Sql.Segment],
-  val decode: ZResultSet => A
+  segments: Chunk[Sql.Segment],
+  decode: ZResultSet => A
 ) { self =>
   def +(that: Sql[ZResultSet])(implicit ev: A <:< ZResultSet): Sql[ZResultSet] =
     new Sql(self.segments ++ that.segments, that.decode)

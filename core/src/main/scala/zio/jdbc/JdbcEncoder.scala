@@ -406,7 +406,7 @@ object JdbcEncoder {
         tuple._8
       ) + Sql.comma + JdbcEncoder[I].encode(tuple._9) + Sql.comma + JdbcEncoder[J].encode(
         tuple._10
-      ) + Sql.comma + JdbcEncoder[K].encode(tuple._11) + Sql.commaf + JdbcEncoder[L].encode(
+      ) + Sql.comma + JdbcEncoder[K].encode(tuple._11) + Sql.comma + JdbcEncoder[L].encode(
         tuple._12
       ) + Sql.comma + JdbcEncoder[M].encode(tuple._13) + Sql.comma + JdbcEncoder[N].encode(
         tuple._14
@@ -448,7 +448,7 @@ object JdbcEncoder {
         tuple._8
       ) + Sql.comma + JdbcEncoder[I].encode(tuple._9) + Sql.comma + JdbcEncoder[J].encode(
         tuple._10
-      ) + Sql.comma + JdbcEncoder[K].encode(tuple._11) + Sql.commaf + JdbcEncoder[L].encode(
+      ) + Sql.comma + JdbcEncoder[K].encode(tuple._11) + Sql.comma + JdbcEncoder[L].encode(
         tuple._12
       ) + Sql.comma + JdbcEncoder[M].encode(tuple._13) + Sql.comma + JdbcEncoder[N].encode(
         tuple._14
@@ -491,7 +491,7 @@ object JdbcEncoder {
         tuple._8
       ) + Sql.comma + JdbcEncoder[I].encode(tuple._9) + Sql.comma + JdbcEncoder[J].encode(
         tuple._10
-      ) + Sql.comma + JdbcEncoder[K].encode(tuple._11) + Sql.commaf + JdbcEncoder[L].encode(
+      ) + Sql.comma + JdbcEncoder[K].encode(tuple._11) + Sql.comma + JdbcEncoder[L].encode(
         tuple._12
       ) + Sql.comma + JdbcEncoder[M].encode(tuple._13) + Sql.comma + JdbcEncoder[N].encode(
         tuple._14
@@ -537,7 +537,7 @@ object JdbcEncoder {
         tuple._8
       ) + Sql.comma + JdbcEncoder[I].encode(tuple._9) + Sql.comma + JdbcEncoder[J].encode(
         tuple._10
-      ) + Sql.comma + JdbcEncoder[K].encode(tuple._11) + Sql.commaf + JdbcEncoder[L].encode(
+      ) + Sql.comma + JdbcEncoder[K].encode(tuple._11) + Sql.comma + JdbcEncoder[L].encode(
         tuple._12
       ) + Sql.comma + JdbcEncoder[M].encode(tuple._13) + Sql.comma + JdbcEncoder[N].encode(
         tuple._14
@@ -582,7 +582,7 @@ object JdbcEncoder {
         tuple._6
       ) + Sql.comma + JdbcEncoder[G].encode(tuple._7) + Sql.comma + JdbcEncoder[H].encode(
         tuple._8
-      ) + Sql.comma + JdbcEncoder[I].encode(tuple._9) + Sql.commaf + JdbcEncoder[J].encode(
+      ) + Sql.comma + JdbcEncoder[I].encode(tuple._9) + Sql.comma + JdbcEncoder[J].encode(
         tuple._10
       ) + Sql.comma + JdbcEncoder[K].encode(tuple._11) + Sql.comma + JdbcEncoder[L].encode(
         tuple._12
