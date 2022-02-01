@@ -24,9 +24,13 @@ final case class SqlStatement[+A] private[jdbc] (
   )(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlStatement[ZResultSet] =
     SqlStatement.values +
       SqlStatement.intersperse(
-        sql""",""",
+        SqlStatement.comma,
         iterable.map(b => SqlStatement.lparen + encode.encode(b) + SqlStatement.rparen)
       )
+
+  def values[B](
+    bs: B*
+  )(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlStatement[ZResultSet] = values(bs.toIterable)
 
   def withDecode[B](f: ZResultSet => B): SqlStatement[B] =
     SqlStatement(segments, f)
@@ -102,7 +106,8 @@ object SqlStatement {
   }
 
   private[jdbc] val identityFn: ZResultSet => ZResultSet = a => a
-  private val values                                     = sql""" VALUES """
-  private val lparen                                     = sql"""("""
-  private val rparen                                     = sql""")"""
+  private[jdbc] val values                               = sql""" VALUES """
+  private[jdbc] val lparen                               = sql"""("""
+  private[jdbc] val rparen                               = sql""")"""
+  private[jdbc] val comma                                = sql""","""
 }
