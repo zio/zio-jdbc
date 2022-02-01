@@ -3,7 +3,7 @@ package zio.jdbc
 import java.sql.ResultSetMetaData
 import java.io.IOException
 
-final case class ResultSetDecoderError(
+final case class JdbcDecoderError(
   message: String,
   cause: Throwable,
   metadata: ResultSetMetaData,

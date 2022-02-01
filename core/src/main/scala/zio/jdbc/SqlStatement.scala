@@ -1,15 +1,17 @@
 package zio.jdbc
 
+import zio.Chunk
+
 import java.sql.Connection
 import java.sql.PreparedStatement
 import java.sql.Blob
 
 final class SqlStatement[+A] private[jdbc] (
-  parts: Array[String],
-  args: Array[Any],
+  parts: Chunk[String],
+  args: Chunk[Any],
   private[jdbc] val decode: ZResultSet => A
 ) { self =>
-  def as[B](implicit decode: ResultSetDecoder[B]): SqlStatement[B] =
+  def as[B](implicit decode: JdbcDecoder[B]): SqlStatement[B] =
     new SqlStatement(parts, args, (rs: ZResultSet) => decode.decode(rs.resultSet))
 
   def map[B](f: A => B): SqlStatement[B] =
@@ -18,8 +20,8 @@ final class SqlStatement[+A] private[jdbc] (
   private[jdbc] def toStatement(conn: Connection): PreparedStatement = {
     val stringBuilder = new StringBuilder()
 
-    val partsIterator = parts.toSeq.iterator
-    val argsArray     = args.toArray[Any]
+    val partsIterator = parts.iterator
+    val argsArray     = args
 
     var argsIndex = 0
 
