@@ -52,7 +52,14 @@ final class ZConnection(private[jdbc] val connection: Connection) extends AnyVal
               case v: Blob                  => statement.setBlob(paramIndex, v)
               case v: java.math.BigDecimal  => statement.setBigDecimal(paramIndex, v)
               case v: scala.math.BigDecimal => statement.setBigDecimal(paramIndex, v.bigDecimal)
-              case v                        => statement.setString(paramIndex, v.toString())
+              case v: java.math.BigInteger  => statement.setBigDecimal(paramIndex, new java.math.BigDecimal(v))
+              case v: scala.math.BigInt     => statement.setBigDecimal(paramIndex, new java.math.BigDecimal(v.bigInteger))
+              case v: java.sql.Date         => statement.setDate(paramIndex, v)
+              case v: java.sql.Time         => statement.setTime(paramIndex, v)
+              case v: java.sql.Timestamp    => statement.setTimestamp(paramIndex, v)
+              case v: Boolean               => statement.setBoolean(paramIndex, v)
+              case v: Float                 => statement.setFloat(paramIndex, v)
+              case v                        => statement.setString(paramIndex, v.toString)
             }
 
             paramIndex += 1
