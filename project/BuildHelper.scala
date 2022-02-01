@@ -1,10 +1,8 @@
 import explicitdeps.ExplicitDepsPlugin.autoImport._
-import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 import sbt.Keys._
 import sbt._
 import sbtbuildinfo.BuildInfoKeys._
 import sbtbuildinfo._
-import sbtcrossproject.CrossPlugin.autoImport._
 import scalafix.sbt.ScalafixPlugin.autoImport._
 
 object BuildHelper {
@@ -99,7 +97,7 @@ object BuildHelper {
   )
 
   val scalaReflectSettings = Seq(
-    libraryDependencies ++= Seq("dev.zio" %%% "izumi-reflect" % "1.0.0-M10")
+    libraryDependencies ++= Seq("dev.zio" %% "izumi-reflect" % "1.0.0-M10")
   )
 
   // Keep this consistent with the version in .core-tests/shared/src/test/scala/REPLSpec.scala
@@ -213,25 +211,6 @@ object BuildHelper {
     platformSpecificSources(platform, conf, baseDir)(versions: _*)
   }
 
-  lazy val crossProjectSettings = Seq(
-    Compile / unmanagedSourceDirectories ++= {
-      crossPlatformSources(
-        scalaVersion.value,
-        crossProjectPlatform.value.identifier,
-        "main",
-        baseDirectory.value
-      )
-    },
-    Test / unmanagedSourceDirectories ++= {
-      crossPlatformSources(
-        scalaVersion.value,
-        crossProjectPlatform.value.identifier,
-        "test",
-        baseDirectory.value
-      )
-    }
-  )
-
   def stdSettings(prjName: String) =
     Seq(
       name                                   := s"$prjName",
@@ -295,8 +274,8 @@ object BuildHelper {
 
   def jsSettings =
     Seq(
-      libraryDependencies += "io.github.cquiroz" %%% "scala-java-time"      % "2.3.0",
-      libraryDependencies += "io.github.cquiroz" %%% "scala-java-time-tzdb" % "2.2.2"
+      libraryDependencies += "io.github.cquiroz" %% "scala-java-time"      % "2.3.0",
+      libraryDependencies += "io.github.cquiroz" %% "scala-java-time-tzdb" % "2.2.2"
     )
 
   def nativeSettings =

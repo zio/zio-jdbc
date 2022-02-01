@@ -1,5 +1,9 @@
 import BuildHelper._
-import sbtcrossproject.CrossPlugin.autoImport.{ CrossType, crossProject }
+
+val ZioVersion = "2.0.0-RC2"
+// val ZioConfigVersion  = "3.0.0-RC1"
+// val ZioSchemaVersion  = "0.2.0-RC1-1"
+// val ZioLoggingVersion = "2.0.0-RC4"
 
 name := "zio-jdbc"
 
@@ -19,9 +23,6 @@ inThisBuild(
     )
   )
 )
-
-val ZioVersion           = "2.0.0-RC2"
-val scalaJavaTimeVersion = "2.3.0"
 
 addCommandAlias("fix", "; all compile:scalafix test:scalafix; all scalafmtSbt scalafmtAll")
 addCommandAlias("fmt", "; all scalafmtSbt scalafmtAll")
@@ -44,10 +45,10 @@ lazy val core = project
   .settings(stdSettings("zio-jdbc"))
   .settings(
     libraryDependencies ++= Seq(
-      "dev.zio" %%% "zio"          % ZioVersion,
-      "dev.zio" %%% "zio-streams"  % ZioVersion,
-      "dev.zio" %%% "zio-test"     % ZioVersion % Test,
-      "dev.zio" %%% "zio-test-sbt" % ZioVersion % Test
+      "dev.zio" %% "zio"          % ZioVersion,
+      "dev.zio" %% "zio-streams"  % ZioVersion,
+      "dev.zio" %% "zio-test"     % ZioVersion % Test,
+      "dev.zio" %% "zio-test-sbt" % ZioVersion % Test
     ),
     testFrameworks := Seq(new TestFramework("zio.test.sbt.ZTestFramework")),
     Test / fork    := true,
