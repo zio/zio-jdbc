@@ -5,7 +5,8 @@ trait JdbcEncoder[-A] {
 
   final def contramap[B](f: B => A): JdbcEncoder[B] = (value) => encode(f(value))
 }
-object JdbcEncoder    {
+
+object JdbcEncoder {
   def apply[A](implicit encoder: JdbcEncoder[A]): JdbcEncoder[A] = encoder
 
   implicit val intEncoder: JdbcEncoder[Int] = value => sql"$value"
@@ -173,5 +174,428 @@ object JdbcEncoder    {
         tuple._10
       ) + Sql.comma + JdbcEncoder[K].encode(tuple._11)
 
-  // TODO: Other encoders
+  implicit def tuple12Encoder[
+    A: JdbcEncoder,
+    B: JdbcEncoder,
+    C: JdbcEncoder,
+    D: JdbcEncoder,
+    E: JdbcEncoder,
+    F: JdbcEncoder,
+    G: JdbcEncoder,
+    H: JdbcEncoder,
+    I: JdbcEncoder,
+    J: JdbcEncoder,
+    K: JdbcEncoder,
+    L: JdbcEncoder
+  ]: JdbcEncoder[(A, B, C, D, E, F, G, H, I, J, K, L)] =
+    tuple =>
+      JdbcEncoder[A].encode(tuple._1) + Sql.comma + JdbcEncoder[B].encode(
+        tuple._2
+      ) + Sql.comma + JdbcEncoder[C].encode(tuple._3) + Sql.comma + JdbcEncoder[D].encode(
+        tuple._4
+      ) + Sql.comma + JdbcEncoder[E].encode(tuple._5) + Sql.comma + JdbcEncoder[F].encode(
+        tuple._6
+      ) + Sql.comma + JdbcEncoder[G].encode(tuple._7) + Sql.comma + JdbcEncoder[H].encode(
+        tuple._8
+      ) + Sql.comma + JdbcEncoder[I].encode(tuple._9) + Sql.comma + JdbcEncoder[J].encode(
+        tuple._10
+      ) + Sql.comma + JdbcEncoder[K].encode(tuple._11) + Sql.comma + JdbcEncoder[L].encode(
+        tuple._12
+      )
+
+  implicit def tuple13Encoder[
+    A: JdbcEncoder,
+    B: JdbcEncoder,
+    C: JdbcEncoder,
+    D: JdbcEncoder,
+    E: JdbcEncoder,
+    F: JdbcEncoder,
+    G: JdbcEncoder,
+    H: JdbcEncoder,
+    I: JdbcEncoder,
+    J: JdbcEncoder,
+    K: JdbcEncoder,
+    L: JdbcEncoder,
+    M: JdbcEncoder
+  ]: JdbcEncoder[(A, B, C, D, E, F, G, H, I, J, K, L, M)] =
+    tuple =>
+      JdbcEncoder[A].encode(tuple._1) + Sql.comma + JdbcEncoder[B].encode(
+        tuple._2
+      ) + Sql.comma + JdbcEncoder[C].encode(tuple._3) + Sql.comma + JdbcEncoder[D].encode(
+        tuple._4
+      ) + Sql.comma + JdbcEncoder[E].encode(tuple._5) + Sql.comma + JdbcEncoder[F].encode(
+        tuple._6
+      ) + Sql.comma + JdbcEncoder[G].encode(tuple._7) + Sql.comma + JdbcEncoder[H].encode(
+        tuple._8
+      ) + Sql.comma + JdbcEncoder[I].encode(tuple._9) + Sql.comma + JdbcEncoder[J].encode(
+        tuple._10
+      ) + Sql.comma + JdbcEncoder[K].encode(tuple._11) + Sql.comma + JdbcEncoder[L].encode(
+        tuple._12
+      ) + Sql.comma + JdbcEncoder[M].encode(tuple._13)
+
+  implicit def tuple14Encoder[
+    A: JdbcEncoder,
+    B: JdbcEncoder,
+    C: JdbcEncoder,
+    D: JdbcEncoder,
+    E: JdbcEncoder,
+    F: JdbcEncoder,
+    G: JdbcEncoder,
+    H: JdbcEncoder,
+    I: JdbcEncoder,
+    J: JdbcEncoder,
+    K: JdbcEncoder,
+    L: JdbcEncoder,
+    M: JdbcEncoder,
+    N: JdbcEncoder
+  ]: JdbcEncoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N)] =
+    tuple =>
+      JdbcEncoder[A].encode(tuple._1) + Sql.comma + JdbcEncoder[B].encode(
+        tuple._2
+      ) + Sql.comma + JdbcEncoder[C].encode(tuple._3) + Sql.comma + JdbcEncoder[D].encode(
+        tuple._4
+      ) + Sql.comma + JdbcEncoder[E].encode(tuple._5) + Sql.comma + JdbcEncoder[F].encode(
+        tuple._6
+      ) + Sql.comma + JdbcEncoder[G].encode(tuple._7) + Sql.comma + JdbcEncoder[H].encode(
+        tuple._8
+      ) + Sql.comma + JdbcEncoder[I].encode(tuple._9) + Sql.comma + JdbcEncoder[J].encode(
+        tuple._10
+      ) + Sql.comma + JdbcEncoder[K].encode(tuple._11) + Sql.comma + JdbcEncoder[L].encode(
+        tuple._12
+      ) + Sql.comma + JdbcEncoder[M].encode(tuple._13) + Sql.comma + JdbcEncoder[N].encode(
+        tuple._14
+      )
+
+  implicit def tuple15Encoder[
+    A: JdbcEncoder,
+    B: JdbcEncoder,
+    C: JdbcEncoder,
+    D: JdbcEncoder,
+    E: JdbcEncoder,
+    F: JdbcEncoder,
+    G: JdbcEncoder,
+    H: JdbcEncoder,
+    I: JdbcEncoder,
+    J: JdbcEncoder,
+    K: JdbcEncoder,
+    L: JdbcEncoder,
+    M: JdbcEncoder,
+    N: JdbcEncoder,
+    O: JdbcEncoder
+  ]: JdbcEncoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O)] =
+    tuple =>
+      JdbcEncoder[A].encode(tuple._1) + Sql.comma + JdbcEncoder[B].encode(
+        tuple._2
+      ) + Sql.comma + JdbcEncoder[C].encode(tuple._3) + Sql.comma + JdbcEncoder[D].encode(
+        tuple._4
+      ) + Sql.comma + JdbcEncoder[E].encode(tuple._5) + Sql.comma + JdbcEncoder[F].encode(
+        tuple._6
+      ) + Sql.comma + JdbcEncoder[G].encode(tuple._7) + Sql.comma + JdbcEncoder[H].encode(
+        tuple._8
+      ) + Sql.comma + JdbcEncoder[I].encode(tuple._9) + Sql.comma + JdbcEncoder[J].encode(
+        tuple._10
+      ) + Sql.comma + JdbcEncoder[K].encode(tuple._11) + Sql.comma + JdbcEncoder[L].encode(
+        tuple._12
+      ) + Sql.comma + JdbcEncoder[M].encode(tuple._13) + Sql.comma + JdbcEncoder[N].encode(
+        tuple._14
+      ) + Sql.comma + JdbcEncoder[O].encode(tuple._15)
+
+  implicit def tuple16Encoder[
+    A: JdbcEncoder,
+    B: JdbcEncoder,
+    C: JdbcEncoder,
+    D: JdbcEncoder,
+    E: JdbcEncoder,
+    F: JdbcEncoder,
+    G: JdbcEncoder,
+    H: JdbcEncoder,
+    I: JdbcEncoder,
+    J: JdbcEncoder,
+    K: JdbcEncoder,
+    L: JdbcEncoder,
+    M: JdbcEncoder,
+    N: JdbcEncoder,
+    O: JdbcEncoder,
+    P: JdbcEncoder
+  ]: JdbcEncoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P)] =
+    tuple =>
+      JdbcEncoder[A].encode(tuple._1) + Sql.comma + JdbcEncoder[B].encode(
+        tuple._2
+      ) + Sql.comma + JdbcEncoder[C].encode(tuple._3) + Sql.comma + JdbcEncoder[D].encode(
+        tuple._4
+      ) + Sql.comma + JdbcEncoder[E].encode(tuple._5) + Sql.comma + JdbcEncoder[F].encode(
+        tuple._6
+      ) + Sql.comma + JdbcEncoder[G].encode(tuple._7) + Sql.comma + JdbcEncoder[H].encode(
+        tuple._8
+      ) + Sql.comma + JdbcEncoder[I].encode(tuple._9) + Sql.comma + JdbcEncoder[J].encode(
+        tuple._10
+      ) + Sql.comma + JdbcEncoder[K].encode(tuple._11) + Sql.comma + JdbcEncoder[L].encode(
+        tuple._12
+      ) + Sql.comma + JdbcEncoder[M].encode(tuple._13) + Sql.comma + JdbcEncoder[N].encode(
+        tuple._14
+      ) + Sql.comma + JdbcEncoder[O].encode(tuple._15) + Sql.comma + JdbcEncoder[P].encode(
+        tuple._16
+      )
+
+  implicit def tuple17Encoder[
+    A: JdbcEncoder,
+    B: JdbcEncoder,
+    C: JdbcEncoder,
+    D: JdbcEncoder,
+    E: JdbcEncoder,
+    F: JdbcEncoder,
+    G: JdbcEncoder,
+    H: JdbcEncoder,
+    I: JdbcEncoder,
+    J: JdbcEncoder,
+    K: JdbcEncoder,
+    L: JdbcEncoder,
+    M: JdbcEncoder,
+    N: JdbcEncoder,
+    O: JdbcEncoder,
+    P: JdbcEncoder,
+    Q: JdbcEncoder
+  ]: JdbcEncoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q)] =
+    tuple =>
+      JdbcEncoder[A].encode(tuple._1) + Sql.comma + JdbcEncoder[B].encode(
+        tuple._2
+      ) + Sql.comma + JdbcEncoder[C].encode(tuple._3) + Sql.comma + JdbcEncoder[D].encode(
+        tuple._4
+      ) + Sql.comma + JdbcEncoder[E].encode(tuple._5) + Sql.comma + JdbcEncoder[F].encode(
+        tuple._6
+      ) + Sql.comma + JdbcEncoder[G].encode(tuple._7) + Sql.comma + JdbcEncoder[H].encode(
+        tuple._8
+      ) + Sql.comma + JdbcEncoder[I].encode(tuple._9) + Sql.comma + JdbcEncoder[J].encode(
+        tuple._10
+      ) + Sql.comma + JdbcEncoder[K].encode(tuple._11) + Sql.comma + JdbcEncoder[L].encode(
+        tuple._12
+      ) + Sql.comma + JdbcEncoder[M].encode(tuple._13) + Sql.comma + JdbcEncoder[N].encode(
+        tuple._14
+      ) + Sql.comma + JdbcEncoder[O].encode(tuple._15) + Sql.comma + JdbcEncoder[P].encode(
+        tuple._16
+      ) + Sql.comma + JdbcEncoder[Q].encode(tuple._17)
+
+  implicit def tuple18Encoder[
+    A: JdbcEncoder,
+    B: JdbcEncoder,
+    C: JdbcEncoder,
+    D: JdbcEncoder,
+    E: JdbcEncoder,
+    F: JdbcEncoder,
+    G: JdbcEncoder,
+    H: JdbcEncoder,
+    I: JdbcEncoder,
+    J: JdbcEncoder,
+    K: JdbcEncoder,
+    L: JdbcEncoder,
+    M: JdbcEncoder,
+    N: JdbcEncoder,
+    O: JdbcEncoder,
+    P: JdbcEncoder,
+    Q: JdbcEncoder,
+    R: JdbcEncoder
+  ]: JdbcEncoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R)] =
+    tuple =>
+      JdbcEncoder[A].encode(tuple._1) + Sql.comma + JdbcEncoder[B].encode(
+        tuple._2
+      ) + Sql.comma + JdbcEncoder[C].encode(tuple._3) + Sql.comma + JdbcEncoder[D].encode(
+        tuple._4
+      ) + Sql.comma + JdbcEncoder[E].encode(tuple._5) + Sql.comma + JdbcEncoder[F].encode(
+        tuple._6
+      ) + Sql.comma + JdbcEncoder[G].encode(tuple._7) + Sql.comma + JdbcEncoder[H].encode(
+        tuple._8
+      ) + Sql.comma + JdbcEncoder[I].encode(tuple._9) + Sql.comma + JdbcEncoder[J].encode(
+        tuple._10
+      ) + Sql.comma + JdbcEncoder[K].encode(tuple._11) + Sql.commaf + JdbcEncoder[L].encode(
+        tuple._12
+      ) + Sql.comma + JdbcEncoder[M].encode(tuple._13) + Sql.comma + JdbcEncoder[N].encode(
+        tuple._14
+      ) + Sql.comma + JdbcEncoder[O].encode(tuple._15) + Sql.comma + JdbcEncoder[P].encode(
+        tuple._16
+      ) + Sql.comma + JdbcEncoder[Q].encode(tuple._17) + Sql.comma + JdbcEncoder[R].encode(
+        tuple._18
+      )
+
+  implicit def tuple19Encoder[
+    A: JdbcEncoder,
+    B: JdbcEncoder,
+    C: JdbcEncoder,
+    D: JdbcEncoder,
+    E: JdbcEncoder,
+    F: JdbcEncoder,
+    G: JdbcEncoder,
+    H: JdbcEncoder,
+    I: JdbcEncoder,
+    J: JdbcEncoder,
+    K: JdbcEncoder,
+    L: JdbcEncoder,
+    M: JdbcEncoder,
+    N: JdbcEncoder,
+    O: JdbcEncoder,
+    P: JdbcEncoder,
+    Q: JdbcEncoder,
+    R: JdbcEncoder,
+    S: JdbcEncoder
+  ]: JdbcEncoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S)] =
+    tuple =>
+      JdbcEncoder[A].encode(tuple._1) + Sql.comma + JdbcEncoder[B].encode(
+        tuple._2
+      ) + Sql.comma + JdbcEncoder[C].encode(tuple._3) + Sql.comma + JdbcEncoder[D].encode(
+        tuple._4
+      ) + Sql.comma + JdbcEncoder[E].encode(tuple._5) + Sql.comma + JdbcEncoder[F].encode(
+        tuple._6
+      ) + Sql.comma + JdbcEncoder[G].encode(tuple._7) + Sql.comma + JdbcEncoder[H].encode(
+        tuple._8
+      ) + Sql.comma + JdbcEncoder[I].encode(tuple._9) + Sql.comma + JdbcEncoder[J].encode(
+        tuple._10
+      ) + Sql.comma + JdbcEncoder[K].encode(tuple._11) + Sql.commaf + JdbcEncoder[L].encode(
+        tuple._12
+      ) + Sql.comma + JdbcEncoder[M].encode(tuple._13) + Sql.comma + JdbcEncoder[N].encode(
+        tuple._14
+      ) + Sql.comma + JdbcEncoder[O].encode(tuple._15) + Sql.comma + JdbcEncoder[P].encode(
+        tuple._16
+      ) + Sql.comma + JdbcEncoder[Q].encode(tuple._17) + Sql.comma + JdbcEncoder[R].encode(
+        tuple._18
+      ) + Sql.comma + JdbcEncoder[S].encode(tuple._19)
+
+  implicit def tuple20Encoder[
+    A: JdbcEncoder,
+    B: JdbcEncoder,
+    C: JdbcEncoder,
+    D: JdbcEncoder,
+    E: JdbcEncoder,
+    F: JdbcEncoder,
+    G: JdbcEncoder,
+    H: JdbcEncoder,
+    I: JdbcEncoder,
+    J: JdbcEncoder,
+    K: JdbcEncoder,
+    L: JdbcEncoder,
+    M: JdbcEncoder,
+    N: JdbcEncoder,
+    O: JdbcEncoder,
+    P: JdbcEncoder,
+    Q: JdbcEncoder,
+    R: JdbcEncoder,
+    S: JdbcEncoder,
+    T: JdbcEncoder
+  ]: JdbcEncoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T)] =
+    tuple =>
+      JdbcEncoder[A].encode(tuple._1) + Sql.comma + JdbcEncoder[B].encode(
+        tuple._2
+      ) + Sql.comma + JdbcEncoder[C].encode(tuple._3) + Sql.comma + JdbcEncoder[D].encode(
+        tuple._4
+      ) + Sql.comma + JdbcEncoder[E].encode(tuple._5) + Sql.comma + JdbcEncoder[F].encode(
+        tuple._6
+      ) + Sql.comma + JdbcEncoder[G].encode(tuple._7) + Sql.comma + JdbcEncoder[H].encode(
+        tuple._8
+      ) + Sql.comma + JdbcEncoder[I].encode(tuple._9) + Sql.comma + JdbcEncoder[J].encode(
+        tuple._10
+      ) + Sql.comma + JdbcEncoder[K].encode(tuple._11) + Sql.commaf + JdbcEncoder[L].encode(
+        tuple._12
+      ) + Sql.comma + JdbcEncoder[M].encode(tuple._13) + Sql.comma + JdbcEncoder[N].encode(
+        tuple._14
+      ) + Sql.comma + JdbcEncoder[O].encode(tuple._15) + Sql.comma + JdbcEncoder[P].encode(
+        tuple._16
+      ) + Sql.comma + JdbcEncoder[Q].encode(tuple._17) + Sql.comma + JdbcEncoder[R].encode(
+        tuple._18
+      ) + Sql.comma + JdbcEncoder[S].encode(tuple._19) + Sql.comma + JdbcEncoder[T].encode(
+        tuple._20
+      )
+
+  implicit def tuple21Encoder[
+    A: JdbcEncoder,
+    B: JdbcEncoder,
+    C: JdbcEncoder,
+    D: JdbcEncoder,
+    E: JdbcEncoder,
+    F: JdbcEncoder,
+    G: JdbcEncoder,
+    H: JdbcEncoder,
+    I: JdbcEncoder,
+    J: JdbcEncoder,
+    K: JdbcEncoder,
+    L: JdbcEncoder,
+    M: JdbcEncoder,
+    N: JdbcEncoder,
+    O: JdbcEncoder,
+    P: JdbcEncoder,
+    Q: JdbcEncoder,
+    R: JdbcEncoder,
+    S: JdbcEncoder,
+    T: JdbcEncoder,
+    U: JdbcEncoder
+  ]: JdbcEncoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U)] =
+    tuple =>
+      JdbcEncoder[A].encode(tuple._1) + Sql.comma + JdbcEncoder[B].encode(
+        tuple._2
+      ) + Sql.comma + JdbcEncoder[C].encode(tuple._3) + Sql.comma + JdbcEncoder[D].encode(
+        tuple._4
+      ) + Sql.comma + JdbcEncoder[E].encode(tuple._5) + Sql.comma + JdbcEncoder[F].encode(
+        tuple._6
+      ) + Sql.comma + JdbcEncoder[G].encode(tuple._7) + Sql.comma + JdbcEncoder[H].encode(
+        tuple._8
+      ) + Sql.comma + JdbcEncoder[I].encode(tuple._9) + Sql.comma + JdbcEncoder[J].encode(
+        tuple._10
+      ) + Sql.comma + JdbcEncoder[K].encode(tuple._11) + Sql.commaf + JdbcEncoder[L].encode(
+        tuple._12
+      ) + Sql.comma + JdbcEncoder[M].encode(tuple._13) + Sql.comma + JdbcEncoder[N].encode(
+        tuple._14
+      ) + Sql.comma + JdbcEncoder[O].encode(tuple._15) + Sql.comma + JdbcEncoder[P].encode(
+        tuple._16
+      ) + Sql.comma + JdbcEncoder[Q].encode(tuple._17) + Sql.comma + JdbcEncoder[R].encode(
+        tuple._18
+      ) + Sql.comma + JdbcEncoder[S].encode(tuple._19) + Sql.comma + JdbcEncoder[T].encode(
+        tuple._20
+      ) + Sql.comma + JdbcEncoder[U].encode(tuple._21)
+
+  implicit def tuple22Encoder[
+    A: JdbcEncoder,
+    B: JdbcEncoder,
+    C: JdbcEncoder,
+    D: JdbcEncoder,
+    E: JdbcEncoder,
+    F: JdbcEncoder,
+    G: JdbcEncoder,
+    H: JdbcEncoder,
+    I: JdbcEncoder,
+    J: JdbcEncoder,
+    K: JdbcEncoder,
+    L: JdbcEncoder,
+    M: JdbcEncoder,
+    N: JdbcEncoder,
+    O: JdbcEncoder,
+    P: JdbcEncoder,
+    Q: JdbcEncoder,
+    R: JdbcEncoder,
+    S: JdbcEncoder,
+    T: JdbcEncoder,
+    U: JdbcEncoder,
+    V: JdbcEncoder
+  ]: JdbcEncoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V)] =
+    tuple =>
+      JdbcEncoder[A].encode(tuple._1) + Sql.comma + JdbcEncoder[B].encode(
+        tuple._2
+      ) + Sql.comma + JdbcEncoder[C].encode(tuple._3) + Sql.comma + JdbcEncoder[D].encode(
+        tuple._4
+      ) + Sql.comma + JdbcEncoder[E].encode(tuple._5) + Sql.comma + JdbcEncoder[F].encode(
+        tuple._6
+      ) + Sql.comma + JdbcEncoder[G].encode(tuple._7) + Sql.comma + JdbcEncoder[H].encode(
+        tuple._8
+      ) + Sql.comma + JdbcEncoder[I].encode(tuple._9) + Sql.commaf + JdbcEncoder[J].encode(
+        tuple._10
+      ) + Sql.comma + JdbcEncoder[K].encode(tuple._11) + Sql.comma + JdbcEncoder[L].encode(
+        tuple._12
+      ) + Sql.comma + JdbcEncoder[M].encode(tuple._13) + Sql.comma + JdbcEncoder[N].encode(
+        tuple._14
+      ) + Sql.comma + JdbcEncoder[O].encode(tuple._15) + Sql.comma + JdbcEncoder[P].encode(
+        tuple._16
+      ) + Sql.comma + JdbcEncoder[Q].encode(tuple._17) + Sql.comma + JdbcEncoder[R].encode(
+        tuple._18
+      ) + Sql.comma + JdbcEncoder[S].encode(tuple._19) + Sql.comma + JdbcEncoder[T].encode(
+        tuple._20
+      ) + Sql.comma + JdbcEncoder[U].encode(tuple._21) + Sql.comma + JdbcEncoder[V].encode(
+        tuple._22
+      )
+
 }
