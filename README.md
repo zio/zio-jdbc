@@ -8,7 +8,7 @@ _ZIO JDBC_ is a small, idiomatic ZIO interface to JDBC, providing a pleasant and
 
 - Idiomatic ZIO 2.0 interface to JDBC
 - Secure, with protection against SQL-injection
-- Fully integrated wtih core libraries including _ZIO Schema_, _ZIO Config_, _ZIO Logging_
+- Fully integrated with core libraries including _ZIO Schema_, _ZIO Config_, _ZIO Logging_
 
 ## Example
 

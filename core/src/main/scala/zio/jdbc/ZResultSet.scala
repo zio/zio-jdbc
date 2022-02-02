@@ -11,7 +11,7 @@ import zio._
  * blocking thread pool.
  */
 final class ZResultSet(private[jdbc] val resultSet: ResultSet) extends AnyVal {
-  final def access[A](f: ResultSet => A): ZIO[Any, Throwable, A] = ZIO.attemptBlocking(f(resultSet))
+  def access[A](f: ResultSet => A): ZIO[Any, Throwable, A] = ZIO.attemptBlocking(f(resultSet))
 }
 object ZResultSet {
   def apply(resultSet: ResultSet): ZResultSet = new ZResultSet(resultSet)

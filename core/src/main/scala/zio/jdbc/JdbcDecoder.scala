@@ -17,7 +17,8 @@ trait JdbcDecoder[+A] {
 
   final def map[B](f: A => B): JdbcDecoder[B] = rs => f(unsafeDecode(rs))
 }
-object JdbcDecoder    {
+
+object JdbcDecoder {
   def apply[A](implicit decoder: JdbcDecoder[A]): JdbcDecoder[A] = decoder
 
   def apply[A](f: ResultSet => A, expected: String = "value"): JdbcDecoder[A] = new JdbcDecoder[A] {
@@ -25,7 +26,7 @@ object JdbcDecoder    {
       try f(rs)
       catch {
         case t: Throwable if !t.isInstanceOf[VirtualMachineError] =>
-          throw JdbcDecoderError(s"Error decoding $expected from ResultSet", t, rs.getMetaData(), rs.getRow())
+          throw JdbcDecoderError(s"Error decoding $expected from ResultSet", t, rs.getMetaData, rs.getRow)
       }
   }
 
@@ -40,6 +41,9 @@ object JdbcDecoder    {
   implicit val byteDecoder: JdbcDecoder[Byte]                       = JdbcDecoder(_.getByte(1))
   implicit val byteArrayDecoder: JdbcDecoder[Array[Byte]]           = JdbcDecoder(_.getBytes(1))
   implicit val blobDecoder: JdbcDecoder[Blob]                       = JdbcDecoder(_.getBlob(1))
+  implicit val dateDecoder: JdbcDecoder[java.sql.Date]              = JdbcDecoder(_.getDate(1))
+  implicit val timeDecoder: JdbcDecoder[java.sql.Time]              = JdbcDecoder(_.getTime(1))
+  implicit val timestampDecoder: JdbcDecoder[java.sql.Timestamp]    = JdbcDecoder(_.getTimestamp(1))
 
   implicit def tuple2Decoder[A, B](implicit
     a: JdbcColumnDecoder[A],

@@ -48,7 +48,7 @@ package object jdbc {
     for {
       connection <- ZIO.service[ZConnection]
       result     <- connection.executeSqlWith(sql)(_.executeQuery())
-      option     <- if (result.next()) ZIO.succeed(None) else ZIO.some(sql.decode(ZResultSet(result)))
+      option     <- if (result.next()) ZIO.none else ZIO.some(sql.decode(ZResultSet(result)))
     } yield option
 
   /**
@@ -61,7 +61,7 @@ package object jdbc {
         result     <- connection.executeSqlWith(sql)(_.executeQuery())
         zrs         = ZResultSet(result)
         stream      = ZStream.fromZIOOption(Task.suspend {
-                        if (result.next()) ZIO.attempt(Some(sql.decode(zrs))) else ZIO.succeed(None)
+                        if (result.next()) ZIO.attempt(Some(sql.decode(zrs))) else ZIO.none
                       }.some)
       } yield stream
     }
