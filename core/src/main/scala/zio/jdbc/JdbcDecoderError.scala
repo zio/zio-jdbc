@@ -1,7 +1,7 @@
 package zio.jdbc
 
-import java.sql.ResultSetMetaData
 import java.io.IOException
+import java.sql.ResultSetMetaData
 
 final case class JdbcDecoderError(
   message: String,

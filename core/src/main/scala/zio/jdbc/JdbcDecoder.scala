@@ -1,8 +1,6 @@
 package zio.jdbc
 
-import java.sql.ResultSet
-
-import java.sql.Blob
+import java.sql.{ Blob, ResultSet }
 
 /**
  * A type class that describes the ability to unsafeDecode a value of type `A` from

@@ -1,9 +1,8 @@
 package zio.jdbc
 
 import zio._
-import java.sql.Connection
-import java.sql.PreparedStatement
-import java.sql.Blob
+
+import java.sql.{ Blob, Connection, PreparedStatement }
 
 /**
  * A `ZConnection` is a straightforward wrapper around `java.sql.Connection`. In order

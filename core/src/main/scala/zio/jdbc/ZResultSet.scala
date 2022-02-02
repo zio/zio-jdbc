@@ -1,8 +1,8 @@
 package zio.jdbc
 
-import java.sql.ResultSet
-
 import zio._
+
+import java.sql.ResultSet
 
 /**
  * A `ZResultSet` is a straightforward wrapper around `java.sql.ResultSet`. In order
