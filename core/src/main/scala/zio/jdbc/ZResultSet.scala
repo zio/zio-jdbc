@@ -25,9 +25,9 @@ import java.sql.ResultSet
  * `ResultSet` through the `access` method. Any such access will be attempted on the
  * blocking thread pool.
  */
-final class ZResultSet(private[jdbc] val resultSet: ResultSet) extends AnyVal {
+final class ZResultSet(private[jdbc] val resultSet: ResultSet) {
   def access[A](f: ResultSet => A): ZIO[Any, Throwable, A] = ZIO.attemptBlocking(f(resultSet))
 }
-object ZResultSet {
+object ZResultSet                                              {
   def apply(resultSet: ResultSet): ZResultSet = new ZResultSet(resultSet)
 }

@@ -32,13 +32,22 @@ package object jdbc {
     } yield result
 
   /**
-   * Executes a SQL query, such as one that creates a table.
+   * Executes a SQL statement, such as one that creates a table.
    */
   def execute(sql: Sql[ZResultSet]): ZIO[ZConnection, Throwable, Unit] =
     for {
       connection <- ZIO.service[ZConnection]
-      _          <- connection.executeSqlWith(sql)(_.executeQuery())
+      _          <- connection.executeSqlWith(sql)(_.executeUpdate())
     } yield ()
+
+  /**
+   * Performs a SQL update query, returning a count of rows updated.
+   */
+  def insert(sql: Sql[ZResultSet]): ZIO[ZConnection, Throwable, Long] =
+    for {
+      connection <- ZIO.service[ZConnection]
+      result     <- connection.executeSqlWith(sql)(_.executeLargeUpdate())
+    } yield result
 
   /**
    * Performs a SQL select query, returning all results in a chunk.
@@ -63,7 +72,7 @@ package object jdbc {
     for {
       connection <- ZIO.service[ZConnection]
       result     <- connection.executeSqlWith(sql)(_.executeQuery())
-      option     <- if (result.next()) ZIO.none else ZIO.some(sql.decode(ZResultSet(result)))
+      option     <- if (result.next()) ZIO.some(sql.decode(ZResultSet(result))) else ZIO.none
     } yield option
 
   /**

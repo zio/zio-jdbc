@@ -55,6 +55,27 @@ final class Sql[+A](
     builder.result()
   }
 
+  override def toString(): String = {
+    import Sql.Segment
+
+    val sql = new StringBuilder()
+
+    val paramsBuilder = ChunkBuilder.make[String]()
+
+    segments.foreach {
+      case Segment.Syntax(value) => sql.append(value)
+      case Segment.Param(value)  => sql.append("?"); paramsBuilder += value.toString()
+    }
+
+    val params = paramsBuilder.result()
+
+    val paramsString = if (params.length > 0) {
+      ", " + params.mkString(", ")
+    } else ""
+
+    s"Sql(${sql.result()}${paramsString})"
+  }
+
   def values[B](
     iterable: Iterable[B]
   )(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): Sql[ZResultSet] =

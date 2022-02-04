@@ -32,7 +32,7 @@ final class ZConnection(private[jdbc] val connection: Connection) extends AnyVal
     connection =>
       import Sql.Segment._
 
-      import sql.segments
+      val segments = sql.segments
 
       val stringBuilder = new StringBuilder()
 
@@ -41,7 +41,7 @@ final class ZConnection(private[jdbc] val connection: Connection) extends AnyVal
       while (i < segments.length) {
         segments(i) match {
           case Syntax(value) => stringBuilder.append(value)
-          case _             =>
+          case _             => stringBuilder.append("?")
         }
         i += 1
       }
