@@ -3,8 +3,23 @@ package zio.jdbc
 import zio._
 import zio.test.TestAspect._
 import zio.test._
+import zio.schema._
 
 object ZConnectionPoolSpec extends ZIOSpecDefault {
+  final case class Person(name: String, age: Int)
+
+  object Person {
+    import Schema.Field
+
+    implicit val schema: Schema[Person] =
+      Schema.CaseClass2[String, Int, Person](
+        Field("name", Schema[String]),
+        Field("age", Schema[Int]),
+        (name, age) => Person(name, age),
+        _.name,
+        _.age
+      )
+  }
   val sherlockHolmes = User("Sherlock Holmes", 42)
 
   val createUsers: ZIO[ZConnectionPool with Any, Throwable, Unit] =
@@ -94,6 +109,20 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
                 num <- transaction(update(sql"update users set age = 43 where name = ${sherlockHolmes.name}"))
               } yield assertTrue(num == 1L)
             }
+        } +
+        suite("decoding") {
+          test("schema-derived") {
+            for {
+              _     <- createUsers *> insertSherlock
+              value <- transaction {
+                         selectOne {
+                           sql"select name, age from users where name = ${sherlockHolmes.name}".as[Person](
+                             JdbcDecoder.fromSchema(Person.schema)
+                           )
+                         }
+                       }
+            } yield assertTrue(value == Some(Person(sherlockHolmes.name, sherlockHolmes.age)))
+          }
         }
     }.provideCustomLayer(ZConnectionPool.h2test.orDie) @@ sequential
 }

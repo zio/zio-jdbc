@@ -16,11 +16,10 @@
 package zio.jdbc
 
 import zio._
+import java.time.temporal.ChronoUnit
 
 /**
  * Configuration data for a connection pool.
- *
- * TODO: Make ZIO Config ConfigDescriptor for this data type.
  */
 final case class ZConnectionPoolConfig(
   minConnections: Int,
@@ -28,3 +27,32 @@ final case class ZConnectionPoolConfig(
   retryPolicy: Schedule[Any, Throwable, Any],
   timeToLive: Duration
 )
+object ZConnectionPoolConfig {
+  import zio.schema._
+  import zio.config._
+
+  import Schema.Field
+
+  lazy val default: ZConnectionPoolConfig = ZConnectionPoolConfig(10, 20, defaultRetryPolicy, 100.minutes)
+
+  lazy val defaultRetryPolicy = Schedule.exponential(10.millis)
+
+  implicit val configDescriptor: ConfigDescriptor[ZConnectionPoolConfig] =
+    (ConfigDescriptor.int("minConnections") zip
+      ConfigDescriptor.int("maxConnections") zip
+      ConfigDescriptor.zioDuration("timeToLive")).transform(
+      { case (min, max, ttl) => ZConnectionPoolConfig(min, max, defaultRetryPolicy, ttl) },
+      cfg => (cfg.minConnections, cfg.maxConnections, cfg.timeToLive)
+    )
+
+  implicit val schema: Schema.CaseClass3[Int, Int, Duration, ZConnectionPoolConfig] =
+    Schema.CaseClass3[Int, Int, Duration, ZConnectionPoolConfig](
+      Field("minConnections", Schema[Int]),
+      Field("maxConnections", Schema[Int]),
+      Field("timeToLive", Schema.Primitive(StandardType.Duration(ChronoUnit.MINUTES))),
+      (min, max, ttl) => ZConnectionPoolConfig(min, max, defaultRetryPolicy, ttl),
+      _.minConnections,
+      _.maxConnections,
+      _.timeToLive
+    )
+}
