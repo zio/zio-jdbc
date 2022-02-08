@@ -32,11 +32,10 @@ object ZConnectionPool {
       for {
         _      <- ZManaged.attempt(Class.forName("org.h2.Driver"))
         int    <- Random.nextInt.toManaged
-        config  = ZConnectionPoolConfig(10, 20, Schedule.recurs(100), time.Duration.ofDays(Int.MaxValue))
         acquire = Task.attemptBlocking {
                     java.sql.DriverManager.getConnection(s"jdbc:h2:mem:test_database_$int")
                   }
-        zenv   <- make(acquire).build.provideSome[Clock & Random](ZLayer.succeed(config))
+        zenv   <- make(acquire).build.provideSome[Clock & Random](ZLayer.succeed(ZConnectionPoolConfig.default))
       } yield zenv.get[ZConnectionPool]
     }
 

@@ -33,7 +33,7 @@ object ZConnectionPoolConfig {
 
   import Schema.Field
 
-  lazy val default: ZConnectionPoolConfig = ZConnectionPoolConfig(10, 20, defaultRetryPolicy, 100.minutes)
+  lazy val default: ZConnectionPoolConfig = ZConnectionPoolConfig(8, 32, defaultRetryPolicy, 300.seconds)
 
   lazy val defaultRetryPolicy = Schedule.exponential(10.millis)
 
