@@ -23,6 +23,11 @@ package object jdbc {
   implicit def sqlInterpolator(sc: StringContext): SqlInterpolator = new SqlInterpolator(sc)
 
   /**
+   * Converts a String into a pure SQL expression
+   */
+  implicit def stringToSql(s: String): Sql[ZResultSet] = Sql(Chunk(Sql.Segment.Syntax(s)), identity)
+
+  /**
    * Executes a SQL delete query.
    */
   def delete(sql: Sql[ZResultSet]): ZIO[ZConnection, Throwable, Long] =

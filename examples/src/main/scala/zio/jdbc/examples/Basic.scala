@@ -15,6 +15,12 @@ object Basic {
   // Inserting from tuples:
   val ex3: Sql[ZResultSet] = sql"insert into users ('name', 'age')".values(("John", 42))
 
+  // Composing requests:
+  val keyColumn                                = "key"
+  val valueColumn                              = "value"
+  def ex4(offset: Long): Sql[(String, String)] =
+    (s"select $keyColumn, $valueColumn from events" ++ sql"where id > $offset").as[(String, String)]
+
   // Executing statements:
   val res1: ZIO[ZConnectionPool, Throwable, Option[(String, Int)]] =
     transaction {
