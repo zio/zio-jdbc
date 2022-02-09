@@ -31,7 +31,8 @@ final class Sql[+A](
   private[jdbc] val build: ChunkBuilder[Sql.Segment] => Unit,
   val decode: ZResultSet => A
 ) { self =>
-  def +(that: Sql[ZResultSet])(implicit ev: A <:< ZResultSet): Sql[ZResultSet] =
+
+  def ++(that: Sql[ZResultSet])(implicit ev: A <:< ZResultSet): Sql[ZResultSet] =
     new Sql(builder => { self.build(builder); that.build(builder) }, that.decode)
 
   def as[B](implicit decode: JdbcDecoder[B]): Sql[B] =
@@ -79,10 +80,10 @@ final class Sql[+A](
   def values[B](
     iterable: Iterable[B]
   )(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): Sql[ZResultSet] =
-    Sql.values +
+    Sql.values ++
       Sql.intersperse(
         Sql.comma,
-        iterable.map(b => Sql.lparen + encode.encode(b) + Sql.rparen)
+        iterable.map(b => Sql.lparen ++ encode.encode(b) ++ Sql.rparen)
       )
 
   def values[B](
@@ -112,10 +113,10 @@ object Sql {
     var first = true
 
     elements.foldLeft(empty) { (acc, element) =>
-      if (!first) acc + sep + element
+      if (!first) acc ++ sep ++ element
       else {
         first = false
-        acc + element
+        acc ++ element
       }
     }
   }
