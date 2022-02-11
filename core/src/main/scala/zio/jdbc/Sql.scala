@@ -80,7 +80,8 @@ final class Sql[+A](
   def values[B](
     iterable: Iterable[B]
   )(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): Sql[ZResultSet] =
-    Sql.values ++
+    this ++
+      Sql.values ++
       Sql.intersperse(
         Sql.comma,
         iterable.map(b => Sql.lparen ++ encode.encode(b) ++ Sql.rparen)

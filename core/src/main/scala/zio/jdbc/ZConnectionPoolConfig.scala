@@ -16,6 +16,7 @@
 package zio.jdbc
 
 import zio._
+
 import java.time.temporal.ChronoUnit
 
 /**
@@ -35,7 +36,7 @@ object ZConnectionPoolConfig {
 
   lazy val default: ZConnectionPoolConfig = ZConnectionPoolConfig(8, 32, defaultRetryPolicy, 300.seconds)
 
-  lazy val defaultRetryPolicy = Schedule.exponential(10.millis)
+  lazy val defaultRetryPolicy: Schedule.WithState[Long, Any, Any, Duration] = Schedule.exponential(10.millis)
 
   implicit val configDescriptor: ConfigDescriptor[ZConnectionPoolConfig] =
     (ConfigDescriptor.int("minConnections") zip

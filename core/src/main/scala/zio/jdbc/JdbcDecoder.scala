@@ -15,13 +15,12 @@
  */
 package zio.jdbc
 
-import java.time.format.DateTimeFormatter
+import zio._
+
 import java.io._
 import java.sql.{ Array => _, _ }
-
+import java.time.format.DateTimeFormatter
 import scala.collection.immutable.ListMap
-
-import zio._
 
 /**
  * A type class that describes the ability to decode  a value of type `A` from
