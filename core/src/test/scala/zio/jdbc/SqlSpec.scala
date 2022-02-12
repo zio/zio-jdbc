@@ -3,7 +3,7 @@ package zio.jdbc
 import zio.test._
 
 object SqlSpec extends ZIOSpecDefault {
-  def spec =
+  def spec: ZSpec[Environment with TestEnvironment, Any] =
     suite("SqlSpec") {
       test("constant") {
         assertTrue(sql"""null""".toString() == "Sql(null)")

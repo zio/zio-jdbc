@@ -15,13 +15,12 @@
  */
 package zio.jdbc
 
-import java.time.format.DateTimeFormatter
+import zio._
+
 import java.io._
 import java.sql.{ Array => _, _ }
-
+import java.time.format.DateTimeFormatter
 import scala.collection.immutable.ListMap
-
-import zio._
 
 /**
  * A type class that describes the ability to decode  a value of type `A` from
@@ -30,7 +29,7 @@ import zio._
 trait JdbcDecoder[+A] {
   def unsafeDecode(rs: ResultSet): A
 
-  def decode(rs: ResultSet): Either[Throwable, A] =
+  final def decode(rs: ResultSet): Either[Throwable, A] =
     try Right(unsafeDecode(rs))
     catch { case e: JdbcDecoderError => Left(e) }
 
@@ -38,7 +37,7 @@ trait JdbcDecoder[+A] {
 }
 
 object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
-  def apply[A](implicit decoder: JdbcDecoder[A]): JdbcDecoder[A] = decoder
+  def apply[A]()(implicit decoder: JdbcDecoder[A]): JdbcDecoder[A] = decoder
 
   def apply[A](f: ResultSet => A, expected: String = "value"): JdbcDecoder[A] = new JdbcDecoder[A] {
     def unsafeDecode(rs: ResultSet): A =

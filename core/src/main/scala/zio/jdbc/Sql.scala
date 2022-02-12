@@ -78,17 +78,17 @@ final class Sql[+A](
   }
 
   def values[B](
-    iterable: Iterable[B]
+    iterator: Iterator[B]
   )(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): Sql[ZResultSet] =
     Sql.values ++
       Sql.intersperse(
         Sql.comma,
-        iterable.map(b => Sql.lparen ++ encode.encode(b) ++ Sql.rparen)
+        iterator.map(b => Sql.lparen ++ encode.encode(b) ++ Sql.rparen).toIndexedSeq
       )
 
   def values[B](
     bs: B*
-  )(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): Sql[ZResultSet] = values(bs.toIterable)
+  )(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): Sql[ZResultSet] = values(bs.iterator)
 
   def withDecode[B](f: ZResultSet => B): Sql[B] =
     Sql(segments, f)

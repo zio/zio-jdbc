@@ -1,9 +1,9 @@
 package zio.jdbc
 
 import zio._
+import zio.schema._
 import zio.test.TestAspect._
 import zio.test._
-import zio.schema._
 
 object ZConnectionPoolSpec extends ZIOSpecDefault {
   final case class Person(name: String, age: Int)
@@ -20,7 +20,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
         _.age
       )
   }
-  val sherlockHolmes = User("Sherlock Holmes", 42)
+  val sherlockHolmes: User = User("Sherlock Holmes", 42)
 
   val createUsers: ZIO[ZConnectionPool with Any, Throwable, Unit] =
     transaction {
@@ -33,7 +33,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
       """)
     }
 
-  val insertSherlock =
+  val insertSherlock: ZIO[ZConnectionPool with Any, Throwable, Long] =
     transaction {
       insert {
         sql"insert into users values (default, ${sherlockHolmes.name}, ${sherlockHolmes.age})"
@@ -43,10 +43,10 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
   final case class User(name: String, age: Int)
   object User {
     implicit val jdbcDecoder: JdbcDecoder[User] =
-      JdbcDecoder[(String, Int)].map[User](t => User(t._1, t._2))
+      JdbcDecoder[(String, Int)]().map[User](t => User(t._1, t._2))
   }
 
-  def spec =
+  def spec: ZSpec[TestEnvironment, Any] =
     suite("ZConnectionPoolSpec") {
       suite("pool") {
         test("creation") {
