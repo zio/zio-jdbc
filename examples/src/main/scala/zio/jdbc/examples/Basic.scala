@@ -6,6 +6,8 @@ import zio.jdbc._
 object Basic {
   val age = 42
 
+  val ex0: Sql[ZResultSet] = sql"create table if not exists users(name varchar(255), age int)"
+
   // Creating SQL statements using interpolation:
   val ex1: Sql[ZResultSet] = sql"select * from users where age = $age"
 
@@ -13,7 +15,7 @@ object Basic {
   val ex2: Sql[(String, Int)] = sql"select name, age from users".as[(String, Int)]
 
   // Inserting from tuples:
-  val ex3: Sql[ZResultSet] = sql"insert into users ('name', 'age')".values(("John", 42))
+  val ex3: Sql[ZResultSet] = sql"insert into users (name, age)".values(("John", 42))
 
   // Composing requests:
   val keyColumn                                = "key"
