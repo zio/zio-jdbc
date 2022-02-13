@@ -6,6 +6,7 @@ import zio.jdbc._
 object Basic {
   val age = 42
 
+  // create table
   val ex0: SqlFragment = sql"create table if not exists users(name varchar(255), age int)"
 
   // Creating SQL statements using interpolation:
