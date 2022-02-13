@@ -45,7 +45,6 @@ object ZConnectionPool {
     ZLayer {
       for {
         _      <- ZManaged.attempt(Class.forName("org.h2.Driver"))
-        config <- ZManaged.service[ZConnectionPoolConfig]
         acquire = Task.attemptBlocking {
                     val properties = new java.util.Properties
                     props.foreach { case (k, v) => properties.setProperty(k, v) }
@@ -64,7 +63,6 @@ object ZConnectionPool {
     ZLayer {
       for {
         _      <- ZManaged.attempt(Class.forName("org.h2.Driver"))
-        config <- ZManaged.service[ZConnectionPoolConfig]
         acquire = Task.attemptBlocking {
                     val properties = new java.util.Properties
                     props.foreach { case (k, v) => properties.setProperty(k, v) }
@@ -84,7 +82,6 @@ object ZConnectionPool {
     ZLayer {
       for {
         _      <- ZManaged.attempt(Class.forName("oracle.jdbc.OracleDriver"))
-        config <- ZManaged.service[ZConnectionPoolConfig]
         acquire = Task.attemptBlocking {
                     val properties = new java.util.Properties
                     props.foreach { case (k, v) => properties.setProperty(k, v) }
@@ -104,7 +101,6 @@ object ZConnectionPool {
     ZLayer {
       for {
         _      <- ZManaged.attempt(Class.forName("org.postgresql.Driver"))
-        config <- ZManaged.service[ZConnectionPoolConfig]
         acquire = Task.attemptBlocking {
                     val properties = new java.util.Properties
 
@@ -125,7 +121,6 @@ object ZConnectionPool {
     ZLayer {
       for {
         _      <- ZManaged.attempt(Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver"))
-        config <- ZManaged.service[ZConnectionPoolConfig]
         acquire = Task.attemptBlocking {
                     val properties = new java.util.Properties
 
@@ -133,6 +128,26 @@ object ZConnectionPool {
 
                     java.sql.DriverManager
                       .getConnection(s"jdbc:sqlserver://$host:$port;databaseName=$database", properties)
+                  }
+        zenv   <- make(acquire).build
+      } yield zenv.get[ZConnectionPool]
+    }
+
+  def mysql(
+    host: String,
+    port: Int,
+    database: String,
+    props: Map[String, String]
+  ): ZLayer[Clock & ZConnectionPoolConfig, Throwable, ZConnectionPool] =
+    ZLayer {
+      for {
+        _      <- ZManaged.attempt(Class.forName("com.mysql.cj.jdbc.Driver"))
+        acquire = Task.attemptBlocking {
+                    val properties = new java.util.Properties
+                    props.foreach { case (k, v) => properties.setProperty(k, v) }
+
+                    java.sql.DriverManager
+                      .getConnection(s"jdbc:mysql://$host:$port/$database", properties)
                   }
         zenv   <- make(acquire).build
       } yield zenv.get[ZConnectionPool]
