@@ -20,6 +20,12 @@ import zio.stream._
 import scala.language.implicitConversions
 
 package object jdbc {
+
+  /**
+   * A special purpose type Alias representing a sql fragment that is not yet fully formed,nor mapped to concrete data type
+   */
+  type SqlFragment = Sql[ZResultSet]
+
   implicit def sqlInterpolator(sc: StringContext): SqlInterpolator = new SqlInterpolator(sc)
 
   /**

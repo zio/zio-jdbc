@@ -21,7 +21,7 @@ package zio.jdbc
  * @param context The `StringContext` on which the string interpolator is added.
  */
 final class SqlInterpolator(val context: StringContext) extends AnyVal {
-  def sql(params: Any*): Sql[ZResultSet] = new Sql(
+  def sql(params: Any*): SqlFragment = new Sql(
     chunkBuilder => {
       import Sql.Segment
 
