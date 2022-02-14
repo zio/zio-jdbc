@@ -29,7 +29,7 @@ import scala.collection.immutable.ListMap
 trait JdbcDecoder[+A] {
   def unsafeDecode(rs: ResultSet): A
 
-  def decode(rs: ResultSet): Either[Throwable, A] =
+  final def decode(rs: ResultSet): Either[Throwable, A] =
     try Right(unsafeDecode(rs))
     catch { case e: JdbcDecoderError => Left(e) }
 
@@ -37,7 +37,7 @@ trait JdbcDecoder[+A] {
 }
 
 object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
-  def apply[A](implicit decoder: JdbcDecoder[A]): JdbcDecoder[A] = decoder
+  def apply[A]()(implicit decoder: JdbcDecoder[A]): JdbcDecoder[A] = decoder
 
   def apply[A](f: ResultSet => A, expected: String = "value"): JdbcDecoder[A] = new JdbcDecoder[A] {
     def unsafeDecode(rs: ResultSet): A =

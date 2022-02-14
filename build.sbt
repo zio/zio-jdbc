@@ -56,12 +56,12 @@ lazy val core = project
 
 lazy val docs = project
   .in(file("zio-jdbc-docs"))
+  .settings(stdSettings("zio-jdbc-docs"))
   .settings(
     publish / skip                             := true,
     moduleName                                 := "zio-jdbc-docs",
     scalacOptions -= "-Yno-imports",
     scalacOptions -= "-Xfatal-warnings",
-    crossScalaVersions --= List(ScalaDotty),
     ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(core),
     ScalaUnidoc / unidoc / target              := (LocalRootProject / baseDirectory).value / "website" / "static" / "api",
     cleanFiles += (ScalaUnidoc / unidoc / target).value,
@@ -75,7 +75,6 @@ lazy val examples = project
   .in(file("examples"))
   .dependsOn(core)
   .settings(stdSettings("zio-jdbc-examples"))
-  .settings(dottySettings)
   .settings(
     publish / skip := true,
     libraryDependencies ++= Seq(

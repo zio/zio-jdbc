@@ -43,7 +43,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
   final case class User(name: String, age: Int)
   object User {
     implicit val jdbcDecoder: JdbcDecoder[User] =
-      JdbcDecoder[(String, Int)].map[User](t => User(t._1, t._2))
+      JdbcDecoder[(String, Int)]().map[User](t => User(t._1, t._2))
   }
 
   def spec: ZSpec[TestEnvironment, Any] =
