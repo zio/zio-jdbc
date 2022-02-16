@@ -20,7 +20,7 @@ package zio.jdbc
  * a fragment of SQL. This is useful for forming SQL insert statements.
  */
 trait JdbcEncoder[-A] {
-  def encode(value: A): Sql[ZResultSet]
+  def encode(value: A): SqlFragment
 
   final def contramap[B](f: B => A): JdbcEncoder[B] = (value) => encode(f(value))
 }

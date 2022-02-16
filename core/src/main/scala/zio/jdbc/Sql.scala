@@ -15,6 +15,7 @@
  */
 package zio.jdbc
 
+import zio.jdbc.Sql.intersperse
 import zio.{ Chunk, ChunkBuilder }
 
 /**
@@ -32,7 +33,7 @@ final class Sql[+A](
   val decode: ZResultSet => A
 ) { self =>
 
-  def ++(that: Sql[ZResultSet])(implicit ev: A <:< ZResultSet): Sql[ZResultSet] =
+  def ++(that: SqlFragment)(implicit ev: A <:< ZResultSet): SqlFragment =
     new Sql(builder => { self.build(builder); that.build(builder) }, that.decode)
 
   def as[B](implicit decode: JdbcDecoder[B]): Sql[B] =
@@ -79,7 +80,7 @@ final class Sql[+A](
 
   def values[B](
     iterator: Iterator[B]
-  )(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): Sql[ZResultSet] =
+  )(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlFragment =
     this ++
       Sql.values ++
       Sql.intersperse(
@@ -89,13 +90,20 @@ final class Sql[+A](
 
   def values[B](
     bs: B*
-  )(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): Sql[ZResultSet] = values(bs.iterator)
+  )(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlFragment = values(bs.iterator)
 
   def withDecode[B](f: ZResultSet => B): Sql[B] =
     Sql(segments, f)
+
+  def and(right: SqlFragment*)(implicit ev: A <:< ZResultSet): SqlFragment =
+    self ++ intersperse(Sql.and, right)
+
+  def or(right: SqlFragment*)(implicit ev: A <:< ZResultSet): SqlFragment =
+    self ++ intersperse(Sql.or, right)
 }
+
 object Sql {
-  val empty: Sql[ZResultSet] = Sql(Chunk.empty, identity(_))
+  val empty: SqlFragment = Sql(Chunk.empty, identity(_))
 
   def apply[A](segments: Chunk[Sql.Segment], decode: ZResultSet => A): Sql[A] =
     new Sql(builder => builder ++= segments, decode)
@@ -107,9 +115,9 @@ object Sql {
   }
 
   private[jdbc] def intersperse(
-    sep: Sql[ZResultSet],
-    elements: Iterable[Sql[ZResultSet]]
-  ): Sql[ZResultSet] = {
+    sep: SqlFragment,
+    elements: Iterable[SqlFragment]
+  ): SqlFragment = {
 
     var first = true
 
@@ -128,4 +136,9 @@ object Sql {
   private[jdbc] val rparen                               = sql""")"""
   private[jdbc] val comma                                = sql""","""
   private[jdbc] val nullLiteral                          = sql"""NULL"""
+  private[jdbc] val and                                  = sql"""AND"""
+  private[jdbc] val or                                   = sql"""OR"""
+  private[jdbc] val not                                  = sql"""NOT"""
+  private[jdbc] val in                                   = sql"""IN"""
+
 }
