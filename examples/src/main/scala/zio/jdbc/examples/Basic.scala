@@ -17,6 +17,9 @@ object Basic {
   // Inserting from tuples:
   val ex3: Sql[ZResultSet] = sql"insert into users (name, age)".values(("John", 42))
 
+  // dropping table
+  val ex4: Sql[ZResultSet] = sql"drop table if exists users"
+
   // Composing requests:
   val keyColumn                                = "key"
   val valueColumn                              = "value"

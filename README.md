@@ -10,24 +10,137 @@ _ZIO JDBC_ is a small, idiomatic ZIO interface to JDBC, providing a pleasant and
 - Secure, with protection against SQL-injection
 - Fully integrated with core libraries including _ZIO Schema_, _ZIO Config_, _ZIO Logging_
 
-## Example
+## Writing Queries
 
+`Basic.scala` (see `zio.jdbc.examples` in project)
 ```scala
+  val age = 42
+
+val ex0: Sql[ZResultSet] = sql"create table if not exists users(name varchar(255), age int)"
+
 // Creating SQL statements using interpolation:
-val ex1 = sql"select * from users where age = $age"
+val ex1: Sql[ZResultSet] = sql"select * from users where age = $age"
 
 // Selecting into tuples:
-val ex2 = sql"select name, age from users".as[(String, Int)]
+val ex2: Sql[(String, Int)] = sql"select name, age from users".as[(String, Int)]
 
 // Inserting from tuples:
-val ex3 = sql"insert into users ('name', 'age')".values(("John", 42))
+val ex3: Sql[ZResultSet] = sql"insert into users (name, age)".values(("John", 42))
 
-// Executing statements:
-val res1: ZIO[ZConnectionPool, Throwable, Option[(String, Int)]] =
+// dropping table
+val ex4: Sql[ZResultSet] = sql"drop table if exists users"
+```
+
+
+## Executing Statements
+
+```scala
+val res1: ZIO[ZConnectionPool, Throwable, Option[(String, Int)]] = 
   transaction {
     selectOne(sql"select name, age from users where name = 'Sherlock Holmes'".as[(String, Int)])
   }
 ```
+
+## Creating a Connection Pool
+
+```scala
+
+ val createZIOPoolConfig: ULayer[ZConnectionPoolConfig] =
+    ZLayer.succeed(ZConnectionPoolConfig.default)
+ 
+  val properties = Map(
+    "user"     -> "mysql",
+    "password" -> "mysql"
+  )
+ 
+  val connectionPool: ZLayer[Clock & ZConnectionPoolConfig, Throwable, ZConnectionPool] =
+    ZConnectionPool.mysql("localhost", 3306, "mysql", properties)
+ 
+  val live: ZLayer[Clock & ZConnectionPoolConfig, Throwable, ZConnectionPool] = createZIOPoolConfig >>> connectionPool
+```
+
+
+## Full Example
+
+`App.scala` (see `zio.jdbc.examples` in project)
+```scala
+
+import zio._
+import zio.jdbc._
+import zio.schema.Schema
+
+/**
+ * You'll need the appropriate JDBC driver, and a database running.
+ */
+object App extends ZIOAppDefault {
+  final case class User(name: String, age: Int)
+  
+  object User {
+    import Schema.Field
+    
+    implicit val schema: Schema[User] =
+      Schema.CaseClass2[String, Int, User](
+        Field("name", Schema[String]),
+        Field("age", Schema[Int]),
+        (name, age) => User(name, age),
+        _.name,
+        _.age
+      )
+    
+    // One can derive a jdbc decoder from a zio-schema or
+    implicit val jdbcDecoder: JdbcDecoder[User] = JdbcDecoder.fromSchema
+    
+    // a custom decoder from a tuple
+    // implicit val jdbcDecoder = JdbcDecoder[(String, Int)].map[User](t => User(t._1, t._2))
+  }
+  
+  val create: ZIO[ZConnectionPool, Throwable, Unit] = transaction {
+    execute(Basic.ex0)
+  }
+  
+  val insertRow: ZIO[ZConnectionPool, Throwable, Long] = transaction {
+    insert(Basic.ex3)
+  }
+  
+  val select: ZIO[ZConnectionPool, Throwable, Chunk[User]] = transaction {
+    selectAll(Basic.ex2.as[User])
+  }
+  
+  val drop: ZIO[ZConnectionPool, Throwable, Unit] = transaction {
+    execute(Basic.ex4)
+  }
+  
+  val createZIOPoolConfig: ULayer[ZConnectionPoolConfig] =
+    ZLayer.succeed(ZConnectionPoolConfig.default)
+  
+  val properties = Map(
+    "user"     -> "mysql",
+    "password" -> "mysql"
+  )
+  
+  /**
+   * Pre defined ZConnection Pools exist for:
+   *  Postgres, SQL Server, Oracle, MySQL and h2
+   *  custom pools, can also be constructed
+   */
+  val connectionPool: ZLayer[Clock & ZConnectionPoolConfig, Throwable, ZConnectionPool] =
+    ZConnectionPool.mysql("localhost", 3306, "mysql", properties)
+  
+  val program: ZIO[ZConnectionPool, Throwable, Chunk[User]] = for {
+    _   <- create *> insertRow
+    res <- select
+    _   <- drop
+  } yield res
+  
+  override def run: ZIO[ZEnv with ZIOAppArgs, Any, Any] =
+    for {
+      results <- program.provideLayer(createZIOPoolConfig >>> connectionPool)
+      _       <- Console.printLine(results.mkString("\n"))
+    } yield ()
+}
+
+```
+
 
 To learn more about _ZIO JDBC_, check out the following references:
 
