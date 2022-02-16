@@ -79,6 +79,7 @@ lazy val examples = project
     publish / skip := true,
     libraryDependencies ++= Seq(
       "ch.qos.logback"       % "logback-classic"          % "1.2.6",
-      "net.logstash.logback" % "logstash-logback-encoder" % "6.6"
+      "net.logstash.logback" % "logstash-logback-encoder" % "6.6",
+      "org.postgresql"       % "postgresql"               % "42.3.2"
     )
   )
