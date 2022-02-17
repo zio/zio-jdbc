@@ -15,7 +15,6 @@
  */
 package zio.jdbc
 
-import zio.jdbc.Sql.intersperse
 import zio.{ Chunk, ChunkBuilder }
 
 /**
@@ -98,16 +97,38 @@ final class Sql[+A](
   def where(predicate: SqlFragment)(implicit ev: A <:< ZResultSet): SqlFragment =
     self ++ Sql.where ++ predicate
 
-  def and(right: SqlFragment*)(implicit ev: A <:< ZResultSet): SqlFragment =
-    self ++ intersperse(Sql.and, right)
+  def or(first: SqlFragment, rest: SqlFragment*)(implicit ev: A <:< ZResultSet): SqlFragment =
+    or(first +: rest)
 
-  def or(right: SqlFragment*)(implicit ev: A <:< ZResultSet): SqlFragment =
-    self ++ intersperse(Sql.or, right)
+  def or(elements: Iterable[SqlFragment])(implicit ev: A <:< ZResultSet): SqlFragment =
+    self ++ Sql.prependEach(Sql.or, elements)
 
-  def in[B](b: B*)(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlFragment = in(b.iterator)
+  def and(first: SqlFragment, rest: SqlFragment*)(implicit ev: A <:< ZResultSet): SqlFragment =
+    and(first +: rest)
+
+  def and(elements: Iterable[SqlFragment])(implicit ev: A <:< ZResultSet): SqlFragment =
+    self ++ Sql.prependEach(Sql.and, elements)
+
+  def not(fragment: SqlFragment)(implicit ev: A <:< ZResultSet): SqlFragment =
+    self ++ Sql.not ++ fragment
+
+  def in[B](first: B, rest: B*)(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlFragment =
+    in((first +: rest).iterator)
 
   def in[B](iterator: Iterator[B])(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlFragment =
-    self ++ Sql.in ++ Sql.lparen ++ Sql.intersperse(Sql.comma, iterator.map(encode.encode).toIndexedSeq) ++ Sql.rparen
+    in0(Sql.in, iterator)
+
+  def notIn[B](first: B, rest: B*)(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlFragment =
+    notIn((first +: rest).iterator)
+
+  def notIn[B](iterator: Iterator[B])(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlFragment =
+    in0(Sql.notIn, iterator)
+
+  private def in0[B](op: SqlFragment, iterator: Iterator[B])(implicit
+    encode: JdbcEncoder[B],
+    ev: A <:< ZResultSet
+  ): SqlFragment =
+    self ++ op ++ Sql.lparen ++ Sql.intersperse(Sql.comma, iterator.map(encode.encode).toIndexedSeq) ++ Sql.rparen
 }
 
 object Sql {
@@ -138,16 +159,24 @@ object Sql {
     }
   }
 
+  private[jdbc] def prependEach(
+    sep: SqlFragment,
+    elements: Iterable[SqlFragment]
+  ): SqlFragment =
+    elements.foldLeft(empty) { (acc, element) =>
+      acc ++ sep ++ element
+    }
+
   private[jdbc] val identityFn: ZResultSet => ZResultSet = a => a
-  private[jdbc] val values                               = sql""" VALUES """
-  private[jdbc] val lparen                               = sql"""("""
-  private[jdbc] val rparen                               = sql""")"""
-  private[jdbc] val comma                                = sql""","""
-  private[jdbc] val nullLiteral                          = sql"""NULL"""
-  private[jdbc] val where                                = sql"""WHERE"""
-  private[jdbc] val and                                  = sql"""AND"""
-  private[jdbc] val or                                   = sql"""OR"""
-  private[jdbc] val not                                  = sql"""NOT"""
-  private[jdbc] val in                                   = sql"""IN"""
-  private[jdbc] val notIn                                = sql"""NOT IN"""
+  private[jdbc] val values                               = sql" VALUES "
+  private[jdbc] val lparen                               = sql"("
+  private[jdbc] val rparen                               = sql")"
+  private[jdbc] val comma                                = sql","
+  private[jdbc] val nullLiteral                          = sql"NULL"
+  private[jdbc] val where                                = sql" WHERE "
+  private[jdbc] val and                                  = sql" AND "
+  private[jdbc] val or                                   = sql" OR "
+  private[jdbc] val not                                  = sql" NOT "
+  private[jdbc] val in                                   = sql" IN "
+  private[jdbc] val notIn                                = sql" NOT IN "
 }
