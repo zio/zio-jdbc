@@ -31,12 +31,12 @@ package object jdbc {
   /**
    * Converts a String into a pure SQL expression
    */
-  implicit def stringToSql(s: String): Sql[ZResultSet] = Sql(Chunk(Sql.Segment.Syntax(s)), identity)
+  implicit def stringToSql(s: String): SqlFragment = Sql(Chunk(Sql.Segment.Syntax(s)), identity)
 
   /**
    * Executes a SQL delete query.
    */
-  def delete(sql: Sql[ZResultSet]): ZIO[ZConnection, Throwable, Long] =
+  def delete(sql: SqlFragment): ZIO[ZConnection, Throwable, Long] =
     for {
       connection <- ZIO.service[ZConnection]
       result     <- connection.executeSqlWith(sql)(_.executeLargeUpdate())
@@ -45,7 +45,7 @@ package object jdbc {
   /**
    * Executes a SQL statement, such as one that creates a table.
    */
-  def execute(sql: Sql[ZResultSet]): ZIO[ZConnection, Throwable, Unit] =
+  def execute(sql: SqlFragment): ZIO[ZConnection, Throwable, Unit] =
     for {
       connection <- ZIO.service[ZConnection]
       _          <- connection.executeSqlWith(sql)(_.executeUpdate())
@@ -54,7 +54,7 @@ package object jdbc {
   /**
    * Performs a SQL update query, returning a count of rows updated.
    */
-  def insert(sql: Sql[ZResultSet]): ZIO[ZConnection, Throwable, Long] =
+  def insert(sql: SqlFragment): ZIO[ZConnection, Throwable, Long] =
     for {
       connection <- ZIO.service[ZConnection]
       result     <- connection.executeSqlWith(sql)(_.executeLargeUpdate())
@@ -111,7 +111,7 @@ package object jdbc {
   /**
    * Performs a SQL update query, returning a count of rows updated.
    */
-  def update(sql: Sql[ZResultSet]): ZIO[ZConnection, Throwable, Long] =
+  def update(sql: SqlFragment): ZIO[ZConnection, Throwable, Long] =
     for {
       connection <- ZIO.service[ZConnection]
       result     <- connection.executeSqlWith(sql)(_.executeLargeUpdate())
