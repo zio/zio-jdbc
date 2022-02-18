@@ -56,7 +56,7 @@ final class Sql[+A](
     builder.result()
   }
 
-  override def toString(): String = {
+  override def toString: String = {
     import Sql.Segment
 
     val sql = new StringBuilder()
@@ -65,31 +65,29 @@ final class Sql[+A](
 
     segments.foreach {
       case Segment.Syntax(value) => sql.append(value)
-      case Segment.Param(value)  => sql.append("?"); paramsBuilder += value.toString()
+      case Segment.Param(value)  => sql.append("?"); paramsBuilder += value.toString
     }
 
-    val params = paramsBuilder.result()
+    val params       = paramsBuilder.result()
+    val paramsString = if (params.isEmpty) "" else ", " + params.mkString(", ")
 
-    val paramsString = if (params.length > 0) {
-      ", " + params.mkString(", ")
-    } else ""
-
-    s"Sql(${sql.result()}${paramsString})"
+    s"Sql(${sql.result()}$paramsString)"
   }
 
   def values[B](
-    iterator: Iterator[B]
+    bs: Iterable[B]
   )(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlFragment =
     this ++
       Sql.values ++
       Sql.intersperse(
         Sql.comma,
-        iterator.map(b => Sql.lparen ++ encode.encode(b) ++ Sql.rparen).toIndexedSeq
+        bs.map(b => Sql.lparen ++ encode.encode(b) ++ Sql.rparen)
       )
 
   def values[B](
+    b: B,
     bs: B*
-  )(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlFragment = values(bs.iterator)
+  )(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlFragment = values(b +: bs)
 
   def withDecode[B](f: ZResultSet => B): Sql[B] =
     Sql(segments, f)
@@ -112,23 +110,23 @@ final class Sql[+A](
   def not(fragment: SqlFragment)(implicit ev: A <:< ZResultSet): SqlFragment =
     self ++ Sql.not ++ fragment
 
-  def in[B](first: B, rest: B*)(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlFragment =
-    in((first +: rest).iterator)
+  def in[B](b: B, bs: B*)(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlFragment =
+    in(b +: bs)
 
-  def in[B](iterator: Iterator[B])(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlFragment =
-    in0(Sql.in, iterator)
+  def in[B](bs: Iterable[B])(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlFragment =
+    in0(Sql.in, bs)
 
-  def notIn[B](first: B, rest: B*)(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlFragment =
-    notIn((first +: rest).iterator)
+  def notIn[B](b: B, bs: B*)(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlFragment =
+    notIn(b +: bs)
 
-  def notIn[B](iterator: Iterator[B])(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlFragment =
-    in0(Sql.notIn, iterator)
+  def notIn[B](bs: Iterable[B])(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlFragment =
+    in0(Sql.notIn, bs)
 
-  private def in0[B](op: SqlFragment, iterator: Iterator[B])(implicit
+  private def in0[B](op: SqlFragment, bs: Iterable[B])(implicit
     encode: JdbcEncoder[B],
     ev: A <:< ZResultSet
   ): SqlFragment =
-    self ++ op ++ Sql.lparen ++ Sql.intersperse(Sql.comma, iterator.map(encode.encode).toIndexedSeq) ++ Sql.rparen
+    self ++ op ++ Sql.lparen ++ Sql.intersperse(Sql.comma, bs.map(encode.encode)) ++ Sql.rparen
 }
 
 object Sql {
