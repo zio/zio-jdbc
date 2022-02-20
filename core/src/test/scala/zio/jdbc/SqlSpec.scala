@@ -1,8 +1,16 @@
 package zio.jdbc
 
+import zio.schema.Schema
 import zio.test._
 
+final case class Person(name: String, age: Int)
+final case class UserLogin(username: String, password: String)
+final case class ActiveUser(person: Person, login: UserLogin, isActive: Boolean = true)
+final case class Transaction(id: Long, amount: Double, location: Option[String])
+
 object SqlSpec extends ZIOSpecDefault {
+  import Models._
+
   def spec: ZSpec[Environment with TestEnvironment, Any] =
     suite("SqlSpec") {
       test("constant") {
@@ -101,6 +109,95 @@ object SqlSpec extends ZIOSpecDefault {
                   s"Sql(select name, age from users where id NOT IN (?,?,?), 1, 2, 3)"
               )
             }
+        } +
+        suite("values") {
+          test("tuple values") {
+            val person = ("sholmes", 42)
+            assertTrue(
+              sql"insert to persons (name, age)".values(person).toString ==
+                s"Sql(insert to persons (name, age) VALUES (?,?), ${person._1}, ${person._2})"
+            )
+          } +
+            test("case class values") {
+
+              val person = Person("sholmes", 42)
+              assertTrue(
+                sql"insert to persons (name, age)".values(person).toString ==
+                  s"Sql(insert to persons (name, age) VALUES (?,?), ${person.name}, ${person.age})"
+              )
+            } +
+            test("nested case class values") {
+              val person     = Person("Sherlock Holmes", 42)
+              val login      = UserLogin("sholmes", "221BakerSt")
+              val activeUser = ActiveUser(person, login)
+              assertTrue(
+                sql"insert to active_users (name, age, username, password, isActive)".values(activeUser).toString ==
+                  s"Sql(insert to active_users (name, age, username, password, isActive)" +
+                  s" VALUES (?,?,?,?,?), ${activeUser.person.name}, ${activeUser.person.age}, " +
+                  s"${login.username}, ${login.password}, ${activeUser.isActive})"
+              )
+            } +
+            test("optional value in case class") {
+              val transaction  = Transaction(1, 10.0, None)
+              val transaction2 = Transaction(2, 20.0, Some("London"))
+              assertTrue(
+                sql"insert to transactions (id, amount, location)".values(transaction).toString ==
+                  s"Sql(insert to transactions (id, amount, location) VALUES (?,?,NULL), ${transaction.id}, ${transaction.amount})"
+              ) &&
+              assertTrue(
+                sql"insert to transactions (id, amount, location)".values(transaction2).toString ==
+                  s"Sql(insert to transactions (id, amount, location) VALUES (?,?,?), ${transaction2.id}, ${transaction2.amount}, ${transaction2.location.get})"
+              )
+            }
         }
     }
+}
+
+object Models {
+  import Schema.Field
+
+  implicit val personSchema: Schema[Person] =
+    Schema.CaseClass2[String, Int, Person](
+      Field("name", Schema[String]),
+      Field("age", Schema[Int]),
+      (name, age) => Person(name, age),
+      _.name,
+      _.age
+    )
+
+  implicit val userLoginSchema: Schema[UserLogin] =
+    Schema.CaseClass2[String, String, UserLogin](
+      Field("username", Schema[String]),
+      Field("password", Schema[String]),
+      (username, password) => UserLogin(username, password),
+      _.username,
+      _.password
+    )
+
+  implicit val activeUser: Schema[ActiveUser] =
+    Schema.CaseClass3[Person, UserLogin, Boolean, ActiveUser](
+      Field("person", Schema[Person]),
+      Field("login", Schema[UserLogin]),
+      Field("isActive", Schema[Boolean]),
+      (person, login, isActive) => ActiveUser(person, login, isActive),
+      _.person,
+      _.login,
+      _.isActive
+    )
+
+  implicit val transaction: Schema[Transaction] =
+    Schema.CaseClass3[Long, Double, Option[String], Transaction](
+      Field("id", Schema[Long]),
+      Field("amount", Schema[Double]),
+      Field("location", Schema[Option[String]]),
+      (id, amount, location) => Transaction(id, amount, location),
+      _.id,
+      _.amount,
+      _.location
+    )
+
+  implicit val personEncoder: JdbcEncoder[Person]           = JdbcEncoder.fromSchema[Person]
+  implicit val userLoginEncoder: JdbcEncoder[UserLogin]     = JdbcEncoder.fromSchema[UserLogin]
+  implicit val activeUserEncoder: JdbcEncoder[ActiveUser]   = JdbcEncoder.fromSchema[ActiveUser]
+  implicit val transactionEncoder: JdbcEncoder[Transaction] = JdbcEncoder.fromSchema[Transaction]
 }

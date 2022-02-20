@@ -15,7 +15,11 @@
  */
 package zio.jdbc
 
+<<<<<<< HEAD
 import zio.schema.Schema
+=======
+import zio.jdbc.Sql.intersperse
+>>>>>>> 08c1825 (Adding tests, cleaning up)
 import zio.{ Chunk, ChunkBuilder }
 
 /**
@@ -89,13 +93,13 @@ final class Sql[+A](
     b: B,
     bs: B*
   )(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlFragment = values(b +: bs)
-
+  
   // TODO: Not sure how to resolve the ambiguous overloads of values
   def values[B](bs: B*)(implicit schema: Schema[B], ev: A <:< ZResultSet): Sql[ZResultSet] = {
     implicit val encode: JdbcEncoder[B] = JdbcEncoder.fromSchema
     values(bs)
   }
-
+  
   def withDecode[B](f: ZResultSet => B): Sql[B] =
     Sql(segments, f)
 

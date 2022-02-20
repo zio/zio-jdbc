@@ -16,8 +16,7 @@
 package zio.jdbc
 
 import zio.Chunk
-import zio.jdbc.SchemaEncoder._
-import zio.schema.Schema
+import zio.schema.{ Schema, StandardType }
 
 /**
  * A type class that describes the ability to convert a value of type `A` into
@@ -29,7 +28,7 @@ trait JdbcEncoder[-A] {
   final def contramap[B](f: B => A): JdbcEncoder[B] = (value) => encode(f(value))
 }
 
-object JdbcEncoder {
+object JdbcEncoder extends JdbcEncoderLowPriorityImplicits {
   def apply[A]()(implicit encoder: JdbcEncoder[A]): JdbcEncoder[A] = encoder
 
   implicit val intEncoder: JdbcEncoder[Int]                               = value => sql"$value"
@@ -623,6 +622,25 @@ object JdbcEncoder {
       ) ++ Sql.comma ++ JdbcEncoder[U]().encode(tuple._21) ++ Sql.comma ++ JdbcEncoder[V]().encode(
         tuple._22
       )
+}
+
+trait JdbcEncoderLowPriorityImplicits { self =>
+  private[jdbc] def primitiveCodec[A](standardType: StandardType[A]): JdbcEncoder[A] =
+    standardType match {
+      case StandardType.StringType     => JdbcEncoder.stringEncoder
+      case StandardType.BoolType       => JdbcEncoder.booleanEncoder
+      case StandardType.ShortType      => JdbcEncoder.shortEncoder
+      case StandardType.IntType        => JdbcEncoder.intEncoder
+      case StandardType.LongType       => JdbcEncoder.longEncoder
+      case StandardType.FloatType      => JdbcEncoder.floatEncoder
+      case StandardType.DoubleType     => JdbcEncoder.doubleEncoder
+      case StandardType.CharType       => JdbcEncoder.charEncoder
+      case StandardType.BigIntegerType => JdbcEncoder.bigIntDecoder
+      case StandardType.BinaryType     => JdbcEncoder.byteChunkEncoder
+      case StandardType.BigDecimalType => JdbcEncoder.bigDecimalEncoder
+      case StandardType.UUIDType       => JdbcEncoder.uuidEncoder
+      // TODO: Additional StandardTypes like date and time types
+    }
 
   //scalafmt: { maxColumn = 325, optIn.configStyleArguments = false }
   def fromSchema[A](implicit schema: Schema[A]): JdbcEncoder[A] =
@@ -630,9 +648,9 @@ object JdbcEncoder {
       case Schema.Primitive(standardType, _)                                                                                                                                                                                                                                              =>
         primitiveCodec(standardType)
       case Schema.Optional(schema, _)                                                                                                                                                                                                                                                     =>
-        optionEncoder(JdbcEncoder.fromSchema(schema))
+        JdbcEncoder.optionEncoder(self.fromSchema(schema))
       case Schema.Tuple(left, right, _)                                                                                                                                                                                                                                                   =>
-        tuple2Encoder(JdbcEncoder.fromSchema(left), JdbcEncoder.fromSchema(right))
+        JdbcEncoder.tuple2Encoder(self.fromSchema(left), self.fromSchema(right))
       case Schema.CaseClass1(f, _, ext, _)                                                                                                                                                                                                                                                =>
         caseClassEncoder(f -> ext)
       case Schema.CaseClass2(f1, f2, _, ext1, ext2, _)                                                                                                                                                                                                                                    =>
@@ -683,7 +701,7 @@ object JdbcEncoder {
 
   private[jdbc] def caseClassEncoder[A](fields: (Schema.Field[_], A => Any)*): JdbcEncoder[A] = { (a: A) =>
     fields.map { case (Schema.Field(_, schema, _), extractor) =>
-      val encoder = JdbcEncoder.fromSchema(schema)
+      val encoder = self.fromSchema(schema)
       encoder.encode(extractor(a))
     }.reduce(_ ++ Sql.comma ++ _)
   }

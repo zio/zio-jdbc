@@ -8,33 +8,14 @@ import zio.schema.Schema
  * You'll need the appropriate JDBC driver, and a database running.
  */
 object App extends ZIOAppDefault {
-  final case class User(name: String, age: Int)
-
-  object User {
-    import Schema.Field
-
-    implicit val schema: Schema[User] =
-      Schema.CaseClass2[String, Int, User](
-        Field("name", Schema[String]),
-        Field("age", Schema[Int]),
-        (name, age) => User(name, age),
-        _.name,
-        _.age
-      )
-
-    // One can derive a jdbc decoder from a zio-schema or
-    implicit val jdbcDecoder: JdbcDecoder[User] = JdbcDecoder.fromSchema
-
-    // a custom decoder from a tuple
-    // implicit val jdbcDecoder = JdbcDecoder[(String, Int)].map[User](t => User(t._1, t._2))
-  }
+  import zio.jdbc.examples.User._
 
   val create: ZIO[ZConnectionPool, Throwable, Unit] = transaction {
     execute(Basic.ex0)
   }
 
   val insertRow: ZIO[ZConnectionPool, Throwable, Long] = transaction {
-    insert(Basic.ex3)
+    insert(sql"insert into users (name, age)".values(sampleUser1, sampleUser2))
   }
 
   val select: ZIO[ZConnectionPool, Throwable, Chunk[User]] = transaction {
@@ -42,15 +23,15 @@ object App extends ZIOAppDefault {
   }
 
   val drop: ZIO[ZConnectionPool, Throwable, Unit] = transaction {
-    execute(Basic.ex4)
+    execute(Basic.ex5)
   }
 
   val zioPoolConfig: ULayer[ZConnectionPoolConfig] =
     ZLayer.succeed(ZConnectionPoolConfig.default)
 
-  val properties = Map(
-    "user"     -> "mysql",
-    "password" -> "mysql"
+  val properties: Map[String, String] = Map(
+    "user"     -> "postgres",
+    "password" -> "postgres"
   )
 
   /**
@@ -59,7 +40,7 @@ object App extends ZIOAppDefault {
    *  custom pools, can also be constructed
    */
   val connectionPool: ZLayer[Clock & ZConnectionPoolConfig, Throwable, ZConnectionPool] =
-    ZConnectionPool.mysql("localhost", 3306, "mysql", properties)
+    ZConnectionPool.postgres("localhost", 5432, "postgres", properties)
 
   val program: ZIO[ZConnectionPool, Throwable, Chunk[User]] = for {
     _   <- create *> insertRow
@@ -72,4 +53,29 @@ object App extends ZIOAppDefault {
       results <- program.provideLayer(zioPoolConfig >>> connectionPool)
       _       <- Console.printLine(results.mkString("\n"))
     } yield ()
+}
+
+final case class User(name: String, age: Int)
+
+object User {
+  import Schema.Field
+
+  implicit val schema: Schema[User] =
+    Schema.CaseClass2[String, Int, User](
+      Field("name", Schema[String]),
+      Field("age", Schema[Int]),
+      (name, age) => User(name, age),
+      _.name,
+      _.age
+    )
+
+  // One can derive a jdbc codec from a zio-schema or
+  implicit val jdbcDecoder: JdbcDecoder[User] = JdbcDecoder.fromSchema
+  implicit val jdbcEncoder: JdbcEncoder[User] = JdbcEncoder.fromSchema
+
+  val sampleUser1: User = User("John", 42)
+  val sampleUser2: User = User("Sandra", 27)
+
+  // a custom decoder from a tuple
+  // implicit val jdbcDecoder = JdbcDecoder[(String, Int)].map[User](t => User(t._1, t._2))
 }
