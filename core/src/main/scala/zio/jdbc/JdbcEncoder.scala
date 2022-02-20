@@ -639,7 +639,8 @@ trait JdbcEncoderLowPriorityImplicits { self =>
       case StandardType.BinaryType     => JdbcEncoder.byteChunkEncoder
       case StandardType.BigDecimalType => JdbcEncoder.bigDecimalEncoder
       case StandardType.UUIDType       => JdbcEncoder.uuidEncoder
-      // TODO: Additional StandardTypes like date and time types
+      // TODO: Standard Types which are missing are the date time types, not sure what would be the best way to handle them
+      case _                           => throw JdbcEncoderError(s"Unsupported type: $standardType", new IllegalArgumentException)
     }
 
   //scalafmt: { maxColumn = 325, optIn.configStyleArguments = false }
@@ -696,7 +697,7 @@ trait JdbcEncoderLowPriorityImplicits { self =>
       case Schema.CaseClass22(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20, f21, f22, _, ext1, ext2, ext3, ext4, ext5, ext6, ext7, ext8, ext9, ext10, ext11, ext12, ext13, ext14, ext15, ext16, ext17, ext18, ext19, ext20, ext21, ext22, _) =>
         caseClassEncoder(f1 -> ext1, f2 -> ext2, f3 -> ext3, f4 -> ext4, f5 -> ext5, f6 -> ext6, f7 -> ext7, f8 -> ext8, f9 -> ext9, f10 -> ext10, f11 -> ext11, f12 -> ext12, f13 -> ext13, f14 -> ext14, f15 -> ext15, f16 -> ext16, f17 -> ext17, f18 -> ext18, f19 -> ext19, f20 -> ext20, f21 -> ext21, f22 -> ext22)
       case _                                                                                                                                                                                                                                                                              =>
-        throw JdbcEncoderError(s"Failed to encode schema ${schema}", new Exception)
+        throw JdbcEncoderError(s"Failed to encode schema ${schema}", new IllegalArgumentException)
     }
 
   private[jdbc] def caseClassEncoder[A](fields: (Schema.Field[_], A => Any)*): JdbcEncoder[A] = { (a: A) =>
