@@ -84,7 +84,7 @@ final class ZConnection(private[jdbc] val connection: Connection) extends AnyVal
       }
 
       f(statement)
-  }.tapErrorCause(e => ZIO.logError(s"Error executing SQL: '${sql}' due to ${e.prettyPrint}"))
+  }.mapError(throwable => ZioJdbcException(throwable, sql))
 
 }
 object ZConnection {

@@ -48,7 +48,7 @@ object App extends ZIOAppDefault {
   val zioPoolConfig: ULayer[ZConnectionPoolConfig] =
     ZLayer.succeed(ZConnectionPoolConfig.default)
 
-  val properties = Map(
+  val properties: Map[String, String] = Map(
     "user"     -> "mysql",
     "password" -> "mysql"
   )
