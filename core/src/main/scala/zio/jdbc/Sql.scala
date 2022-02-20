@@ -99,10 +99,10 @@ final class Sql[+A](
     self ++ Sql.where ++ predicate
 
   def and(right: SqlFragment*)(implicit ev: A <:< ZResultSet): SqlFragment =
-    self ++ intersperse(Sql.and, right)
+    self ++ Sql.and ++ intersperse(Sql.and, right)
 
   def or(right: SqlFragment*)(implicit ev: A <:< ZResultSet): SqlFragment =
-    self ++ intersperse(Sql.or, right)
+    self ++ Sql.or ++ intersperse(Sql.or, right)
 
   def in[B](b: B*)(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlFragment = in(b.iterator)
 
@@ -111,7 +111,7 @@ final class Sql[+A](
 }
 
 object Sql {
-  val empty: SqlFragment = Sql(Chunk.empty, identity(_))
+  val empty: SqlFragment = Sql(Chunk.empty, Sql.identityFn)
 
   def apply[A](segments: Chunk[Sql.Segment], decode: ZResultSet => A): Sql[A] =
     new Sql(builder => builder ++= segments, decode)
@@ -143,11 +143,11 @@ object Sql {
   private[jdbc] val lparen                               = sql"""("""
   private[jdbc] val rparen                               = sql""")"""
   private[jdbc] val comma                                = sql""","""
-  private[jdbc] val nullLiteral                          = sql"""NULL"""
-  private[jdbc] val where                                = sql"""WHERE"""
-  private[jdbc] val and                                  = sql"""AND"""
-  private[jdbc] val or                                   = sql"""OR"""
-  private[jdbc] val not                                  = sql"""NOT"""
-  private[jdbc] val in                                   = sql"""IN"""
-  private[jdbc] val notIn                                = sql"""NOT IN"""
+  private[jdbc] val nullLiteral                          = sql""" NULL """
+  private[jdbc] val where                                = sql""" WHERE """
+  private[jdbc] val and                                  = sql""" AND """
+  private[jdbc] val or                                   = sql""" OR """
+  private[jdbc] val not                                  = sql""" NOT"""
+  private[jdbc] val in                                   = sql""" IN"""
+  private[jdbc] val notIn                                = sql""" NOT IN"""
 }
