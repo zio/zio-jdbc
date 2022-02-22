@@ -15,7 +15,6 @@
  */
 package zio.jdbc
 
-import zio.jdbc.Sql.intersperse
 import zio.{ Chunk, ChunkBuilder }
 
 /**
@@ -57,7 +56,7 @@ final class Sql[+A](
     builder.result()
   }
 
-  override def toString(): String = {
+  override def toString: String = {
     import Sql.Segment
 
     val sql = new StringBuilder()
@@ -66,31 +65,29 @@ final class Sql[+A](
 
     segments.foreach {
       case Segment.Syntax(value) => sql.append(value)
-      case Segment.Param(value)  => sql.append("?"); paramsBuilder += value.toString()
+      case Segment.Param(value)  => sql.append("?"); paramsBuilder += value.toString
     }
 
-    val params = paramsBuilder.result()
+    val params       = paramsBuilder.result()
+    val paramsString = if (params.isEmpty) "" else ", " + params.mkString(", ")
 
-    val paramsString = if (params.length > 0) {
-      ", " + params.mkString(", ")
-    } else ""
-
-    s"Sql(${sql.result()}${paramsString})"
+    s"Sql(${sql.result()}$paramsString)"
   }
 
   def values[B](
-    iterator: Iterator[B]
+    bs: Iterable[B]
   )(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlFragment =
     this ++
       Sql.values ++
       Sql.intersperse(
         Sql.comma,
-        iterator.map(b => Sql.lparen ++ encode.encode(b) ++ Sql.rparen).toIndexedSeq
+        bs.map(b => Sql.lparen ++ encode.encode(b) ++ Sql.rparen)
       )
 
   def values[B](
+    b: B,
     bs: B*
-  )(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlFragment = values(bs.iterator)
+  )(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlFragment = values(b +: bs)
 
   def withDecode[B](f: ZResultSet => B): Sql[B] =
     Sql(segments, f)
@@ -98,16 +95,38 @@ final class Sql[+A](
   def where(predicate: SqlFragment)(implicit ev: A <:< ZResultSet): SqlFragment =
     self ++ Sql.where ++ predicate
 
-  def and(right: SqlFragment*)(implicit ev: A <:< ZResultSet): SqlFragment =
-    self ++ intersperse(Sql.and, right)
+  def or(first: SqlFragment, rest: SqlFragment*)(implicit ev: A <:< ZResultSet): SqlFragment =
+    or(first +: rest)
 
-  def or(right: SqlFragment*)(implicit ev: A <:< ZResultSet): SqlFragment =
-    self ++ intersperse(Sql.or, right)
+  def or(elements: Iterable[SqlFragment])(implicit ev: A <:< ZResultSet): SqlFragment =
+    self ++ Sql.prependEach(Sql.or, elements)
 
-  def in[B](b: B*)(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlFragment = in(b.iterator)
+  def and(first: SqlFragment, rest: SqlFragment*)(implicit ev: A <:< ZResultSet): SqlFragment =
+    and(first +: rest)
 
-  def in[B](iterator: Iterator[B])(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlFragment =
-    self ++ Sql.in ++ Sql.lparen ++ Sql.intersperse(Sql.comma, iterator.map(encode.encode).toIndexedSeq) ++ Sql.rparen
+  def and(elements: Iterable[SqlFragment])(implicit ev: A <:< ZResultSet): SqlFragment =
+    self ++ Sql.prependEach(Sql.and, elements)
+
+  def not(fragment: SqlFragment)(implicit ev: A <:< ZResultSet): SqlFragment =
+    self ++ Sql.not ++ fragment
+
+  def in[B](b: B, bs: B*)(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlFragment =
+    in(b +: bs)
+
+  def in[B](bs: Iterable[B])(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlFragment =
+    in0(Sql.in, bs)
+
+  def notIn[B](b: B, bs: B*)(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlFragment =
+    notIn(b +: bs)
+
+  def notIn[B](bs: Iterable[B])(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlFragment =
+    in0(Sql.notIn, bs)
+
+  private def in0[B](op: SqlFragment, bs: Iterable[B])(implicit
+    encode: JdbcEncoder[B],
+    ev: A <:< ZResultSet
+  ): SqlFragment =
+    self ++ op ++ Sql.lparen ++ Sql.intersperse(Sql.comma, bs.map(encode.encode)) ++ Sql.rparen
 }
 
 object Sql {
@@ -138,16 +157,24 @@ object Sql {
     }
   }
 
+  private[jdbc] def prependEach(
+    sep: SqlFragment,
+    elements: Iterable[SqlFragment]
+  ): SqlFragment =
+    elements.foldLeft(empty) { (acc, element) =>
+      acc ++ sep ++ element
+    }
+
   private[jdbc] val identityFn: ZResultSet => ZResultSet = a => a
-  private[jdbc] val values                               = sql""" VALUES """
-  private[jdbc] val lparen                               = sql"""("""
-  private[jdbc] val rparen                               = sql""")"""
-  private[jdbc] val comma                                = sql""","""
-  private[jdbc] val nullLiteral                          = sql"""NULL"""
-  private[jdbc] val where                                = sql"""WHERE"""
-  private[jdbc] val and                                  = sql"""AND"""
-  private[jdbc] val or                                   = sql"""OR"""
-  private[jdbc] val not                                  = sql"""NOT"""
-  private[jdbc] val in                                   = sql"""IN"""
-  private[jdbc] val notIn                                = sql"""NOT IN"""
+  private[jdbc] val values                               = sql" VALUES "
+  private[jdbc] val lparen                               = sql"("
+  private[jdbc] val rparen                               = sql")"
+  private[jdbc] val comma                                = sql","
+  private[jdbc] val nullLiteral                          = sql"NULL"
+  private[jdbc] val where                                = sql" WHERE "
+  private[jdbc] val and                                  = sql" AND "
+  private[jdbc] val or                                   = sql" OR "
+  private[jdbc] val not                                  = sql" NOT "
+  private[jdbc] val in                                   = sql" IN "
+  private[jdbc] val notIn                                = sql" NOT IN "
 }
