@@ -20,6 +20,7 @@ package zio.jdbc
  *
  * @param context The `StringContext` on which the string interpolator is added.
  */
+
 final class SqlInterpolator(val context: StringContext) extends AnyVal {
   def sql(params: Any*): SqlFragment = new Sql(
     chunkBuilder => {
@@ -29,13 +30,14 @@ final class SqlInterpolator(val context: StringContext) extends AnyVal {
       val paramsIterator = params.toIterable.iterator
 
       while (partsIterator.hasNext) {
-        chunkBuilder += Segment.Syntax(partsIterator.next())
-
-        if (paramsIterator.hasNext) {
-          chunkBuilder += Segment.Param(paramsIterator.next())
+        val next = partsIterator.next()
+        if (next.nonEmpty) {
+          chunkBuilder += Segment.Syntax(next)
+          if (paramsIterator.hasNext) {
+            chunkBuilder += Segment.Param(paramsIterator.next())
+          }
         }
       }
-
       while (paramsIterator.hasNext)
         chunkBuilder += Segment.Param(paramsIterator.next())
     },
