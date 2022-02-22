@@ -15,6 +15,11 @@ object SqlSpec extends ZIOSpecDefault {
             sql"select name, age from users where id = ${id}".toString ==
               s"Sql(select name, age from users where id = ?, $id)"
           )
+        } +
+        test("ensure no empty Syntax instances") {
+          val age  = 42
+          val name = "sholmes"
+          assertTrue(sql"select name, age from users where age = $age and name = $name".segments.size == 4)
         }
     }
 }
