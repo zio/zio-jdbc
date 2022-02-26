@@ -75,7 +75,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
                              sql"select name, age from users where name = ${sherlockHolmes.name}".as[User]
                            }
                          }
-              } yield assertTrue(value == Some(sherlockHolmes))
+              } yield assertTrue(value.contains(sherlockHolmes))
             } +
             test("select all") {
               for {
@@ -121,7 +121,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
                            )
                          }
                        }
-            } yield assertTrue(value == Some(Person(sherlockHolmes.name, sherlockHolmes.age)))
+            } yield assertTrue(value.contains(Person(sherlockHolmes.name, sherlockHolmes.age)))
           }
         }
     }.provideCustomLayer(ZConnectionPool.h2test.orDie) @@ sequential

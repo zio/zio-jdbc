@@ -6,7 +6,7 @@ import zio.test._
 final case class Person(name: String, age: Int)
 final case class UserLogin(username: String, password: String)
 final case class ActiveUser(person: Person, login: UserLogin, isActive: Boolean = true)
-final case class Transaction(id: Long, amount: Double, location: Option[String])
+final case class Transfer(id: Long, amount: Double, location: Option[String])
 
 object SqlSpec extends ZIOSpecDefault {
   import Models._
@@ -108,16 +108,14 @@ object SqlSpec extends ZIOSpecDefault {
                   .toString ==
                   s"Sql(select name, age from users where id NOT IN (?,?,?), 1, 2, 3)"
               )
-            }
-        } +
-        suite("values") {
-          test("tuple values") {
-            val person = ("sholmes", 42)
-            assertTrue(
-              sql"insert to persons (name, age)".values(person).toString ==
-                s"Sql(insert to persons (name, age) VALUES (?,?), ${person._1}, ${person._2})"
-            )
-          } +
+            } +
+            test("tuple values") {
+              val person = ("sholmes", 42)
+              assertTrue(
+                sql"insert to persons (name, age)".values(person).toString ==
+                  s"Sql(insert to persons (name, age) VALUES (?,?), ${person._1}, ${person._2})"
+              )
+            } +
             test("case class values") {
 
               val person = Person("sholmes", 42)
@@ -138,15 +136,15 @@ object SqlSpec extends ZIOSpecDefault {
               )
             } +
             test("optional value in case class") {
-              val transaction  = Transaction(1, 10.0, None)
-              val transaction2 = Transaction(2, 20.0, Some("London"))
+              val transfer  = Transfer(1, 10.0, None)
+              val transfer2 = Transfer(2, 20.0, Some("London"))
               assertTrue(
-                sql"insert to transactions (id, amount, location)".values(transaction).toString ==
-                  s"Sql(insert to transactions (id, amount, location) VALUES (?,?,NULL), ${transaction.id}, ${transaction.amount})"
+                sql"insert to transfer (id, amount, location)".values(transfer).toString ==
+                  s"Sql(insert to transfer (id, amount, location) VALUES (?,?,NULL), ${transfer.id}, ${transfer.amount})"
               ) &&
               assertTrue(
-                sql"insert to transactions (id, amount, location)".values(transaction2).toString ==
-                  s"Sql(insert to transactions (id, amount, location) VALUES (?,?,?), ${transaction2.id}, ${transaction2.amount}, ${transaction2.location.get})"
+                sql"insert to transfer (id, amount, location)".values(transfer2).toString ==
+                  s"Sql(insert to transfer (id, amount, location) VALUES (?,?,?), ${transfer2.id}, ${transfer2.amount}, ${transfer2.location.get})"
               )
             }
         }
@@ -185,19 +183,19 @@ object Models {
       _.isActive
     )
 
-  implicit val transaction: Schema[Transaction] =
-    Schema.CaseClass3[Long, Double, Option[String], Transaction](
+  implicit val transaction: Schema[Transfer] =
+    Schema.CaseClass3[Long, Double, Option[String], Transfer](
       Field("id", Schema[Long]),
       Field("amount", Schema[Double]),
       Field("location", Schema[Option[String]]),
-      (id, amount, location) => Transaction(id, amount, location),
+      (id, amount, location) => Transfer(id, amount, location),
       _.id,
       _.amount,
       _.location
     )
 
-  implicit val personEncoder: JdbcEncoder[Person]           = JdbcEncoder.fromSchema[Person]
-  implicit val userLoginEncoder: JdbcEncoder[UserLogin]     = JdbcEncoder.fromSchema[UserLogin]
-  implicit val activeUserEncoder: JdbcEncoder[ActiveUser]   = JdbcEncoder.fromSchema[ActiveUser]
-  implicit val transactionEncoder: JdbcEncoder[Transaction] = JdbcEncoder.fromSchema[Transaction]
+  implicit val personEncoder: JdbcEncoder[Person]         = JdbcEncoder.fromSchema[Person]
+  implicit val userLoginEncoder: JdbcEncoder[UserLogin]   = JdbcEncoder.fromSchema[UserLogin]
+  implicit val activeUserEncoder: JdbcEncoder[ActiveUser] = JdbcEncoder.fromSchema[ActiveUser]
+  implicit val transactionEncoder: JdbcEncoder[Transfer]  = JdbcEncoder.fromSchema[Transfer]
 }
