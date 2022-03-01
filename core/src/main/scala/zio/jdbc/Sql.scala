@@ -87,7 +87,7 @@ final class Sql[+A](
   def values[B](
     b: B,
     bs: B*
-  )(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlFragment = values(b +: bs)
+  )(implicit encoder: JdbcEncoder[B], ev: A <:< ZResultSet): SqlFragment = values(b +: bs)
 
   def withDecode[B](f: ZResultSet => B): Sql[B] =
     Sql(segments, f)

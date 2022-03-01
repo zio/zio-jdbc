@@ -722,7 +722,7 @@ trait JdbcDecoderLowPriorityImplicits {
       case record: Schema.Record[_] =>
         val recordNames = record.structure.map(field => (field.label.toLowerCase, field.label)).toMap
 
-        columnName => recordNames.get(columnName.toLowerCase).getOrElse(columnName)
+        columnName => recordNames.getOrElse(columnName.toLowerCase, columnName)
 
       case _ => identity[String](_)
     }

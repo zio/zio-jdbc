@@ -90,6 +90,9 @@ object App extends ZIOAppDefault {
     // One can derive a jdbc decoder from a zio-schema or
     implicit val jdbcDecoder: JdbcDecoder[User] = JdbcDecoder.fromSchema
     
+    // One can derive a jdbc encoder from a zio-schema 
+    implicit val jdbcEncoder: JdbcEncoder[User] = JdbcEncoder.fromSchema
+    
     // a custom decoder from a tuple
     // implicit val jdbcDecoder = JdbcDecoder[(String, Int)].map[User](t => User(t._1, t._2))
   }
@@ -114,8 +117,8 @@ object App extends ZIOAppDefault {
     ZLayer.succeed(ZConnectionPoolConfig.default)
   
   val properties = Map(
-    "user"     -> "mysql",
-    "password" -> "mysql"
+    "user"     -> "postgres",
+    "password" -> "postgres"
   )
   
   /**
@@ -124,7 +127,7 @@ object App extends ZIOAppDefault {
    *  custom pools, can also be constructed
    */
   val connectionPool: ZLayer[Clock & ZConnectionPoolConfig, Throwable, ZConnectionPool] =
-    ZConnectionPool.mysql("localhost", 3306, "mysql", properties)
+    ZConnectionPool.postgres("localhost", 5432, "postgres", properties)
   
   val program: ZIO[ZConnectionPool, Throwable, Chunk[User]] = for {
     _   <- create *> insertRow
