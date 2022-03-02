@@ -18,8 +18,11 @@ object Basic {
   // Inserting from tuples:
   val ex3: SqlFragment = sql"insert into users (name, age)".values(("John", 42))
 
+  // Inserting from case class
+  val ex4: SqlFragment = sql"insert into users (name, age)".values(User("John", 42))
+
   // dropping table
-  val ex4: SqlFragment = sql"drop table if exists users"
+  val ex5: SqlFragment = sql"drop table if exists users"
 
   // Composing requests:
   val keyColumn                                = "key"
