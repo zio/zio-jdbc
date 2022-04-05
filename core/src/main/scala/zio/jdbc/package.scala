@@ -67,7 +67,7 @@ package object jdbc {
     for {
       connection <- ZIO.service[ZConnection]
       result     <- connection.executeSqlWith(sql)(_.executeQuery())
-      chunk      <- Task {
+      chunk      <- ZIO.attempt {
                       val builder = ChunkBuilder.make[A]()
                       val zrs     = ZResultSet(result)
                       while (result.next())

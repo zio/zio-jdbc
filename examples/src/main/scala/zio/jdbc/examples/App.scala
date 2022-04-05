@@ -39,7 +39,7 @@ object App extends ZIOAppDefault {
    *  Postgres, SQL Server, Oracle, MySQL and h2
    *  custom pools, can also be constructed
    */
-  val connectionPool: ZLayer[Clock & ZConnectionPoolConfig, Throwable, ZConnectionPool] =
+  val connectionPool: ZLayer[ZConnectionPoolConfig, Throwable, ZConnectionPool] =
     ZConnectionPool.postgres("localhost", 5432, "postgres", properties)
 
   val program: ZIO[ZConnectionPool, Throwable, Chunk[User]] = for {
@@ -48,7 +48,7 @@ object App extends ZIOAppDefault {
     _   <- drop
   } yield res
 
-  override def run: ZIO[ZEnv with ZIOAppArgs, Any, Any] =
+  override def run: ZIO[Scope with ZIOAppArgs, Any, Any] =
     for {
       results <- program.provideLayer(zioPoolConfig >>> connectionPool)
       _       <- Console.printLine(results.mkString("\n"))

@@ -782,7 +782,7 @@ trait JdbcDecoderLowPriorityImplicits {
               val date      = resultSet.getDate(columnIndex)
               val formatter = DateTimeFormatter.ISO_DATE
 
-              DynamicValue.Primitive(date.toLocalDate(), StandardType.LocalDate(formatter))
+              DynamicValue.Primitive(date.toLocalDate(), StandardType.LocalDateType(formatter))
 
             case SqlTypes.DECIMAL =>
               val bigDecimal = resultSet.getBigDecimal(columnIndex)
@@ -867,14 +867,14 @@ trait JdbcDecoderLowPriorityImplicits {
 
               val formatter = DateTimeFormatter.ISO_TIME
 
-              DynamicValue.Primitive(time.toLocalTime(), StandardType.LocalTime(formatter))
+              DynamicValue.Primitive(time.toLocalTime(), StandardType.LocalTimeType(formatter))
 
             case SqlTypes.TIMESTAMP =>
               val timestamp = resultSet.getTimestamp(columnIndex)
 
               val formatter = DateTimeFormatter.ISO_INSTANT
 
-              DynamicValue.Primitive(timestamp.toInstant(), StandardType.Instant(formatter))
+              DynamicValue.Primitive(timestamp.toInstant(), StandardType.InstantType(formatter))
 
             case SqlTypes.TIMESTAMP_WITH_TIMEZONE =>
               // TODO: Timezone
@@ -882,7 +882,7 @@ trait JdbcDecoderLowPriorityImplicits {
 
               val formatter = DateTimeFormatter.ISO_INSTANT
 
-              DynamicValue.Primitive(timestamp.toInstant(), StandardType.Instant(formatter))
+              DynamicValue.Primitive(timestamp.toInstant(), StandardType.InstantType(formatter))
 
             case SqlTypes.TIME_WITH_TIMEZONE =>
               // TODO: Timezone
@@ -890,7 +890,7 @@ trait JdbcDecoderLowPriorityImplicits {
 
               val formatter = DateTimeFormatter.ISO_TIME
 
-              DynamicValue.Primitive(time.toLocalTime(), StandardType.LocalTime(formatter))
+              DynamicValue.Primitive(time.toLocalTime(), StandardType.LocalTimeType(formatter))
 
             case SqlTypes.TINYINT =>
               val short = resultSet.getShort(columnIndex)
