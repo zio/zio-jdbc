@@ -34,7 +34,7 @@ object ZConnectionPool {
         acquire = Task.attemptBlocking {
                     java.sql.DriverManager.getConnection(s"jdbc:h2:mem:test_database_$int")
                   }
-        zenv   <- make(acquire).build.provideSomeLayer[Scope](ZLayer.succeed(ZConnectionPoolConfig.default))
+        zenv   <- make(acquire).build.provideSome[Scope](ZLayer.succeed(ZConnectionPoolConfig.default))
       } yield zenv.get[ZConnectionPool]
     }
 
@@ -157,12 +157,10 @@ object ZConnectionPool {
     ZLayer.scoped {
       for {
         config <- ZIO.service[ZConnectionPoolConfig]
-        clock  <- ZIO.clock
         managed = ZIO.acquireRelease(acquire.retry(config.retryPolicy))(conn => ZIO.succeed(conn.close()))
         pool   <-
           ZPool
             .make(managed.map(ZConnection(_)), Range(config.minConnections, config.maxConnections), config.timeToLive)
-            .provideSomeLayer[Scope](ZLayer.empty)
       } yield ZConnectionPool {
         ZLayer.scoped {
           for {

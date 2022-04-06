@@ -49,10 +49,10 @@ lazy val core = project
       "dev.zio"       %% "zio-test-sbt" % ZioVersion % Test,
       "com.h2database" % "h2"           % H2Version  % Test
     ),
-    dependencyOverrides += "dev.zio" %% "zio" % ZioVersion,
     testFrameworks                   := Seq(new TestFramework("zio.test.sbt.ZTestFramework")),
     Test / fork                      := true,
     run / fork                       := true,
+    dependencyOverrides += "dev.zio" %% "zio" % ZioVersion,
     resolvers += Resolver.sonatypeRepo("snapshots")
   )
 
