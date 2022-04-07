@@ -32,7 +32,7 @@ final class Sql[+A](
   val decode: ZResultSet => A
 ) { self =>
 
-  def ++(that: SqlFragment)(implicit ev: A <:< ZResultSet): SqlFragment =
+  def ++(that: SqlFragment)(implicit ev: IsSqlFragment[A]): SqlFragment =
     new Sql(builder => { self.build(builder); that.build(builder) }, that.decode)
 
   def as[B](implicit decode: JdbcDecoder[B]): Sql[B] =
@@ -76,7 +76,7 @@ final class Sql[+A](
 
   def values[B](
     bs: Iterable[B]
-  )(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlFragment =
+  )(implicit encode: JdbcEncoder[B], ev: IsSqlFragment[A]): SqlFragment =
     this ++
       Sql.values ++
       Sql.intersperse(
@@ -87,44 +87,44 @@ final class Sql[+A](
   def values[B](
     b: B,
     bs: B*
-  )(implicit encoder: JdbcEncoder[B], ev: A <:< ZResultSet): SqlFragment = values(b +: bs)
+  )(implicit encoder: JdbcEncoder[B], ev: IsSqlFragment[A]): SqlFragment = values(b +: bs)
 
   def withDecode[B](f: ZResultSet => B): Sql[B] =
     Sql(segments, f)
 
-  def where(predicate: SqlFragment)(implicit ev: A <:< ZResultSet): SqlFragment =
+  def where(predicate: SqlFragment)(implicit ev: IsSqlFragment[A]): SqlFragment =
     self ++ Sql.where ++ predicate
 
-  def or(first: SqlFragment, rest: SqlFragment*)(implicit ev: A <:< ZResultSet): SqlFragment =
+  def or(first: SqlFragment, rest: SqlFragment*)(implicit ev: IsSqlFragment[A]): SqlFragment =
     or(first +: rest)
 
-  def or(elements: Iterable[SqlFragment])(implicit ev: A <:< ZResultSet): SqlFragment =
+  def or(elements: Iterable[SqlFragment])(implicit ev: IsSqlFragment[A]): SqlFragment =
     self ++ Sql.prependEach(Sql.or, elements)
 
-  def and(first: SqlFragment, rest: SqlFragment*)(implicit ev: A <:< ZResultSet): SqlFragment =
+  def and(first: SqlFragment, rest: SqlFragment*)(implicit ev: IsSqlFragment[A]): SqlFragment =
     and(first +: rest)
 
-  def and(elements: Iterable[SqlFragment])(implicit ev: A <:< ZResultSet): SqlFragment =
+  def and(elements: Iterable[SqlFragment])(implicit ev: IsSqlFragment[A]): SqlFragment =
     self ++ Sql.prependEach(Sql.and, elements)
 
-  def not(fragment: SqlFragment)(implicit ev: A <:< ZResultSet): SqlFragment =
+  def not(fragment: SqlFragment)(implicit ev: IsSqlFragment[A]): SqlFragment =
     self ++ Sql.not ++ fragment
 
-  def in[B](b: B, bs: B*)(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlFragment =
+  def in[B](b: B, bs: B*)(implicit encode: JdbcEncoder[B], ev: IsSqlFragment[A]): SqlFragment =
     in(b +: bs)
 
-  def in[B](bs: Iterable[B])(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlFragment =
+  def in[B](bs: Iterable[B])(implicit encode: JdbcEncoder[B], ev: IsSqlFragment[A]): SqlFragment =
     in0(Sql.in, bs)
 
-  def notIn[B](b: B, bs: B*)(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlFragment =
+  def notIn[B](b: B, bs: B*)(implicit encode: JdbcEncoder[B], ev: IsSqlFragment[A]): SqlFragment =
     notIn(b +: bs)
 
-  def notIn[B](bs: Iterable[B])(implicit encode: JdbcEncoder[B], ev: A <:< ZResultSet): SqlFragment =
+  def notIn[B](bs: Iterable[B])(implicit encode: JdbcEncoder[B], ev: IsSqlFragment[A]): SqlFragment =
     in0(Sql.notIn, bs)
 
   private def in0[B](op: SqlFragment, bs: Iterable[B])(implicit
     encode: JdbcEncoder[B],
-    ev: A <:< ZResultSet
+    ev: IsSqlFragment[A]
   ): SqlFragment =
     self ++ op ++ Sql.lparen ++ Sql.intersperse(Sql.comma, bs.map(encode.encode)) ++ Sql.rparen
 }
