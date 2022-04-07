@@ -51,7 +51,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
       suite("pool") {
         test("creation") {
           for {
-            _ <- ZConnectionPool.h2test.build.use(_ => ZIO.unit)
+            _ <- ZIO.scoped(ZConnectionPool.h2test.build)
           } yield assertCompletes
         }
       } +

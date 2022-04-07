@@ -17,8 +17,6 @@ package zio.jdbc
 
 import zio._
 
-import java.time.temporal.ChronoUnit
-
 /**
  * Configuration data for a connection pool.
  */
@@ -50,7 +48,7 @@ object ZConnectionPoolConfig {
     Schema.CaseClass3[Int, Int, Duration, ZConnectionPoolConfig](
       Field("minConnections", Schema[Int]),
       Field("maxConnections", Schema[Int]),
-      Field("timeToLive", Schema.Primitive(StandardType.Duration(ChronoUnit.MINUTES))),
+      Field("timeToLive", Schema.Primitive(StandardType.DurationType)),
       (min, max, ttl) => ZConnectionPoolConfig(min, max, defaultRetryPolicy, ttl),
       _.minConnections,
       _.maxConnections,

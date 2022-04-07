@@ -53,10 +53,10 @@ val res1: ZIO[ZConnectionPool, Throwable, Option[(String, Int)]] =
     "password" -> "mysql"
   )
  
-  val connectionPool: ZLayer[Clock & ZConnectionPoolConfig, Throwable, ZConnectionPool] =
+  val connectionPool: ZLayer[ZConnectionPoolConfig, Throwable, ZConnectionPool] =
     ZConnectionPool.mysql("localhost", 3306, "mysql", properties)
  
-  val live: ZLayer[Clock & ZConnectionPoolConfig, Throwable, ZConnectionPool] = createZIOPoolConfig >>> connectionPool
+  val live: ZLayer[ZConnectionPoolConfig, Throwable, ZConnectionPool] = createZIOPoolConfig >>> connectionPool
 ```
 
 
@@ -126,7 +126,7 @@ object App extends ZIOAppDefault {
    *  Postgres, SQL Server, Oracle, MySQL and h2
    *  custom pools, can also be constructed
    */
-  val connectionPool: ZLayer[Clock & ZConnectionPoolConfig, Throwable, ZConnectionPool] =
+  val connectionPool: ZLayer[ZConnectionPoolConfig, Throwable, ZConnectionPool] =
     ZConnectionPool.postgres("localhost", 5432, "postgres", properties)
   
   val program: ZIO[ZConnectionPool, Throwable, Chunk[User]] = for {
