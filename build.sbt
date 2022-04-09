@@ -1,6 +1,6 @@
 import BuildHelper._
 
-val ZioVersion        = "2.0.0-RC4+28-9c41a0f4-SNAPSHOT"
+val ZioVersion        = "2.0.0-RC5"
 val H2Version         = "2.1.210"
 val ZioConfigVersion  = "3.0.0-RC7"
 val ZioLoggingVersion = "2.0.0-RC7"
@@ -49,11 +49,9 @@ lazy val core = project
       "dev.zio"       %% "zio-test-sbt" % ZioVersion % Test,
       "com.h2database" % "h2"           % H2Version  % Test
     ),
-    testFrameworks                   := Seq(new TestFramework("zio.test.sbt.ZTestFramework")),
-    Test / fork                      := true,
-    run / fork                       := true,
-    dependencyOverrides += "dev.zio" %% "zio" % ZioVersion,
-    resolvers += Resolver.sonatypeRepo("snapshots")
+    testFrameworks := Seq(new TestFramework("zio.test.sbt.ZTestFramework")),
+    Test / fork    := true,
+    run / fork     := true
   )
 
 lazy val docs = project
