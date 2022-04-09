@@ -49,9 +49,9 @@ lazy val core = project
       "dev.zio"       %% "zio-test-sbt" % ZioVersion % Test,
       "com.h2database" % "h2"           % H2Version  % Test
     ),
-    testFrameworks                   := Seq(new TestFramework("zio.test.sbt.ZTestFramework")),
-    Test / fork                      := true,
-    run / fork                       := true
+    testFrameworks := Seq(new TestFramework("zio.test.sbt.ZTestFramework")),
+    Test / fork    := true,
+    run / fork     := true
   )
 
 lazy val docs = project
