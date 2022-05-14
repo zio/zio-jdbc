@@ -2,6 +2,10 @@ package zio.jdbc
 
 import zio.schema.Schema
 import zio.test._
+import zio.test.Assertion._
+import zio.jdbc.{ transaction => transact }
+
+import java.sql.SQLException
 
 final case class Person(name: String, age: Int)
 final case class UserLogin(username: String, password: String)
@@ -147,6 +151,28 @@ object SqlSpec extends ZIOSpecDefault {
                   s"Sql(insert to transfer (id, amount, location) VALUES (?,?,?), ${transfer2.id}, ${transfer2.amount}, ${transfer2.location.get})"
               )
             }
+        } +
+        test("log SQL errors") {
+          val sqlString                 =
+            """
+              create table users (
+                id identity primary key,
+                name varchar not null,
+                age int not null
+              """ // missing closing parenthesis
+          val defectiveSql: SqlFragment = stringToSql(sqlString)
+
+          (for {
+            res   <- transact(execute(defectiveSql)).exit
+            error <- ZTestLogger.logOutput.map(logs =>
+                       logs
+                         .filter(log => log.logLevel == zio.LogLevel.Error)
+                     )
+          } yield assert(res)(
+            fails(isSubtype[SQLException](anything))
+          ) && assert(error.head.annotations.keys)(contains("SQL"))
+            && assert(error.head.message())(containsString(sqlString)))
+            .provideLayer(ZConnectionPool.h2test.orDie)
         }
     }
 }
