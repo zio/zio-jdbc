@@ -156,11 +156,18 @@ object ZConnectionPool {
   def make(acquire: Task[Connection]): ZLayer[ZConnectionPoolConfig, Throwable, ZConnectionPool] =
     ZLayer.scoped {
       for {
-        config <- ZIO.service[ZConnectionPoolConfig]
-        managed = ZIO.acquireRelease(acquire.retry(config.retryPolicy))(conn => ZIO.succeed(conn.close()))
-        pool   <-
+        config            <- ZIO.service[ZConnectionPoolConfig]
+        connectionsCounter = zio.metrics.Metric.counterInt("open_connections")
+        managed            = ZIO.acquireRelease(acquire.retry(config.retryPolicy))(conn =>
+                               connectionsCounter.incrementBy(-1).as(conn.close())
+                             )
+        pool              <-
           ZPool
-            .make(managed.map(ZConnection(_)), Range(config.minConnections, config.maxConnections), config.timeToLive)
+            .make(
+              managed.map(ZConnection(_)).zipLeft(connectionsCounter.increment),
+              Range(config.minConnections, config.maxConnections),
+              config.timeToLive
+            )
       } yield ZConnectionPool {
         ZLayer.scoped {
           for {

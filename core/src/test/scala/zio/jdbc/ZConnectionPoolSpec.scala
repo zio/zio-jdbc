@@ -51,8 +51,12 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
       suite("pool") {
         test("creation") {
           for {
-            _ <- ZIO.scoped(ZConnectionPool.h2test.build)
+            a <- ZIO.scoped(ZConnectionPool.h2test.build)
           } yield assertCompletes
+        } + test("increment on connection acquisition") {
+          for {
+            _ <- zio.metrics.Metric.
+          } yield ???
         }
       } +
         suite("sql") {
