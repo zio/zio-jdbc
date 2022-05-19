@@ -28,8 +28,8 @@ import java.sql.{ Blob, Connection, PreparedStatement }
 final class ZConnection(private[jdbc] val connection: Connection) extends AnyVal {
   def access[A](f: Connection => A): ZIO[Any, Throwable, A] = ZIO.attemptBlocking(f(connection))
 
-  private[jdbc] def executeSqlWith[A](sql: Sql[_])(f: PreparedStatement => A): ZIO[Any, Throwable, A] = access {
-    connection =>
+  private[jdbc] def executeSqlWith[A](sql: Sql[_])(f: PreparedStatement => A): ZIO[Any, Throwable, A] =
+    access { connection =>
       import Sql.Segment._
 
       val segments = sql.segments
@@ -84,7 +84,9 @@ final class ZConnection(private[jdbc] val connection: Connection) extends AnyVal
       }
 
       f(statement)
-  }
+    }.tapErrorCause { cause =>
+      ZIO.logAnnotate("SQL", sql.toString)(ZIO.logError(s"Error executing SQL due to: ${cause.prettyPrint}"))
+    }
 }
 object ZConnection {
   def apply(connection: Connection): ZConnection = new ZConnection(connection)
