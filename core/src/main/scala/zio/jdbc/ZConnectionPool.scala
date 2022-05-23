@@ -164,11 +164,7 @@ object ZConnectionPool {
                   )
         pool   <-
           ZPool
-            .make(
-              managed.map(ZConnection(_)),
-              Range(config.minConnections, config.maxConnections),
-              config.timeToLive
-            )
+            .make(managed.map(ZConnection(_)), Range(config.minConnections, config.maxConnections), config.timeToLive)
       } yield ZConnectionPool {
         ZLayer.scoped {
           for {
