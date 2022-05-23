@@ -26,6 +26,8 @@ import java.sql.Connection
  */
 final case class ZConnectionPool(transaction: ZLayer[Any, Throwable, ZConnection])
 object ZConnectionPool {
+  private[jdbc] val connectionsCounter = zio.metrics.Metric.counterInt("open_connections")
+
   def h2test: ZLayer[Any, Throwable, ZConnectionPool] =
     ZLayer.scoped {
       for {
@@ -152,8 +154,6 @@ object ZConnectionPool {
         zenv   <- make(acquire).build
       } yield zenv.get[ZConnectionPool]
     }
-
-  private[jdbc] val connectionsCounter = zio.metrics.Metric.counterInt("open_connections")
 
   def make(acquire: Task[Connection]): ZLayer[ZConnectionPoolConfig, Throwable, ZConnectionPool] =
     ZLayer.scoped {
