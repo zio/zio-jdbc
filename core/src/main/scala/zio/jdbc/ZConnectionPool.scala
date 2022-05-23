@@ -153,18 +153,19 @@ object ZConnectionPool {
       } yield zenv.get[ZConnectionPool]
     }
 
+  private[jdbc] val connectionsCounter = zio.metrics.Metric.counterInt("open_connections")
+
   def make(acquire: Task[Connection]): ZLayer[ZConnectionPoolConfig, Throwable, ZConnectionPool] =
     ZLayer.scoped {
       for {
-        config            <- ZIO.service[ZConnectionPoolConfig]
-        connectionsCounter = zio.metrics.Metric.counterInt("open_connections")
-        managed            = ZIO.acquireRelease(acquire.retry(config.retryPolicy))(conn =>
-                               connectionsCounter.incrementBy(-1).as(conn.close())
-                             )
-        pool              <-
+        config <- ZIO.service[ZConnectionPoolConfig]
+        managed = ZIO.acquireRelease(acquire.retry(config.retryPolicy).zipLeft(connectionsCounter.increment))(conn =>
+                    connectionsCounter.incrementBy(-1).as(conn.close())
+                  )
+        pool   <-
           ZPool
             .make(
-              managed.map(ZConnection(_)).zipLeft(connectionsCounter.increment),
+              managed.map(ZConnection(_)),
               Range(config.minConnections, config.maxConnections),
               config.timeToLive
             )
