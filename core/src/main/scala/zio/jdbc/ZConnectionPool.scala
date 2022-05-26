@@ -19,7 +19,6 @@ import zio._
 
 import java.io.File
 import java.sql.Connection
-import scala.util.{Failure, Success, Try}
 
 /**
  * A `ZConnectionPool` represents a pool of connections, and has the ability to
