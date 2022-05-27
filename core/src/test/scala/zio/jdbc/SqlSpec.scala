@@ -116,16 +116,16 @@ object SqlSpec extends ZIOSpecDefault {
             test("tuple values") {
               val person = ("sholmes", 42)
               assertTrue(
-                sql"insert to persons (name, age)".values(person).toString ==
-                  s"Sql(insert to persons (name, age) VALUES (?,?), ${person._1}, ${person._2})"
+                sql"insert into persons (name, age)".values(person).toString ==
+                  s"Sql(insert into persons (name, age) VALUES (?,?), ${person._1}, ${person._2})"
               )
             } +
             test("case class values") {
 
               val person = Person("sholmes", 42)
               assertTrue(
-                sql"insert to persons (name, age)".values(person).toString ==
-                  s"Sql(insert to persons (name, age) VALUES (?,?), ${person.name}, ${person.age})"
+                sql"insert into persons (name, age)".values(person).toString ==
+                  s"Sql(insert into persons (name, age) VALUES (?,?), ${person.name}, ${person.age})"
               )
             } +
             test("nested case class values") {
@@ -133,8 +133,8 @@ object SqlSpec extends ZIOSpecDefault {
               val login      = UserLogin("sholmes", "221BakerSt")
               val activeUser = ActiveUser(person, login)
               assertTrue(
-                sql"insert to active_users (name, age, username, password, isActive)".values(activeUser).toString ==
-                  s"Sql(insert to active_users (name, age, username, password, isActive)" +
+                sql"insert into active_users (name, age, username, password, isActive)".values(activeUser).toString ==
+                  s"Sql(insert into active_users (name, age, username, password, isActive)" +
                   s" VALUES (?,?,?,?,?), ${activeUser.person.name}, ${activeUser.person.age}, " +
                   s"${login.username}, ${login.password}, ${activeUser.isActive})"
               )
@@ -143,12 +143,12 @@ object SqlSpec extends ZIOSpecDefault {
               val transfer  = Transfer(1, 10.0, None)
               val transfer2 = Transfer(2, 20.0, Some("London"))
               assertTrue(
-                sql"insert to transfer (id, amount, location)".values(transfer).toString ==
-                  s"Sql(insert to transfer (id, amount, location) VALUES (?,?,NULL), ${transfer.id}, ${transfer.amount})"
+                sql"insert into transfer (id, amount, location)".values(transfer).toString ==
+                  s"Sql(insert into transfer (id, amount, location) VALUES (?,?,NULL), ${transfer.id}, ${transfer.amount})"
               ) &&
               assertTrue(
-                sql"insert to transfer (id, amount, location)".values(transfer2).toString ==
-                  s"Sql(insert to transfer (id, amount, location) VALUES (?,?,?), ${transfer2.id}, ${transfer2.amount}, ${transfer2.location.get})"
+                sql"insert into transfer (id, amount, location)".values(transfer2).toString ==
+                  s"Sql(insert into transfer (id, amount, location) VALUES (?,?,?), ${transfer2.id}, ${transfer2.amount}, ${transfer2.location.get})"
               )
             }
         } +
@@ -173,7 +173,33 @@ object SqlSpec extends ZIOSpecDefault {
           ) && assert(error.head.annotations.keys)(contains("SQL"))
             && assert(error.head.message())(containsString(sqlString)))
             .provideLayer(ZConnectionPool.h2test.orDie)
+        } +
+        test("Sql.select") {
+          val result   = Sql.select("name", "age").from("persons")
+          val expected = sql"SELECT name, age FROM persons"
+          assertTrue(result.toString == expected.toString)
+        } +
+        test("Sql.insertInto") {
+          val person = ("sholmes", 42)
+          val result = Sql.insertInto("persons")("name", "age").values(person)
+          assertTrue(
+            result.toString ==
+              s"Sql(INSERT INTO persons (name, age) VALUES (?,?), ${person._1}, ${person._2})"
+          )
+        } +
+        test("Sql.deleteFrom") {
+          val result = Sql.deleteFrom("persons").where(sql"age < ${21}")
+          assertTrue(
+            result.toString == s"Sql(DELETE FROM persons WHERE age < ?, 21)"
+          )
+        } +
+        test("Sql.update") {
+          val result = Sql.update("persons")
+          assertTrue(
+            result.toString == "Sql(UPDATE persons)"
+          )
         }
+
     }
 }
 
