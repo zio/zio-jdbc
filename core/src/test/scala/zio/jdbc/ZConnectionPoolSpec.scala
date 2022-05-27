@@ -56,10 +56,10 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
           } yield assertCompletes
         } + test("increment on connection acquisition") {
           for {
-            initalState <- ZConnectionPool.connectionsCounter.value
+            initalState <- ZConnectionPool.connectionsGauge.value
             _           <- transaction(execute(sql""))
-            state       <- ZConnectionPool.connectionsCounter.value
-          } yield assert(state.count - initalState.count)(isGreaterThan(0.0))
+            state       <- ZConnectionPool.connectionsGauge.value
+          } yield assert(state.value - initalState.value)(isGreaterThan(0.0))
         }
       } +
         suite("sql") {
