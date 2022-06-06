@@ -95,7 +95,7 @@ package object jdbc {
         connection <- ZIO.service[ZConnection]
         result     <- connection.executeSqlWith(sql)(_.executeQuery())
         zrs         = ZResultSet(result)
-        stream      = ZStream.fromZIOOption(Task.suspend {
+        stream      = ZStream.fromZIOOption(ZIO.suspend {
                         if (result.next()) ZIO.attempt(Some(sql.decode(zrs))) else ZIO.none
                       }.some)
       } yield stream

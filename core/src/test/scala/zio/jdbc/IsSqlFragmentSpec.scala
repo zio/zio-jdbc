@@ -1,10 +1,10 @@
 package zio.jdbc
 
-import zio.test._
 import zio.test.Assertion._
+import zio.test._
 
 object IsSqlFragmentSpec extends ZIOSpecDefault {
-  def spec: ZSpec[Environment with TestEnvironment, Any] =
+  def spec: Spec[Environment with TestEnvironment, Any] =
     suite("IsSqlFragment") {
       test("Mapped fragments that are 'complete' compile") {
         val result = typeCheck {
@@ -19,7 +19,7 @@ object IsSqlFragmentSpec extends ZIOSpecDefault {
           """
         }
 
-        assertM(result)(isRight(isUnit))
+        assertZIO(result)(isRight(isUnit))
       } +
         test("Mapped fragments that are combined with other fragments fail to compile") {
           val result = typeCheck {
@@ -34,7 +34,7 @@ object IsSqlFragmentSpec extends ZIOSpecDefault {
           """
           }
 
-          assertM(result)(isLeft(startsWithString("This method can only be invoked on a fragment of SQL")))
+          assertZIO(result)(isLeft(startsWithString("This method can only be invoked on a fragment of SQL")))
         }
     }
 }
