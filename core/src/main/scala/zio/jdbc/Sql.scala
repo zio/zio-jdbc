@@ -35,6 +35,12 @@ final class Sql[+A](
   def ++(that: SqlFragment)(implicit ev: IsSqlFragment[A]): SqlFragment =
     new Sql(builder => { self.build(builder); that.build(builder) }, that.decode)
 
+  def and(first: SqlFragment, rest: SqlFragment*)(implicit ev: IsSqlFragment[A]): SqlFragment =
+    and(first +: rest)
+
+  def and(elements: Iterable[SqlFragment])(implicit ev: IsSqlFragment[A]): SqlFragment =
+    self ++ Sql.prependEach(Sql.and, elements)
+
   def as[B](implicit decode: JdbcDecoder[B]): Sql[B] =
     new Sql(build, (rs: ZResultSet) => decode.unsafeDecode(rs.resultSet))
 
@@ -45,10 +51,34 @@ final class Sql[+A](
       case _ => false
     }
 
+  def from(table: SqlFragment)(implicit ev: IsSqlFragment[A]): SqlFragment =
+    self ++ Sql.from ++ table
+
   override def hashCode: Int = (segments, decode).hashCode
+
+  def in[B](b: B, bs: B*)(implicit encode: JdbcEncoder[B], ev: IsSqlFragment[A]): SqlFragment =
+    in(b +: bs)
+
+  def in[B](bs: Iterable[B])(implicit encode: JdbcEncoder[B], ev: IsSqlFragment[A]): SqlFragment =
+    in0(Sql.in, bs)
 
   def map[B](f: A => B): Sql[B] =
     new Sql(build, rs => f(decode(rs)))
+
+  def not(fragment: SqlFragment)(implicit ev: IsSqlFragment[A]): SqlFragment =
+    self ++ Sql.not ++ fragment
+
+  def notIn[B](b: B, bs: B*)(implicit encode: JdbcEncoder[B], ev: IsSqlFragment[A]): SqlFragment =
+    notIn(b +: bs)
+
+  def notIn[B](bs: Iterable[B])(implicit encode: JdbcEncoder[B], ev: IsSqlFragment[A]): SqlFragment =
+    in0(Sql.notIn, bs)
+
+  def or(first: SqlFragment, rest: SqlFragment*)(implicit ev: IsSqlFragment[A]): SqlFragment =
+    or(first +: rest)
+
+  def or(elements: Iterable[SqlFragment])(implicit ev: IsSqlFragment[A]): SqlFragment =
+    self ++ Sql.prependEach(Sql.or, elements)
 
   def segments: Chunk[Sql.Segment] = {
     val builder = ChunkBuilder.make[Sql.Segment]()
@@ -74,9 +104,7 @@ final class Sql[+A](
     s"Sql(${sql.result()}$paramsString)"
   }
 
-  def values[B](
-    bs: Iterable[B]
-  )(implicit encode: JdbcEncoder[B], ev: IsSqlFragment[A]): SqlFragment =
+  def values[B](bs: Iterable[B])(implicit encode: JdbcEncoder[B], ev: IsSqlFragment[A]): SqlFragment =
     this ++
       Sql.values ++
       Sql.intersperse(
@@ -84,43 +112,13 @@ final class Sql[+A](
         bs.map(b => Sql.lparen ++ encode.encode(b) ++ Sql.rparen)
       )
 
-  def values[B](
-    b: B,
-    bs: B*
-  )(implicit encoder: JdbcEncoder[B], ev: IsSqlFragment[A]): SqlFragment = values(b +: bs)
-
-  def withDecode[B](f: ZResultSet => B): Sql[B] =
-    Sql(segments, f)
+  def values[B](b: B, bs: B*)(implicit encoder: JdbcEncoder[B], ev: IsSqlFragment[A]): SqlFragment = values(b +: bs)
 
   def where(predicate: SqlFragment)(implicit ev: IsSqlFragment[A]): SqlFragment =
     self ++ Sql.where ++ predicate
 
-  def or(first: SqlFragment, rest: SqlFragment*)(implicit ev: IsSqlFragment[A]): SqlFragment =
-    or(first +: rest)
-
-  def or(elements: Iterable[SqlFragment])(implicit ev: IsSqlFragment[A]): SqlFragment =
-    self ++ Sql.prependEach(Sql.or, elements)
-
-  def and(first: SqlFragment, rest: SqlFragment*)(implicit ev: IsSqlFragment[A]): SqlFragment =
-    and(first +: rest)
-
-  def and(elements: Iterable[SqlFragment])(implicit ev: IsSqlFragment[A]): SqlFragment =
-    self ++ Sql.prependEach(Sql.and, elements)
-
-  def not(fragment: SqlFragment)(implicit ev: IsSqlFragment[A]): SqlFragment =
-    self ++ Sql.not ++ fragment
-
-  def in[B](b: B, bs: B*)(implicit encode: JdbcEncoder[B], ev: IsSqlFragment[A]): SqlFragment =
-    in(b +: bs)
-
-  def in[B](bs: Iterable[B])(implicit encode: JdbcEncoder[B], ev: IsSqlFragment[A]): SqlFragment =
-    in0(Sql.in, bs)
-
-  def notIn[B](b: B, bs: B*)(implicit encode: JdbcEncoder[B], ev: IsSqlFragment[A]): SqlFragment =
-    notIn(b +: bs)
-
-  def notIn[B](bs: Iterable[B])(implicit encode: JdbcEncoder[B], ev: IsSqlFragment[A]): SqlFragment =
-    in0(Sql.notIn, bs)
+  def withDecode[B](f: ZResultSet => B): Sql[B] =
+    Sql(segments, f)
 
   private def in0[B](op: SqlFragment, bs: Iterable[B])(implicit
     encode: JdbcEncoder[B],
@@ -132,14 +130,26 @@ final class Sql[+A](
 object Sql {
   val empty: SqlFragment = Sql(Chunk.empty, identity(_))
 
-  def apply[A](segments: Chunk[Sql.Segment], decode: ZResultSet => A): Sql[A] =
-    new Sql(builder => builder ++= segments, decode)
-
   sealed trait Segment
   object Segment {
     final case class Syntax(value: String) extends Segment
     final case class Param(value: Any)     extends Segment
   }
+
+  def apply[A](segments: Chunk[Sql.Segment], decode: ZResultSet => A): Sql[A] =
+    new Sql(builder => builder ++= segments, decode)
+
+  def deleteFrom(table: String): SqlFragment =
+    s"DELETE FROM $table"
+
+  def insertInto(table: String)(keys: String*): SqlFragment =
+    s"INSERT INTO $table (${keys.mkString(", ")})"
+
+  def select(columns: String*): SqlFragment =
+    s"SELECT ${columns.mkString(", ")}"
+
+  def update(table: String): SqlFragment =
+    s"UPDATE $table"
 
   private[jdbc] def intersperse(
     sep: SqlFragment,
@@ -165,16 +175,17 @@ object Sql {
       acc ++ sep ++ element
     }
 
-  private[jdbc] val identityFn: ZResultSet => ZResultSet = a => a
-  private[jdbc] val values                               = sql" VALUES "
-  private[jdbc] val lparen                               = sql"("
-  private[jdbc] val rparen                               = sql")"
-  private[jdbc] val comma                                = sql","
-  private[jdbc] val nullLiteral                          = sql"NULL"
-  private[jdbc] val where                                = sql" WHERE "
   private[jdbc] val and                                  = sql" AND "
-  private[jdbc] val or                                   = sql" OR "
-  private[jdbc] val not                                  = sql" NOT "
+  private[jdbc] val comma                                = sql","
+  private[jdbc] val from                                 = sql" FROM "
+  private[jdbc] val identityFn: ZResultSet => ZResultSet = a => a
   private[jdbc] val in                                   = sql" IN "
+  private[jdbc] val lparen                               = sql"("
+  private[jdbc] val not                                  = sql" NOT "
   private[jdbc] val notIn                                = sql" NOT IN "
+  private[jdbc] val nullLiteral                          = sql"NULL"
+  private[jdbc] val or                                   = sql" OR "
+  private[jdbc] val rparen                               = sql")"
+  private[jdbc] val values                               = sql" VALUES "
+  private[jdbc] val where                                = sql" WHERE "
 }

@@ -28,8 +28,8 @@ import java.sql.{ Blob, Connection, PreparedStatement }
 final class ZConnection(private[jdbc] val connection: Connection) extends AnyVal {
   def access[A](f: Connection => A): ZIO[Any, Throwable, A] = ZIO.attemptBlocking(f(connection))
 
-  private[jdbc] def executeSqlWith[A](sql: Sql[_])(f: PreparedStatement => A): ZIO[Any, Throwable, A] = access {
-    connection =>
+  private[jdbc] def executeSqlWith[A](sql: Sql[_])(f: PreparedStatement => A): ZIO[Any, Throwable, A] =
+    access { connection =>
       import Sql.Segment._
 
       val segments = sql.segments
@@ -84,8 +84,40 @@ final class ZConnection(private[jdbc] val connection: Connection) extends AnyVal
       }
 
       f(statement)
-  }
+    }.tapErrorCause { cause =>
+      ZIO.logAnnotate("SQL", sql.toString)(ZIO.logError(s"Error executing SQL due to: ${cause.prettyPrint}"))
+    }
+
+  /**
+   * Return whether the connection is still alive or not,
+   * trying to prepare a statement and managing the exception SQLException
+   * if the connection can not do it.
+   *
+   * see: https://www.baeldung.com/jdbc-connection-status
+   *
+   * @param zc the connection to look into
+   * @return true if the connection is alive (valid), false otherwise
+   */
+  def isValid(): Task[Boolean] =
+    for {
+      closed    <- ZIO.attempt(this.connection.isClosed)
+      statement <- ZIO.attempt(this.connection.prepareStatement("SELECT 1"))
+      isAlive   <- ZIO.succeed(!closed && statement != null)
+    } yield isAlive
+
+  /**
+   * Returns whether the connection is still alive or not, providing a timeout,
+   * using the isValid(timeout) method on the java.sql.Connection interface
+   *
+   * see: https://www.baeldung.com/jdbc-connection-status
+   *
+   * @param zc the connection to look into
+   * @return true if the connection is alive (valid), false otherwise
+   */
+  def isValid(timeout: Int): Task[Boolean] =
+    ZIO.attempt(this.connection.isValid(timeout))
 }
+
 object ZConnection {
   def apply(connection: Connection): ZConnection = new ZConnection(connection)
 }
