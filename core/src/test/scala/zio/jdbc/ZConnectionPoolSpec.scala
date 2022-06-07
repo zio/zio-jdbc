@@ -3,7 +3,7 @@ package zio.jdbc
 import zio._
 import zio.schema._
 import zio.test.TestAspect._
-import zio.test.Assertion.isGreaterThan
+import zio.test.Assertion.isGreaterThanEqualTo
 import zio.test._
 
 object ZConnectionPoolSpec extends ZIOSpecDefault {
@@ -58,7 +58,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
           for {
             initalState <- ZConnectionPool.connectionsGauge.value
             state       <- createUsers.zip(ZConnectionPool.connectionsGauge.value)
-          } yield assert(state.value - initalState.value)(isGreaterThan(0.0))
+          } yield assert(state.value - initalState.value)(isGreaterThanEqualTo(0.0))
         }
       } +
         suite("sql") {
