@@ -41,10 +41,6 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
       }
     }
 
-  val select1: ZIO[ZConnectionPool with Any, Throwable, Option[Int]] = transaction {
-    selectOne(sql"SELECT 1".as[Int])
-  }
-
   final case class User(name: String, age: Int)
   object User {
     implicit val jdbcDecoder: JdbcDecoder[User] =
@@ -60,9 +56,10 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
           } yield assertCompletes
         } + test("increment on connection acquisition") {
           for {
-            initalState <- ZConnectionPool.connectionsGauge.value
-            state       <- select1.zipRight(ZConnectionPool.connectionsGauge.value)
-          } yield assert(state.value - initalState.value)(isGreaterThanEqualTo(0.0))
+            state <- transaction {
+                       selectOne(sql"SELECT 1".as[Int]) *> ZConnectionPool.connectionsGauge.value
+                     }
+          } yield assertTrue(state.value > 0.0)
         }
       } +
         suite("sql") {
