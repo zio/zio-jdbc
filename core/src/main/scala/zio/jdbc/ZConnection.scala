@@ -99,11 +99,12 @@ final class ZConnection(private[jdbc] val connection: Connection) extends AnyVal
    * @return true if the connection is alive (valid), false otherwise
    */
   def isValid(): Task[Boolean] =
-    for {
-      closed    <- ZIO.attempt(this.connection.isClosed)
-      statement <- ZIO.attempt(this.connection.prepareStatement("SELECT 1"))
-      isAlive   <- ZIO.succeed(!closed && statement != null)
-    } yield isAlive
+    ZIO.attempt(this.connection.isClosed).flatMap { b =>
+      if (b)
+        ZIO.succeed(false)
+      else
+        ZIO.attempt(this.connection.prepareStatement("SELECT 1") != null)
+    }
 
   /**
    * Returns whether the connection is still alive or not, providing a timeout,
