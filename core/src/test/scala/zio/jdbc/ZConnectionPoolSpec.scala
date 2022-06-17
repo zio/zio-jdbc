@@ -54,7 +54,17 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
             _ <- ZIO.scoped(ZConnectionPool.h2test.build)
           } yield assertCompletes
         }
-      } +
+        // TODO can we check that the connection is invalidated within underlying ZPool?
+        test("invalidate a connection") {
+          for {
+            zcp     <- ZIO.service[ZConnectionPool]
+            env     <- ZIO.scoped(zcp.transaction.build)
+            con      = env.get[ZConnection]
+            _       <- zcp.invalidate(con)
+            isValid <- con.isValid()
+          } yield assertTrue(!isValid)
+        }
+      }.provideCustomLayer(ZConnectionPool.h2test.orDie) +
         suite("sql") {
           test("create table") {
             for {
