@@ -24,7 +24,18 @@ import java.sql.Connection
  * A `ZConnectionPool` represents a pool of connections, and has the ability to
  * supply a transaction that can be used for executing SQL statements.
  */
-final case class ZConnectionPool(transaction: ZLayer[Any, Throwable, ZConnection])
+final class ZConnectionPool private (
+  private val txn: ZLayer[Any, Throwable, ZConnection],
+  private val underlying: ZPool[Throwable, ZConnection]
+) {
+  val transaction: ZLayer[Any, Throwable, ZConnection] = txn
+  def invalidate(zc: ZConnection): Task[Unit]          =
+    zc.access { conn =>
+      if (conn.isClosed()) ()
+      else conn.close
+    }
+      .ensuring(underlying.invalidate(zc))
+}
 object ZConnectionPool {
   def h2test: ZLayer[Any, Throwable, ZConnectionPool] =
     ZLayer.scoped {
@@ -161,7 +172,7 @@ object ZConnectionPool {
         pool   <-
           ZPool
             .make(managed.map(ZConnection(_)), Range(config.minConnections, config.maxConnections), config.timeToLive)
-      } yield ZConnectionPool {
+      } yield new ZConnectionPool(
         ZLayer.scoped {
           for {
             connection <- pool.get
@@ -170,7 +181,8 @@ object ZConnectionPool {
                             case Exit.Failure(_) => ZIO.succeed(connection.connection.rollback())
                           }
           } yield connection
-        }
-      }
+        },
+        pool
+      )
     }
 }
