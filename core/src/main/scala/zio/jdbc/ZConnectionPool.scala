@@ -26,6 +26,7 @@ import java.sql.Connection
  */
 trait ZConnectionPool {
   val transaction: ZLayer[Any, Throwable, ZConnection]
+  def invalidate(zc: ZConnection): Task[Unit]
 }
 
 object ZConnectionPool {
@@ -40,6 +41,12 @@ object ZConnectionPool {
                         }
         } yield connection
       }
+    def invalidate(zc: ZConnection): Task[Unit]          =
+      zc.access { conn =>
+        if (conn.isClosed()) ()
+        else conn.close
+      }
+        .ensuring(underlying.invalidate(zc))
   }
 
   def h2test: ZLayer[Any, Throwable, ZConnectionPool] =
