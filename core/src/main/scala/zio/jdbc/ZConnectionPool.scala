@@ -35,9 +35,16 @@ object ZConnectionPool {
       ZLayer.scoped {
         for {
           connection <- underlying.get
-          _          <- ZIO.addFinalizerExit {
-                          case Exit.Success(_) => UIO.unit
-                          case Exit.Failure(_) => ZIO.succeed(connection.connection.rollback())
+          _          <- ZIO.addFinalizerExit { exit =>
+                          connection.isValid().orDie.flatMap {
+                            case true  =>
+                              exit match {
+                                case Exit.Success(_) => UIO.unit
+                                case Exit.Failure(_) => ZIO.succeed(connection.connection.rollback())
+                              }
+                            case false =>
+                              invalidate(connection).orDie
+                          }
                         }
         } yield connection
       }
