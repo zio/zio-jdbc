@@ -1,5 +1,6 @@
 package zio.jdbc
 
+import zio.Console.printLine
 import zio._
 import zio.schema._
 import zio.test.TestAspect._
@@ -57,7 +58,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
         } + test("increment on connection acquisition") {
           for {
             state <- transaction {
-                       selectOne(sql"SELECT 1".as[Int]) *> ZConnectionPool.connectionsGauge.value
+                       ZConnectionPool.connectionsGauge.value <* selectOne(sql"SELECT 1".as[Int])
                      }
           } yield assertTrue(state.value > 0.0)
         }
