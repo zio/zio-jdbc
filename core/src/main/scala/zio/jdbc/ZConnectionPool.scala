@@ -159,9 +159,10 @@ object ZConnectionPool {
     ZLayer.scoped {
       for {
         config <- ZIO.service[ZConnectionPoolConfig]
-        managed = ZIO.acquireRelease(acquire.retry(config.retryPolicy).zipLeft(connectionsGauge.update(1)))(conn =>
-                    connectionsGauge.update(-1).as(conn.close())
-                  )
+        managed = ZIO.acquireRelease(acquire.retry(config.retryPolicy).zipLeft(connectionsGauge.update(1))) { conn =>
+                    conn.close()
+                    connectionsGauge.update(-1)
+                  }
         pool   <-
           ZPool
             .make(managed.map(ZConnection(_)), Range(config.minConnections, config.maxConnections), config.timeToLive)
