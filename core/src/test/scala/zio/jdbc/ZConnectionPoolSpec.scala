@@ -1,10 +1,8 @@
 package zio.jdbc
 
-import zio.Console.printLine
 import zio._
 import zio.schema._
 import zio.test.TestAspect._
-import zio.test.Assertion.isGreaterThanEqualTo
 import zio.test._
 
 object ZConnectionPoolSpec extends ZIOSpecDefault {
