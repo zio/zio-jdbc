@@ -46,7 +46,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
       JdbcDecoder[(String, Int)]().map[User](t => User(t._1, t._2))
   }
 
-  def spec: ZSpec[TestEnvironment, Any] =
+  def spec: Spec[TestEnvironment, Any] =
     suite("ZConnectionPoolSpec") {
       suite("pool") {
         test("creation") {

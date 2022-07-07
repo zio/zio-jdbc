@@ -1,9 +1,9 @@
 package zio.jdbc
 
-import zio.schema.Schema
-import zio.test._
-import zio.test.Assertion._
 import zio.jdbc.{ transaction => transact }
+import zio.schema.Schema
+import zio.test.Assertion._
+import zio.test._
 
 import java.sql.SQLException
 
@@ -15,7 +15,7 @@ final case class Transfer(id: Long, amount: Double, location: Option[String])
 object SqlSpec extends ZIOSpecDefault {
   import Models._
 
-  def spec: ZSpec[Environment with TestEnvironment, Any] =
+  def spec: Spec[Environment with TestEnvironment, Any] =
     suite("SqlSpec") {
       test("constant") {
         assertTrue(sql"null".toString() == "Sql(null)")
