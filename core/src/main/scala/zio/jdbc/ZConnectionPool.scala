@@ -31,7 +31,7 @@ object ZConnectionPool {
       for {
         _      <- ZIO.attempt(Class.forName("org.h2.Driver"))
         int    <- Random.nextInt
-        acquire = Task.attemptBlocking {
+        acquire = ZIO.attemptBlocking {
                     java.sql.DriverManager.getConnection(s"jdbc:h2:mem:test_database_$int")
                   }
         zenv   <- make(acquire).build.provideSome[Scope](ZLayer.succeed(ZConnectionPoolConfig.default))
@@ -45,7 +45,7 @@ object ZConnectionPool {
     ZLayer.scoped {
       for {
         _      <- ZIO.attempt(Class.forName("org.h2.Driver"))
-        acquire = Task.attemptBlocking {
+        acquire = ZIO.attemptBlocking {
                     val properties = new java.util.Properties
                     props.foreach { case (k, v) => properties.setProperty(k, v) }
 
@@ -63,7 +63,7 @@ object ZConnectionPool {
     ZLayer.scoped {
       for {
         _      <- ZIO.attempt(Class.forName("org.h2.Driver"))
-        acquire = Task.attemptBlocking {
+        acquire = ZIO.attemptBlocking {
                     val properties = new java.util.Properties
                     props.foreach { case (k, v) => properties.setProperty(k, v) }
 
@@ -82,7 +82,7 @@ object ZConnectionPool {
     ZLayer.scoped {
       for {
         _      <- ZIO.attempt(Class.forName("oracle.jdbc.OracleDriver"))
-        acquire = Task.attemptBlocking {
+        acquire = ZIO.attemptBlocking {
                     val properties = new java.util.Properties
                     props.foreach { case (k, v) => properties.setProperty(k, v) }
 
@@ -101,7 +101,7 @@ object ZConnectionPool {
     ZLayer.scoped {
       for {
         _      <- ZIO.attempt(Class.forName("org.postgresql.Driver"))
-        acquire = Task.attemptBlocking {
+        acquire = ZIO.attemptBlocking {
                     val properties = new java.util.Properties
 
                     props.foreach { case (k, v) => properties.setProperty(k, v) }
@@ -121,7 +121,7 @@ object ZConnectionPool {
     ZLayer.scoped {
       for {
         _      <- ZIO.attempt(Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver"))
-        acquire = Task.attemptBlocking {
+        acquire = ZIO.attemptBlocking {
                     val properties = new java.util.Properties
 
                     props.foreach { case (k, v) => properties.setProperty(k, v) }
@@ -142,7 +142,7 @@ object ZConnectionPool {
     ZLayer.scoped {
       for {
         _      <- ZIO.attempt(Class.forName("com.mysql.cj.jdbc.Driver"))
-        acquire = Task.attemptBlocking {
+        acquire = ZIO.attemptBlocking {
                     val properties = new java.util.Properties
                     props.foreach { case (k, v) => properties.setProperty(k, v) }
 
@@ -166,7 +166,7 @@ object ZConnectionPool {
           for {
             connection <- pool.get
             _          <- ZIO.addFinalizerExit {
-                            case Exit.Success(_) => UIO.unit
+                            case Exit.Success(_) => ZIO.unit
                             case Exit.Failure(_) => ZIO.succeed(connection.connection.rollback())
                           }
           } yield connection

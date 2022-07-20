@@ -1,10 +1,10 @@
 import BuildHelper._
 
-val ZioVersion        = "2.0.0-RC5"
+val ZioVersion        = "2.0.0"
 val H2Version         = "2.1.210"
-val ZioConfigVersion  = "3.0.0-RC7"
-val ZioLoggingVersion = "2.0.0-RC7"
-val ZioSchemaVersion  = "0.2.0-RC4"
+val ZioConfigVersion  = "3.0.1"
+val ZioLoggingVersion = "2.0.0"
+val ZioSchemaVersion  = "0.2.0"
 
 name := "zio-jdbc"
 

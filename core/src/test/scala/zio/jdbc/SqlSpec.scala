@@ -15,7 +15,7 @@ final case class Transfer(id: Long, amount: Double, location: Option[String])
 object SqlSpec extends ZIOSpecDefault {
   import Models._
 
-  def spec: ZSpec[Environment with TestEnvironment, Any] =
+  def spec: Spec[Environment with TestEnvironment, Any] =
     suite("SqlSpec") {
       test("constant") {
         assertTrue(sql"null".toString() == "Sql(null)")
