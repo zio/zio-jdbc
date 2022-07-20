@@ -26,6 +26,8 @@ import java.sql.Connection
  */
 final case class ZConnectionPool(transaction: ZLayer[Any, Throwable, ZConnection])
 object ZConnectionPool {
+  private[jdbc] val connectionsGauge = zio.metrics.Metric.gauge("zio_jdbc_open_connections")
+
   def h2test: ZLayer[Any, Throwable, ZConnectionPool] =
     ZLayer.scoped {
       for {
@@ -157,7 +159,10 @@ object ZConnectionPool {
     ZLayer.scoped {
       for {
         config <- ZIO.service[ZConnectionPoolConfig]
-        managed = ZIO.acquireRelease(acquire.retry(config.retryPolicy))(conn => ZIO.succeed(conn.close()))
+        managed = ZIO.acquireRelease(acquire.retry(config.retryPolicy).zipLeft(connectionsGauge.update(1))) { conn =>
+                    conn.close()
+                    connectionsGauge.update(-1)
+                  }
         pool   <-
           ZPool
             .make(managed.map(ZConnection(_)), Range(config.minConnections, config.maxConnections), config.timeToLive)

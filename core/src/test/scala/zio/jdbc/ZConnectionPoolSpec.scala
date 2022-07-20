@@ -53,6 +53,12 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
           for {
             _ <- ZIO.scoped(ZConnectionPool.h2test.build)
           } yield assertCompletes
+        } + test("increment on connection acquisition") {
+          for {
+            state <- transaction {
+                       selectOne(sql"SELECT 1".as[Int]) *> ZConnectionPool.connectionsGauge.value
+                     }
+          } yield assertTrue(state.value > 0.0)
         }
       } +
         suite("sql") {
