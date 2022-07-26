@@ -112,6 +112,24 @@ object ZConnectionPool {
       } yield zenv.get[ZConnectionPool]
     }
 
+  def sqlite(
+    filename: String,
+    props: Map[String, String] = Map(),
+  ): ZLayer[ZConnectionPoolConfig, Throwable, ZConnectionPool] =
+    ZLayer.scoped {
+      for {
+        _ <- ZIO.attempt(Class.forName("org.sqlite.JDBC"))
+        acquire = ZIO.attemptBlocking {
+          val properties = new java.util.Properties
+          props.foreach { case (k, v) => properties.setProperty(k, v) }
+
+          java.sql.DriverManager
+            .getConnection(s"jdbc:sqlite:$filename", properties)
+        }
+        zenv <- make(acquire).build
+      } yield zenv.get[ZConnectionPool]
+    }
+
   def sqlserver(
     host: String,
     port: Int,
