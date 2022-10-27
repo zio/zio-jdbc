@@ -13,6 +13,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
 
     implicit val schema: Schema[Person] =
       Schema.CaseClass2[String, Int, Person](
+        TypeId.parse(classOf[Person].getName),
         Field("name", Schema[String]),
         Field("age", Schema[Int]),
         (name, age) => Person(name, age),
