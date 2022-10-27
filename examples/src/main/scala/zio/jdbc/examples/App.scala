@@ -2,7 +2,7 @@ package zio.jdbc.examples
 
 import zio._
 import zio.jdbc._
-import zio.schema.Schema
+import zio.schema.{Schema, TypeId}
 
 /**
  * You'll need the appropriate JDBC driver, and a database running.
@@ -62,6 +62,7 @@ object User {
 
   implicit val schema: Schema[User] =
     Schema.CaseClass2[String, Int, User](
+      TypeId.parse(classOf[User].getName),
       Field("name", Schema[String]),
       Field("age", Schema[Int]),
       (name, age) => User(name, age),
