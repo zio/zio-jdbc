@@ -89,16 +89,15 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
           }
         } +
         test("invalidate close connection") {
-          val poolConfig = ZConnectionPoolConfig.default
           ZIO.scoped {
             for {
-              pool             <- testPool().map(_._2)
-              conn             <- pool.transaction.build.map(_.get)
-              _                <- pool.invalidate(conn)
-              invalidatedClosed = conn.connection.isClosed
-              _                <- ZIO.scoped(pool.transaction.build).repeatN(poolConfig.maxConnections)
-              expectClosed = conn.connection.isClosed // temp workaround for assertTrue eval out of scope
-            } yield assertTrue(!invalidatedClosed && expectClosed)
+              pool <- testPool().map(_._2)
+              conn <- ZIO.scoped(for {
+                        conn <- pool.transaction.build.map(_.get)
+                        _    <- pool.invalidate(conn)
+                      } yield conn.connection)
+              invalidatedClosed = conn.isClosed // temp workaround for assertTrue eval out of scope
+            } yield assertTrue(invalidatedClosed)
           }
         } +
         test("shutdown closes all conns") {
