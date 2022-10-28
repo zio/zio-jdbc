@@ -28,6 +28,9 @@ import java.sql.{ Blob, Connection, PreparedStatement }
 final class ZConnection(private[jdbc] val connection: Connection) extends AnyVal {
   def access[A](f: Connection => A): ZIO[Any, Throwable, A] = ZIO.attemptBlocking(f(connection))
 
+  def close: Task[Any]    = access(_.close())
+  def rollback: Task[Any] = access(_.rollback())
+
   private[jdbc] def executeSqlWith[A](sql: Sql[_])(f: PreparedStatement => A): ZIO[Any, Throwable, A] =
     access { connection =>
       import Sql.Segment._
