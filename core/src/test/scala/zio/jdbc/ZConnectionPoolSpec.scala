@@ -125,5 +125,5 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
             } yield assertTrue(value.contains(Person(sherlockHolmes.name, sherlockHolmes.age)))
           }
         }
-    }.provideCustomLayer(ZConnectionPool.h2test.orDie) @@ sequential
+    }.provideLayer(ZConnectionPool.h2test.orDie) @@ sequential
 }
