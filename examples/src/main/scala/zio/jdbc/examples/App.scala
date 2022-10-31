@@ -2,7 +2,7 @@ package zio.jdbc.examples
 
 import zio._
 import zio.jdbc._
-import zio.schema.{Schema, TypeId}
+import zio.schema.{ Schema, TypeId }
 
 /**
  * You'll need the appropriate JDBC driver, and a database running.
