@@ -46,6 +46,7 @@ object ZConnectionPoolConfig {
 
   implicit val schema: Schema.CaseClass3[Int, Int, Duration, ZConnectionPoolConfig] =
     Schema.CaseClass3[Int, Int, Duration, ZConnectionPoolConfig](
+      TypeId.parse(classOf[ZConnectionPoolConfig].getName),
       Field("minConnections", Schema[Int]),
       Field("maxConnections", Schema[Int]),
       Field("timeToLive", Schema.Primitive(StandardType.DurationType)),

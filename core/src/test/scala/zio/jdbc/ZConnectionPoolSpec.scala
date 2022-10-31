@@ -13,6 +13,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
 
     implicit val schema: Schema[Person] =
       Schema.CaseClass2[String, Int, Person](
+        TypeId.parse(classOf[Person].getName),
         Field("name", Schema[String]),
         Field("age", Schema[Int]),
         (name, age) => Person(name, age),
@@ -124,5 +125,5 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
             } yield assertTrue(value.contains(Person(sherlockHolmes.name, sherlockHolmes.age)))
           }
         }
-    }.provideCustomLayer(ZConnectionPool.h2test.orDie) @@ sequential
+    }.provideLayer(ZConnectionPool.h2test.orDie) @@ sequential
 }
