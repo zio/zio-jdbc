@@ -54,10 +54,14 @@ package object jdbc {
   /**
    * Performs a SQL update query, returning a count of rows updated.
    */
-  def insert(sql: SqlFragment): ZIO[ZConnection, Throwable, Long] =
+  def insert(sql: SqlFragment): ZIO[ZConnection, Throwable, UpdateResult] =
     for {
       connection <- ZIO.service[ZConnection]
-      result     <- connection.executeSqlWith(sql)(_.executeLargeUpdate())
+      result     <- connection.executeSqlWith(sql) { ps =>
+                      val rowsUpdated = ps.executeLargeUpdate()
+                      val updatedKeys = ps.getGeneratedKeys()
+                      UpdateResult(rowsUpdated, ZResultSet(updatedKeys))
+                    }
     } yield result
 
   /**
