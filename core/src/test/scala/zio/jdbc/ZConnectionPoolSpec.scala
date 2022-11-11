@@ -51,7 +51,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
       """)
     }
 
-  val insertSherlock: ZIO[ZConnectionPool with Any, Throwable, Long] =
+  val insertSherlock: ZIO[ZConnectionPool with Any, Throwable, UpdateResult] =
     transaction {
       insert {
         sql"insert into users values (default, ${sherlockHolmes.name}, ${sherlockHolmes.age})"
@@ -133,9 +133,9 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
             } +
               test("insert") {
                 for {
-                  _   <- createUsers
-                  num <- insertSherlock
-                } yield assertTrue(num == 1L)
+                  _      <- createUsers
+                  result <- insertSherlock
+                } yield assertTrue(result.rowsUpdated == 1L) && assertTrue(result.updatedKeys.nonEmpty)
               } +
               test("select one") {
                 for {

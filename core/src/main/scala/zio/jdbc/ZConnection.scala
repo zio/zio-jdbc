@@ -17,7 +17,7 @@ package zio.jdbc
 
 import zio._
 
-import java.sql.{ Blob, Connection, PreparedStatement }
+import java.sql.{ Blob, Connection, PreparedStatement, Statement }
 
 /**
  * A `ZConnection` is a straightforward wrapper around `java.sql.Connection`. In order
@@ -49,7 +49,7 @@ final class ZConnection(private[jdbc] val connection: Connection) extends AnyVal
         i += 1
       }
 
-      val statement = connection.prepareStatement(stringBuilder.toString)
+      val statement = connection.prepareStatement(stringBuilder.toString, Statement.RETURN_GENERATED_KEYS)
 
       i = 0
       var paramIndex = 1
