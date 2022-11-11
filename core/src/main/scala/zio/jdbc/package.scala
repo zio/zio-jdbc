@@ -52,7 +52,10 @@ package object jdbc {
     } yield ()
 
   /**
-   * Performs a SQL update query, returning a count of rows updated.
+   * Performs an SQL insert query, returning a count of rows inserted and a
+   * [[zio.Chunk]] of auto-generated keys. By default, auto-generated keys are
+   * parsed and returned as `Chunk[Long]`. If keys are non-numeric, a
+   * `Chunk.empty` is returned.
    */
   def insert(sql: SqlFragment): ZIO[ZConnection, Throwable, UpdateResult] =
     for {
