@@ -1,3 +1,5 @@
 package zio.jdbc
 
-final case class UpdateResult(rowsUpdated: Long, updatedKeys: ZResultSet)
+import zio.Chunk
+
+final case class UpdateResult(rowsUpdated: Long, updatedKeys: Chunk[Long])

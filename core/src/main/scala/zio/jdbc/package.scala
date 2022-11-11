@@ -56,13 +56,20 @@ package object jdbc {
    */
   def insert(sql: SqlFragment): ZIO[ZConnection, Throwable, UpdateResult] =
     for {
-      connection <- ZIO.service[ZConnection]
-      result     <- connection.executeSqlWith(sql) { ps =>
-                      val rowsUpdated = ps.executeLargeUpdate()
-                      val updatedKeys = ps.getGeneratedKeys()
-                      UpdateResult(rowsUpdated, ZResultSet(updatedKeys))
-                    }
-    } yield result
+      connection     <- ZIO.service[ZConnection]
+      result         <- connection.executeSqlWith(sql) { ps =>
+                          val rowsUpdated = ps.executeLargeUpdate()
+                          val updatedKeys = ps.getGeneratedKeys()
+                          (rowsUpdated, updatedKeys)
+                        }
+      (count, keysRs) = result
+      chunk          <- ZIO.attempt {
+                          val builder = ChunkBuilder.make[Long]()
+                          while (keysRs.next())
+                            builder += keysRs.getLong(1)
+                          builder.result()
+                        }.orElseSucceed(Chunk.empty)
+    } yield UpdateResult(count, chunk)
 
   /**
    * Performs a SQL select query, returning all results in a chunk.

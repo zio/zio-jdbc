@@ -135,8 +135,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
                 for {
                   _      <- createUsers
                   result <- insertSherlock
-                  hasKey <- result.updatedKeys.access(_.next())
-                } yield assertTrue(result.rowsUpdated == 1L) && assertTrue(hasKey)
+                } yield assertTrue(result.rowsUpdated == 1L) && assertTrue(result.updatedKeys.nonEmpty)
               } +
               test("select one") {
                 for {
