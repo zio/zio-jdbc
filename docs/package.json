@@ -1,0 +1,5 @@
+{
+  "name": "@zio.dev/zio-jdbc",
+  "description": "ZIO JDBC Documentation",
+  "license": "Apache-2.0"
+}

@@ -918,7 +918,7 @@ trait JdbcDecoderLowPriorityImplicits {
         columnIndex += 1
       }
 
-      DynamicValue.Record(listMap)
+      DynamicValue.Record(TypeId.Structural, listMap)
     }
 
   def fromSchema[A](implicit schema: Schema[A]): JdbcDecoder[A] =

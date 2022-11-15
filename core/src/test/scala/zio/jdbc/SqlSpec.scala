@@ -1,6 +1,6 @@
 package zio.jdbc
 
-import zio.schema.Schema
+import zio.schema.{ Schema, TypeId }
 import zio.test._
 import zio.test.Assertion._
 import zio.jdbc.{ transaction => transact }
@@ -208,6 +208,7 @@ object Models {
 
   implicit val personSchema: Schema[Person] =
     Schema.CaseClass2[String, Int, Person](
+      TypeId.parse(classOf[Person].getName),
       Field("name", Schema[String]),
       Field("age", Schema[Int]),
       (name, age) => Person(name, age),
@@ -217,6 +218,7 @@ object Models {
 
   implicit val userLoginSchema: Schema[UserLogin] =
     Schema.CaseClass2[String, String, UserLogin](
+      TypeId.parse(classOf[UserLogin].getName),
       Field("username", Schema[String]),
       Field("password", Schema[String]),
       (username, password) => UserLogin(username, password),
@@ -226,6 +228,7 @@ object Models {
 
   implicit val activeUser: Schema[ActiveUser] =
     Schema.CaseClass3[Person, UserLogin, Boolean, ActiveUser](
+      TypeId.parse(classOf[ActiveUser].getName),
       Field("person", Schema[Person]),
       Field("login", Schema[UserLogin]),
       Field("isActive", Schema[Boolean]),
@@ -237,6 +240,7 @@ object Models {
 
   implicit val transaction: Schema[Transfer] =
     Schema.CaseClass3[Long, Double, Option[String], Transfer](
+      TypeId.parse(classOf[Transfer].getName),
       Field("id", Schema[Long]),
       Field("amount", Schema[Double]),
       Field("location", Schema[Option[String]]),

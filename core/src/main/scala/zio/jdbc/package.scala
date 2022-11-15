@@ -52,13 +52,27 @@ package object jdbc {
     } yield ()
 
   /**
-   * Performs a SQL update query, returning a count of rows updated.
+   * Performs an SQL insert query, returning a count of rows inserted and a
+   * [[zio.Chunk]] of auto-generated keys. By default, auto-generated keys are
+   * parsed and returned as `Chunk[Long]`. If keys are non-numeric, a
+   * `Chunk.empty` is returned.
    */
-  def insert(sql: SqlFragment): ZIO[ZConnection, Throwable, Long] =
+  def insert(sql: SqlFragment): ZIO[ZConnection, Throwable, UpdateResult] =
     for {
-      connection <- ZIO.service[ZConnection]
-      result     <- connection.executeSqlWith(sql)(_.executeLargeUpdate())
-    } yield result
+      connection     <- ZIO.service[ZConnection]
+      result         <- connection.executeSqlWith(sql) { ps =>
+                          val rowsUpdated = ps.executeLargeUpdate()
+                          val updatedKeys = ps.getGeneratedKeys()
+                          (rowsUpdated, updatedKeys)
+                        }
+      (count, keysRs) = result
+      chunk          <- ZIO.attempt {
+                          val builder = ChunkBuilder.make[Long]()
+                          while (keysRs.next())
+                            builder += keysRs.getLong(1)
+                          builder.result()
+                        }.orElseSucceed(Chunk.empty)
+    } yield UpdateResult(count, chunk)
 
   /**
    * Performs a SQL select query, returning all results in a chunk.

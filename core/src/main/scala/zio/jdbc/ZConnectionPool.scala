@@ -24,7 +24,11 @@ import java.sql.Connection
  * A `ZConnectionPool` represents a pool of connections, and has the ability to
  * supply a transaction that can be used for executing SQL statements.
  */
-final case class ZConnectionPool(transaction: ZLayer[Any, Throwable, ZConnection])
+abstract class ZConnectionPool {
+  def transaction: ZLayer[Any, Throwable, ZConnection]
+  def invalidate(conn: ZConnection): UIO[Any]
+}
+
 object ZConnectionPool {
   def h2test: ZLayer[Any, Throwable, ZConnectionPool] =
     ZLayer.scoped {
@@ -157,20 +161,21 @@ object ZConnectionPool {
     ZLayer.scoped {
       for {
         config <- ZIO.service[ZConnectionPoolConfig]
-        managed = ZIO.acquireRelease(acquire.retry(config.retryPolicy))(conn => ZIO.succeed(conn.close()))
-        pool   <-
-          ZPool
-            .make(managed.map(ZConnection(_)), Range(config.minConnections, config.maxConnections), config.timeToLive)
-      } yield ZConnectionPool {
-        ZLayer.scoped {
-          for {
-            connection <- pool.get
-            _          <- ZIO.addFinalizerExit {
-                            case Exit.Success(_) => ZIO.unit
-                            case Exit.Failure(_) => ZIO.succeed(connection.connection.rollback())
-                          }
-          } yield connection
-        }
+        getConn = ZIO.acquireRelease(acquire.retry(config.retryPolicy).map(ZConnection(_)))(_.close.ignoreLogged)
+        pool   <- ZPool.make(getConn, Range(config.minConnections, config.maxConnections), config.timeToLive)
+        tx      = ZLayer.scoped {
+                    for {
+                      connection <- pool.get
+                      _          <- ZIO.addFinalizerExit {
+                                      case Exit.Success(_) => ZIO.unit
+                                      case Exit.Failure(_) => connection.rollback.ignoreLogged
+                                    }
+                    } yield connection
+                  }
+
+      } yield new ZConnectionPool {
+        def transaction: ZLayer[Any, Throwable, ZConnection] = tx
+        def invalidate(conn: ZConnection): UIO[Any]          = pool.invalidate(conn)
       }
     }
 }

@@ -39,7 +39,7 @@ jobs:
       - name: Cache scala dependencies
         uses: coursier/cache-action@v6
       - name: Check Document Generation
-        run: sbt docs/docusaurusCreateSite
+        run: sbt compileDocs
 
   test:
     runs-on: ubuntu-20.04
@@ -64,7 +64,7 @@ jobs:
       - name: Run tests
         run: sbt ++${{ matrix.scala }}! testJVM
       - name: Compile additional subprojects
-        run: sbt ++${{ matrix.scala }}! examples/compile docs/compile
+        run: sbt ++${{ matrix.scala }}! examples/compile compileDocs
 
   ci:
     runs-on: ubuntu-20.04

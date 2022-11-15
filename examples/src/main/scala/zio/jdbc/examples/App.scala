@@ -2,7 +2,7 @@ package zio.jdbc.examples
 
 import zio._
 import zio.jdbc._
-import zio.schema.Schema
+import zio.schema.{ Schema, TypeId }
 
 /**
  * You'll need the appropriate JDBC driver, and a database running.
@@ -14,7 +14,7 @@ object App extends ZIOAppDefault {
     execute(Basic.ex0)
   }
 
-  val insertRow: ZIO[ZConnectionPool, Throwable, Long] = transaction {
+  val insertRow: ZIO[ZConnectionPool, Throwable, UpdateResult] = transaction {
     insert(sql"insert into users (name, age)".values(sampleUser1, sampleUser2))
   }
 
@@ -62,6 +62,7 @@ object User {
 
   implicit val schema: Schema[User] =
     Schema.CaseClass2[String, Int, User](
+      TypeId.parse(classOf[User].getName),
       Field("name", Schema[String]),
       Field("age", Schema[Int]),
       (name, age) => User(name, age),
