@@ -22,6 +22,7 @@ object BuildHelper {
 
   lazy val Scala212: String = versions("2.12")
   lazy val Scala213: String = versions("2.13")
+  lazy val Scala3: String = versions("3.2")
 
   val SilencerVersion = "1.7.12"
 
@@ -109,7 +110,7 @@ object BuildHelper {
 
   def extraOptions(scalaVersion: String, optimize: Boolean) =
     CrossVersion.partialVersion(scalaVersion) match {
-      case Some((3, 0))  =>
+      case Some((3, _))  =>
         Seq(
           "-language:implicitConversions",
           "-Xignore-scala2-macros"
@@ -179,17 +180,25 @@ object BuildHelper {
   def stdSettings(prjName: String) =
     Seq(
       name                                   := s"$prjName",
-      crossScalaVersions                     := Seq(Scala212, Scala213),
+      crossScalaVersions                     := Seq(Scala212, Scala213, Scala3),
       ThisBuild / scalaVersion               := Scala213,
       ThisBuild / scalacOptions              := stdOptions ++ extraOptions(scalaVersion.value, optimize = !isSnapshot.value),
       libraryDependencies ++= {
-        Seq(
-          "com.github.ghik" % "silencer-lib" % SilencerVersion % Provided cross CrossVersion.full,
-          compilerPlugin("com.github.ghik" % "silencer-plugin" % SilencerVersion cross CrossVersion.full)
-        )
+        CrossVersion.partialVersion(scalaVersion.value) match {
+          case Some((3, _)) => Nil
+          case _ => Seq(
+            "com.github.ghik" % "silencer-lib" % SilencerVersion % Provided cross CrossVersion.full,
+            compilerPlugin("com.github.ghik" % "silencer-plugin" % SilencerVersion cross CrossVersion.full)
+          )
+        }
       },
       semanticdbEnabled                      := true,                        // enable SemanticDB
-      semanticdbOptions += "-P:semanticdb:synthetics:on",
+      semanticdbOptions ++= {
+        CrossVersion.partialVersion(scalaVersion.value) match {
+          case Some((3, _)) => Nil
+          case _ => Seq("-P:semanticdb:synthetics:on")
+        }
+      },
       semanticdbVersion                      := scalafixSemanticdb.revision, // use Scalafix compatible version
       ThisBuild / scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(scalaVersion.value),
       ThisBuild / scalafixDependencies ++= List(
