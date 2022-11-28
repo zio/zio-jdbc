@@ -64,6 +64,7 @@ final class ZConnection(private[jdbc] val connection: Connection) extends AnyVal
               case v: Long                  => statement.setLong(paramIndex, v)
               case v: Short                 => statement.setShort(paramIndex, v)
               case v: Byte                  => statement.setByte(paramIndex, v)
+              case v: Array[Byte]           => statement.setBytes(paramIndex, v)
               case v: Char                  => statement.setString(paramIndex, v.toString)
               case v: Double                => statement.setDouble(paramIndex, v)
               case v: Blob                  => statement.setBlob(paramIndex, v)
