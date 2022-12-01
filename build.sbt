@@ -4,7 +4,7 @@ val ZioVersion        = "2.0.4"
 val H2Version         = "2.1.214"
 val ZioConfigVersion  = "3.0.2"
 val ZioLoggingVersion = "2.1.5"
-val ZioSchemaVersion  = "0.2.1"
+val ZioSchemaVersion  = "0.3.1"
 
 name := "zio-jdbc"
 
