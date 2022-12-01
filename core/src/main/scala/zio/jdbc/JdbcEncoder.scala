@@ -676,14 +676,14 @@ trait JdbcEncoderLowPriorityImplicits { self =>
         _: Schema.CaseClass21[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] |
         _: Schema.CaseClass22[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _]
         ) =>
-        caseClassEncoder(x.fields)
+        caseClassEncoder(x.asInstanceOf[Schema.Record[A]].fields)
       case _                                                                                                                                                                                                                                                                                 =>
         throw JdbcEncoderError(s"Failed to encode schema ${schema}", new IllegalArgumentException)
     }
 
   private[jdbc] def caseClassEncoder[A](fields: Chunk[Schema.Field[A, _]]): JdbcEncoder[A] = { (a: A) =>
     fields.map { f =>
-      val encoder = self.fromSchema(f.schema)
+      val encoder = self.fromSchema(f.schema.asInstanceOf[Schema[Any]])
       encoder.encode(f.get(a))
     }.reduce(_ ++ Sql.comma ++ _)
   }
