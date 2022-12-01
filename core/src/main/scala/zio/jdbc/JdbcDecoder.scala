@@ -720,7 +720,7 @@ trait JdbcDecoderLowPriorityImplicits {
   private[jdbc] def createRemapTable(schema: Schema[_]): String => String =
     schema match {
       case record: Schema.Record[_] =>
-        val recordNames = record.structure.map(field => (field.label.toLowerCase, field.label)).toMap
+        val recordNames = record.fields.map(field => (field.name.toLowerCase, field.name)).toMap
 
         columnName => recordNames.getOrElse(columnName.toLowerCase, columnName)
 
@@ -780,9 +780,8 @@ trait JdbcDecoderLowPriorityImplicits {
 
             case SqlTypes.DATE =>
               val date      = resultSet.getDate(columnIndex)
-              val formatter = DateTimeFormatter.ISO_DATE
 
-              DynamicValue.Primitive(date.toLocalDate(), StandardType.LocalDateType(formatter))
+              DynamicValue.Primitive(date.toLocalDate(), StandardType.LocalDateType)
 
             case SqlTypes.DECIMAL =>
               val bigDecimal = resultSet.getBigDecimal(columnIndex)
@@ -865,32 +864,24 @@ trait JdbcDecoderLowPriorityImplicits {
             case SqlTypes.TIME =>
               val time = resultSet.getTime(columnIndex)
 
-              val formatter = DateTimeFormatter.ISO_TIME
-
-              DynamicValue.Primitive(time.toLocalTime(), StandardType.LocalTimeType(formatter))
+              DynamicValue.Primitive(time.toLocalTime(), StandardType.LocalTimeType)
 
             case SqlTypes.TIMESTAMP =>
               val timestamp = resultSet.getTimestamp(columnIndex)
 
-              val formatter = DateTimeFormatter.ISO_INSTANT
-
-              DynamicValue.Primitive(timestamp.toInstant(), StandardType.InstantType(formatter))
+              DynamicValue.Primitive(timestamp.toInstant(), StandardType.InstantType)
 
             case SqlTypes.TIMESTAMP_WITH_TIMEZONE =>
               // TODO: Timezone
               val timestamp = resultSet.getTimestamp(columnIndex)
 
-              val formatter = DateTimeFormatter.ISO_INSTANT
-
-              DynamicValue.Primitive(timestamp.toInstant(), StandardType.InstantType(formatter))
+              DynamicValue.Primitive(timestamp.toInstant(), StandardType.InstantType)
 
             case SqlTypes.TIME_WITH_TIMEZONE =>
               // TODO: Timezone
               val time = resultSet.getTime(columnIndex)
 
-              val formatter = DateTimeFormatter.ISO_TIME
-
-              DynamicValue.Primitive(time.toLocalTime(), StandardType.LocalTimeType(formatter))
+              DynamicValue.Primitive(time.toLocalTime(), StandardType.LocalTimeType)
 
             case SqlTypes.TINYINT =>
               val short = resultSet.getShort(columnIndex)

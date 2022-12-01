@@ -209,45 +209,35 @@ object Models {
   implicit val personSchema: Schema[Person] =
     Schema.CaseClass2[String, Int, Person](
       TypeId.parse(classOf[Person].getName),
-      Field("name", Schema[String]),
-      Field("age", Schema[Int]),
-      (name, age) => Person(name, age),
-      _.name,
-      _.age
+      Field("name", Schema[String], get0 = _.name, set0 = (x, v) => x.copy(name = v)),
+      Field("age", Schema[Int], get0 = _.age, set0 = (x, v) => x.copy(age = v)),
+      Person.apply
     )
 
   implicit val userLoginSchema: Schema[UserLogin] =
     Schema.CaseClass2[String, String, UserLogin](
       TypeId.parse(classOf[UserLogin].getName),
-      Field("username", Schema[String]),
-      Field("password", Schema[String]),
-      (username, password) => UserLogin(username, password),
-      _.username,
-      _.password
+      Field("username", Schema[String], get0 = _.username, set0 = (x, v) => x.copy(username = v)),
+      Field("password", Schema[String], get0 = _.password, set0 = (x, v) => x.copy(password = v)),
+      UserLogin.apply
     )
 
   implicit val activeUser: Schema[ActiveUser] =
     Schema.CaseClass3[Person, UserLogin, Boolean, ActiveUser](
       TypeId.parse(classOf[ActiveUser].getName),
-      Field("person", Schema[Person]),
-      Field("login", Schema[UserLogin]),
-      Field("isActive", Schema[Boolean]),
-      (person, login, isActive) => ActiveUser(person, login, isActive),
-      _.person,
-      _.login,
-      _.isActive
+      Field("person", Schema[Person], get0 = _.person, set0 = (x, v) => x.copy(person = v)),
+      Field("login", Schema[UserLogin], get0 = _.login, set0 = (x, v) => x.copy(login = v)),
+      Field("isActive", Schema[Boolean], get0 = _.isActive, set0 = (x, v) => x.copy(isActive = v)),
+      ActiveUser.apply
     )
 
   implicit val transaction: Schema[Transfer] =
     Schema.CaseClass3[Long, Double, Option[String], Transfer](
       TypeId.parse(classOf[Transfer].getName),
-      Field("id", Schema[Long]),
-      Field("amount", Schema[Double]),
-      Field("location", Schema[Option[String]]),
-      (id, amount, location) => Transfer(id, amount, location),
-      _.id,
-      _.amount,
-      _.location
+      Field("id", Schema[Long], get0 = _.id, set0 = (x, v) => x.copy(id = v)),
+      Field("amount", Schema[Double], get0 = _.amount, set0 = (x, v) => x.copy(amount = v)),
+      Field("location", Schema[Option[String]], get0 = _.location, set0 = (x, v) => x.copy(location = v)),
+      Transfer.apply
     )
 
   implicit val personEncoder: JdbcEncoder[Person]         = JdbcEncoder.fromSchema[Person]

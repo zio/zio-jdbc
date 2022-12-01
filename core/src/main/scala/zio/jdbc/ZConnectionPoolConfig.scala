@@ -47,12 +47,24 @@ object ZConnectionPoolConfig {
   implicit val schema: Schema.CaseClass3[Int, Int, Duration, ZConnectionPoolConfig] =
     Schema.CaseClass3[Int, Int, Duration, ZConnectionPoolConfig](
       TypeId.parse(classOf[ZConnectionPoolConfig].getName),
-      Field("minConnections", Schema[Int]),
-      Field("maxConnections", Schema[Int]),
-      Field("timeToLive", Schema.Primitive(StandardType.DurationType)),
+      Field(
+        "minConnections",
+        Schema[Int],
+        get0 = _.minConnections,
+        set0 = (c, x) => c.copy(minConnections = x)
+      ),
+      Field(
+        "maxConnections",
+        Schema[Int],
+        get0 = _.maxConnections,
+        set0 = (c, x) => c.copy(maxConnections = x)
+      ),
+      Field(
+        "timeToLive",
+        Schema.Primitive(StandardType.DurationType),
+        get0 = _.timeToLive,
+        set0 = (c, x) => c.copy(timeToLive = x)
+      ),
       (min, max, ttl) => ZConnectionPoolConfig(min, max, defaultRetryPolicy, ttl),
-      _.minConnections,
-      _.maxConnections,
-      _.timeToLive
     )
 }

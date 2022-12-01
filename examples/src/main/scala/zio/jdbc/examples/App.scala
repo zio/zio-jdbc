@@ -63,11 +63,9 @@ object User {
   implicit val schema: Schema[User] =
     Schema.CaseClass2[String, Int, User](
       TypeId.parse(classOf[User].getName),
-      Field("name", Schema[String]),
-      Field("age", Schema[Int]),
-      (name, age) => User(name, age),
-      _.name,
-      _.age
+      Field("name", Schema[String], get0 = _.name, set0 = (x, v) => x.copy(name = v)),
+      Field("age", Schema[Int], get0 = _.age, set0 = (x, v) => x.copy(age = v)),
+      User.apply
     )
 
   // One can derive a jdbc codec from a zio-schema or

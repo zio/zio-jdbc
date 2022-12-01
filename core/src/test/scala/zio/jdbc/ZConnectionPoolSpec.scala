@@ -31,11 +31,9 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
     implicit val schema: Schema[Person] =
       Schema.CaseClass2[String, Int, Person](
         TypeId.parse(classOf[Person].getName),
-        Field("name", Schema[String]),
-        Field("age", Schema[Int]),
-        (name, age) => Person(name, age),
-        _.name,
-        _.age
+        Field("name", Schema[String], get0 = _.name, set0 = (x, v) => x.copy(name = v)),
+        Field("age", Schema[Int], get0 = _.age, set0 = (x, v) => x.copy(age = v)),
+        Person.apply
       )
   }
   val sherlockHolmes: User = User("Sherlock Holmes", 42)
