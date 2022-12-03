@@ -646,12 +646,13 @@ trait JdbcEncoderLowPriorityImplicits { self =>
   //scalafmt: { maxColumn = 325, optIn.configStyleArguments = false }
   def fromSchema[A](implicit schema: Schema[A]): JdbcEncoder[A] =
     schema match {
-      case Schema.Primitive(standardType, _)                                                                                                                                                                                                                                                 =>
+      case Schema.Primitive(standardType, _) =>
         primitiveCodec(standardType)
-      case Schema.Optional(schema, _)                                                                                                                                                                                                                                                        =>
+      case Schema.Optional(schema, _)        =>
         JdbcEncoder.optionEncoder(self.fromSchema(schema))
-      case Schema.Tuple2(left, right, _)                                                                                                                                                                                                                                                      =>
+      case Schema.Tuple2(left, right, _)     =>
         JdbcEncoder.tuple2Encoder(self.fromSchema(left), self.fromSchema(right))
+      // format: off
       case x@(
         _: Schema.CaseClass1[_, _] |
         _: Schema.CaseClass2[_, _, _] |
@@ -676,8 +677,9 @@ trait JdbcEncoderLowPriorityImplicits { self =>
         _: Schema.CaseClass21[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] |
         _: Schema.CaseClass22[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _]
         ) =>
+        // format: on
         caseClassEncoder(x.asInstanceOf[Schema.Record[A]].fields)
-      case _                                                                                                                                                                                                                                                                                 =>
+      case _                                 =>
         throw JdbcEncoderError(s"Failed to encode schema ${schema}", new IllegalArgumentException)
     }
 
