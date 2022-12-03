@@ -646,12 +646,26 @@ trait JdbcEncoderLowPriorityImplicits { self =>
   //scalafmt: { maxColumn = 325, optIn.configStyleArguments = false }
   def fromSchema[A](implicit schema: Schema[A]): JdbcEncoder[A] =
     schema match {
-      case Schema.Primitive(standardType, _) =>
+      case Schema.Primitive(standardType, _)    =>
         primitiveCodec(standardType)
-      case Schema.Optional(schema, _)        =>
+      case Schema.Optional(schema, _)           =>
         JdbcEncoder.optionEncoder(self.fromSchema(schema))
-      case Schema.Tuple2(left, right, _)     =>
+      case Schema.Tuple2(left, right, _)        =>
         JdbcEncoder.tuple2Encoder(self.fromSchema(left), self.fromSchema(right))
+      case x: Schema.Lazy[A]                    => fromSchema(x.schema)
+      case Schema.Transform(schema, _, g, _, _) =>
+        fromSchema(schema).contramap(g.andThen {
+          case Right(v) => v
+          case Left(s)  => throw JdbcEncoderError(s"Failed to encode schema $schema while transforming. $s", new RuntimeException)
+        })
+      case schema: Schema.Enum[A]               =>
+        (a: A) =>
+          schema.caseOf(a) match {
+            case Some(Schema.Case(id, _: Schema.CaseClass0[_], _, _, _, _)) =>
+              sql"$id"
+            case c                                                          =>
+              throw JdbcEncoderError(s"Failed to encode schema $schema for case $c", new IllegalArgumentException)
+          }
       // format: off
       case x@(
         _: Schema.CaseClass1[_, _] |
@@ -679,7 +693,7 @@ trait JdbcEncoderLowPriorityImplicits { self =>
         ) =>
         // format: on
         caseClassEncoder(x.asInstanceOf[Schema.Record[A]].fields)
-      case _                                 =>
+      case _                                    =>
         throw JdbcEncoderError(s"Failed to encode schema ${schema}", new IllegalArgumentException)
     }
 

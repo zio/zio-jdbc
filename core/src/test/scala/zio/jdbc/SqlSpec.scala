@@ -1,11 +1,15 @@
 package zio.jdbc
 
-import zio.schema.{ Schema, TypeId }
+import zio.jdbc.model.CommentType
+import zio.schema.{ DeriveSchema, Schema, TypeId }
+import zio.schema.annotation.fieldName
 import zio.test._
 import zio.test.Assertion._
 import zio.jdbc.{ transaction => transact }
 
 import java.sql.SQLException
+import java.util.UUID
+import scala.util.Try
 
 final case class Person(name: String, age: Int)
 final case class UserLogin(username: String, password: String)
@@ -150,6 +154,13 @@ object SqlSpec extends ZIOSpecDefault {
                 sql"insert into transfer (id, amount, location)".values(transfer2).toString ==
                   s"Sql(insert into transfer (id, amount, location) VALUES (?,?,?), ${transfer2.id}, ${transfer2.amount}, ${transfer2.location.get})"
               )
+            } +
+            test("Lazy, Transform, Enum schemas for fields in case class") {
+              val c = Comment(UUID.randomUUID(), CommentType.reply, "my content")
+              assertTrue(
+                sql"insert into comment(id, type, content)".values(c).toString ==
+                  s"Sql(insert into comment(id, type, content) VALUES (?,?,?), ${c.id}, ${c.tpe}, ${c.content})"
+              )
             }
         } +
         test("log SQL errors") {
@@ -244,4 +255,17 @@ object Models {
   implicit val userLoginEncoder: JdbcEncoder[UserLogin]   = JdbcEncoder.fromSchema[UserLogin]
   implicit val activeUserEncoder: JdbcEncoder[ActiveUser] = JdbcEncoder.fromSchema[ActiveUser]
   implicit val transactionEncoder: JdbcEncoder[Transfer]  = JdbcEncoder.fromSchema[Transfer]
+
+  case class Comment(id: UUID, @fieldName("type") tpe: CommentType, content: String)
+
+  implicit val uuidSchema: Schema[UUID]             = Schema[String].transformOrFail(
+    s =>
+      Try(UUID.fromString(s)).fold(
+        _ => Left(s"Invalid UUID: $s"),
+        uuid => Right(uuid)
+      ),
+    uuid => Right(uuid.toString)
+  )
+  implicit val commentSchema: Schema[Comment]       = DeriveSchema.gen
+  implicit val commentEncoder: JdbcEncoder[Comment] = JdbcEncoder.fromSchema[Comment]
 }

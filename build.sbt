@@ -40,14 +40,15 @@ lazy val core = project
   .settings(stdSettings("zio-jdbc"))
   .settings(
     libraryDependencies ++= Seq(
-      "dev.zio"       %% "zio"          % ZioVersion,
-      "dev.zio"       %% "zio-streams"  % ZioVersion,
-      "dev.zio"       %% "zio-config"   % ZioConfigVersion,
-      "dev.zio"       %% "zio-logging"  % ZioLoggingVersion,
-      "dev.zio"       %% "zio-schema"   % ZioSchemaVersion,
-      "dev.zio"       %% "zio-test"     % ZioVersion % Test,
-      "dev.zio"       %% "zio-test-sbt" % ZioVersion % Test,
-      "com.h2database" % "h2"           % H2Version  % Test
+      "dev.zio"       %% "zio"                   % ZioVersion,
+      "dev.zio"       %% "zio-streams"           % ZioVersion,
+      "dev.zio"       %% "zio-config"            % ZioConfigVersion,
+      "dev.zio"       %% "zio-logging"           % ZioLoggingVersion,
+      "dev.zio"       %% "zio-schema"            % ZioSchemaVersion,
+      "dev.zio"       %% "zio-schema-derivation" % ZioSchemaVersion % Test,
+      "dev.zio"       %% "zio-test"              % ZioVersion       % Test,
+      "dev.zio"       %% "zio-test-sbt"          % ZioVersion       % Test,
+      "com.h2database" % "h2"                    % H2Version        % Test
     ),
     testFrameworks := Seq(new TestFramework("zio.test.sbt.ZTestFramework")),
     Test / fork    := true,
