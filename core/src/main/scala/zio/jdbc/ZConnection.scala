@@ -50,6 +50,7 @@ final class ZConnection(private[jdbc] val connection: Connection) extends AnyVal
       }
 
       val statement = connection.prepareStatement(stringBuilder.toString, Statement.RETURN_GENERATED_KEYS)
+      statement.closeOnCompletion()
 
       i = 0
       var paramIndex = 1
