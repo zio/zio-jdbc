@@ -1,12 +1,14 @@
 import BuildHelper._
 
-val ZioVersion        = "2.0.2"
+val ZioVersion        = "2.0.5"
 val H2Version         = "2.1.210"
-val ZioConfigVersion  = "3.0.2"
-val ZioLoggingVersion = "2.1.2"
+val ZioConfigVersion  = "3.0.7"
+val ZioLoggingVersion = "2.1.7"
 val ZioSchemaVersion  = "0.2.1"
 
 name := "zio-jdbc"
+
+Global / onChangedBuildSource := ReloadOnSourceChanges
 
 inThisBuild(
   List(
