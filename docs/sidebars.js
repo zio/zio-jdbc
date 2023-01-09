@@ -1,8 +1,15 @@
 const sidebars = {
   sidebar: [
-    "index",
-    "installation",
-    "getting-started"
+    {
+      type: "category",
+      label: "ZIO SBT",
+      collapsed: false,
+      link: { type: "doc", id: "index" },
+      items: [ 
+        "installation",
+        "getting-started"
+      ]
+    }
   ]
 };
 

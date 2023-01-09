@@ -58,10 +58,13 @@ lazy val docs = project
   .in(file("zio-jdbc-docs"))
   .settings(stdSettings("zio-jdbc-docs"))
   .settings(
-    publish / skip := true,
-    moduleName     := "zio-jdbc-docs",
+    moduleName                                 := "zio-jdbc-docs",
     scalacOptions -= "-Yno-imports",
-    scalacOptions -= "-Xfatal-warnings"
+    scalacOptions -= "-Xfatal-warnings",
+    projectName                                := "ZIO JDBC",
+    mainModuleName                             := (core / moduleName).value,
+    projectStage                               := ProjectStage.Research,
+    ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(core)
   )
   .dependsOn(core)
   .enablePlugins(WebsitePlugin)

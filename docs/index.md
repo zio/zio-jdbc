@@ -1,9 +1,14 @@
 ---
 id: index
-title: "Overview"
+title: "Introduction to ZIO JDBC"
+sidebar_label: "ZIO JDBC"
 ---
 
 _ZIO JDBC_ is a ZIO library for JDBC access, providing a small, unopinionated, and ergonomic foundation for directly interacting with JDBC.
+
+- Idiomatic ZIO 2.0 interface to JDBC
+- Secure, with protection against SQL-injection
+- Fully integrated with core libraries including _ZIO Schema_, _ZIO Config_, _ZIO Logging_
 
 _ZIO JDBC_ provides the following components:
 
