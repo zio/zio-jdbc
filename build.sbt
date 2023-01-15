@@ -65,6 +65,9 @@ lazy val docs = project
     mainModuleName                             := (core / moduleName).value,
     projectStage                               := ProjectStage.Research,
     ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(core)
+      Compile / doc / scalacOptions ++= Seq (
+        "-no-link-warnings" // Suppresses problems with Scaladoc @throws links
+      )
   )
   .dependsOn(core)
   .enablePlugins(WebsitePlugin)
