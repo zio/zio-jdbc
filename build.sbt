@@ -63,10 +63,7 @@ lazy val docs = project
     projectName                                := "ZIO JDBC",
     mainModuleName                             := (core / moduleName).value,
     projectStage                               := ProjectStage.Research,
-    ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(core),
-    Compile / doc / scalacOptions ++= Seq(
-      "-no-link-warnings" // Suppresses problems with Scaladoc @throws links
-    )
+    ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(core)
   )
   .dependsOn(core)
   .enablePlugins(WebsitePlugin)
