@@ -6,6 +6,8 @@
 
 _ZIO JDBC_ is a ZIO library for JDBC access, providing a small, unopinionated, and ergonomic foundation for directly interacting with JDBC.
 
+[![Research](https://img.shields.io/badge/Project%20Stage-Research-yellow.svg)](https://github.com/zio/zio/wiki/Project-Stages) ![CI Badge](https://github.com/zio/zio-jdbc/workflows/CI/badge.svg) [![Sonatype Releases](https://img.shields.io/nexus/r/https/oss.sonatype.org/dev.zio/zio-jdbc_2.13.svg?label=Sonatype%20Release)](https://oss.sonatype.org/content/repositories/releases/dev/zio/zio-jdbc_2.13/) [![Sonatype Snapshots](https://img.shields.io/nexus/s/https/oss.sonatype.org/dev.zio/zio-jdbc_2.13.svg?label=Sonatype%20Snapshot)](https://oss.sonatype.org/content/repositories/snapshots/dev/zio/zio-jdbc_2.13/) [![javadoc](https://javadoc.io/badge2/dev.zio/zio-jdbc-docs_2.13/javadoc.svg)](https://javadoc.io/doc/dev.zio/zio-jdbc-docs_2.13) [![ZIO JDBC](https://img.shields.io/github/stars/zio/zio-jdbc?style=social)](https://github.com/zio/zio-jdbc)
+
 - Idiomatic ZIO 2.0 interface to JDBC
 - Secure, with protection against SQL-injection
 - Fully integrated with core libraries including _ZIO Schema_, _ZIO Config_, _ZIO Logging_
