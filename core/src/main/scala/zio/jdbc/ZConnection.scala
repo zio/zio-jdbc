@@ -76,7 +76,7 @@ final class ZConnection(private[jdbc] val connection: Connection) extends AnyVal
               case v: java.sql.Timestamp    => statement.setTimestamp(paramIndex, v)
               case v: Boolean               => statement.setBoolean(paramIndex, v)
               case v: Float                 => statement.setFloat(paramIndex, v)
-              case v                        => statement.setString(paramIndex, v.toString)
+              case v                        => statement.setObject(paramIndex, v)
             }
 
             paramIndex += 1
