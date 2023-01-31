@@ -1,9 +1,7 @@
 import BuildHelper._
 
-val ZioVersion        = "2.0.2"
+val ZioVersion        = "2.0.6"
 val H2Version         = "2.1.210"
-val ZioConfigVersion  = "3.0.2"
-val ZioLoggingVersion = "2.1.2"
 val ZioSchemaVersion  = "0.2.1"
 
 name := "zio-jdbc"
@@ -42,8 +40,6 @@ lazy val core = project
     libraryDependencies ++= Seq(
       "dev.zio"       %% "zio"          % ZioVersion,
       "dev.zio"       %% "zio-streams"  % ZioVersion,
-      "dev.zio"       %% "zio-config"   % ZioConfigVersion,
-      "dev.zio"       %% "zio-logging"  % ZioLoggingVersion,
       "dev.zio"       %% "zio-schema"   % ZioSchemaVersion,
       "dev.zio"       %% "zio-test"     % ZioVersion % Test,
       "dev.zio"       %% "zio-test-sbt" % ZioVersion % Test,

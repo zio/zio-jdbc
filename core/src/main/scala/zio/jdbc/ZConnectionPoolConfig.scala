@@ -28,21 +28,18 @@ final case class ZConnectionPoolConfig(
 )
 object ZConnectionPoolConfig {
   import zio.schema._
-  import zio.config._
-
   import Schema.Field
 
   lazy val default: ZConnectionPoolConfig = ZConnectionPoolConfig(8, 32, defaultRetryPolicy, 300.seconds)
 
   lazy val defaultRetryPolicy: Schedule.WithState[Long, Any, Any, Duration] = Schedule.exponential(10.millis)
 
-  implicit val configDescriptor: ConfigDescriptor[ZConnectionPoolConfig] =
-    (ConfigDescriptor.int("minConnections") zip
-      ConfigDescriptor.int("maxConnections") zip
-      ConfigDescriptor.zioDuration("timeToLive")).transform(
-      { case (min, max, ttl) => ZConnectionPoolConfig(min, max, defaultRetryPolicy, ttl) },
-      cfg => (cfg.minConnections, cfg.maxConnections, cfg.timeToLive)
-    )
+  implicit val config: Config[ZConnectionPoolConfig] =
+    (Config.int("minConnections") zip
+      Config.int("maxConnections") zip
+      Config.duration("timeToLive")).map { case (min, max, ttl) =>
+      ZConnectionPoolConfig(min, max, defaultRetryPolicy, ttl)
+    }
 
   implicit val schema: Schema.CaseClass3[Int, Int, Duration, ZConnectionPoolConfig] =
     Schema.CaseClass3[Int, Int, Duration, ZConnectionPoolConfig](
