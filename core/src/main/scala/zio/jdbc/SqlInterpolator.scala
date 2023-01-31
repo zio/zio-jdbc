@@ -33,9 +33,10 @@ final class SqlInterpolator(val context: StringContext) extends AnyVal {
         val next = partsIterator.next()
         if (next.nonEmpty) {
           chunkBuilder += Segment.Syntax(next)
-          if (paramsIterator.hasNext) {
-            chunkBuilder += Segment.Param(paramsIterator.next())
-          }
+          if (paramsIterator.hasNext) paramsIterator.next() match {
+              case sql :Sql[Any] => sql.build(chunkBuilder)
+              case param => chunkBuilder += Segment.Param(param)
+            }
         }
       }
       while (paramsIterator.hasNext)
