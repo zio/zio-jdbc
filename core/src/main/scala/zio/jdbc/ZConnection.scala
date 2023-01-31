@@ -88,7 +88,7 @@ final class ZConnection(private[jdbc] val connection: Connection) extends AnyVal
 
       f(statement)
     }.tapErrorCause { cause =>
-      ZIO.logAnnotate("SQL", sql.toString)(ZIO.logError(s"Error executing SQL due to: ${cause.prettyPrint}"))
+      ZIO.logAnnotate("SQL", sql.toString)(ZIO.logDebugCause(s"Error executing SQL due to: ${cause.prettyPrint}", cause))
     }
 
   /**

@@ -172,10 +172,7 @@ object SqlSpec extends ZIOSpecDefault {
 
           (for {
             res   <- transact(execute(defectiveSql)).exit
-            error <- ZTestLogger.logOutput.map(logs =>
-                       logs
-                         .filter(log => log.logLevel == zio.LogLevel.Error)
-                     )
+            error <- ZTestLogger.logOutput.map(_.filter(log => log.logLevel == zio.LogLevel.Debug))
           } yield assert(res)(
             fails(isSubtype[SQLException](anything))
           ) && assert(error.head.annotations.keys)(contains("SQL"))

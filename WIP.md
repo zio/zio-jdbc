@@ -3,7 +3,8 @@
   - [ ] add test
 * Drop `zio-cofig` and `zio-logging` dependencies
 * Interpolation of Sql values
+* Use Debug level logging
+  - [ ] revisit and remove
 
 TODOs
-* [ ] Debug logging
 * [ ] Closing statements and resultsets
