@@ -39,7 +39,7 @@ package object jdbc {
   def delete(sql: SqlFragment): ZIO[ZConnection, Throwable, Long] =
     for {
       connection <- ZIO.service[ZConnection]
-      result     <- connection.executeSqlWith(sql)(_.executeLargeUpdate())
+      result <- ZIO.scoped(connection.executeSqlWith(sql)(_.executeLargeUpdate()))
     } yield result
 
   /**
@@ -48,7 +48,7 @@ package object jdbc {
   def execute(sql: SqlFragment): ZIO[ZConnection, Throwable, Unit] =
     for {
       connection <- ZIO.service[ZConnection]
-      _          <- connection.executeSqlWith(sql)(_.executeUpdate())
+      _ <- ZIO.scoped(connection.executeSqlWith(sql)(_.executeUpdate()))
     } yield ()
 
   /**
@@ -58,61 +58,72 @@ package object jdbc {
    * `Chunk.empty` is returned.
    */
   def insert(sql: SqlFragment): ZIO[ZConnection, Throwable, UpdateResult] =
-    for {
-      connection     <- ZIO.service[ZConnection]
-      result         <- connection.executeSqlWith(sql) { ps =>
-                          val rowsUpdated = ps.executeLargeUpdate()
-                          val updatedKeys = ps.getGeneratedKeys()
-                          (rowsUpdated, updatedKeys)
-                        }
-      (count, keysRs) = result
-      chunk          <- ZIO.attempt {
-                          val builder = ChunkBuilder.make[Long]()
-                          while (keysRs.next())
-                            builder += keysRs.getLong(1)
-                          builder.result()
-                        }.orElseSucceed(Chunk.empty)
-    } yield UpdateResult(count, chunk)
+    ZIO.scoped {
+      for {
+        connection <- ZIO.service[ZConnection]
+        result <- connection.executeSqlWith(sql) { ps =>
+          val rowsUpdated = ps.executeLargeUpdate()
+          val updatedKeys = ps.getGeneratedKeys()
+          ZIO.addFinalizer(ZIO.attemptBlocking(updatedKeys.close()).ignore)
+          (rowsUpdated, updatedKeys)
+        }
+        (count, keysRs) = result
+        chunk <- ZIO.attempt {
+          val builder = ChunkBuilder.make[Long]()
+          while (keysRs.next())
+            builder += keysRs.getLong(1)
+          builder.result()
+        }.orElseSucceed(Chunk.empty)
+      } yield UpdateResult(count, chunk)
+    }
 
   /**
    * Performs a SQL select query, returning all results in a chunk.
    */
   def selectAll[A](sql: Sql[A]): ZIO[ZConnection, Throwable, Chunk[A]] =
-    for {
-      connection <- ZIO.service[ZConnection]
-      result     <- connection.executeSqlWith(sql)(_.executeQuery())
-      chunk      <- ZIO.attempt {
-                      val builder = ChunkBuilder.make[A]()
-                      val zrs     = ZResultSet(result)
-                      while (result.next())
-                        builder += sql.decode(zrs)
-                      builder.result()
-                    }
-    } yield chunk
+    ZIO.scoped {
+      for {
+        zrs <- withResultSet(sql)
+        chunk <- ZIO.attempt {
+          val builder = ChunkBuilder.make[A]()
+          while (zrs.resultSet.next())
+            builder += sql.decode(zrs)
+          builder.result()
+        }
+      } yield chunk
+    }
 
   /**
    * Performs a SQL select query, returning the first result, if any.
    */
   def selectOne[A](sql: Sql[A]): ZIO[ZConnection, Throwable, Option[A]] =
-    for {
-      connection <- ZIO.service[ZConnection]
-      result     <- connection.executeSqlWith(sql)(_.executeQuery())
-      option     <- if (result.next()) ZIO.some(sql.decode(ZResultSet(result))) else ZIO.none
-    } yield option
+    ZIO.scoped {
+      for {
+        zrs <- withResultSet(sql)
+        option <- if (zrs.resultSet.next()) ZIO.some(sql.decode(zrs)) else ZIO.none
+      } yield option
+    }
 
   /**
    * Performs a SQL select query, returning a stream of results.
    */
   def selectStream[A](sql: Sql[A]): ZStream[ZConnection, Throwable, A] =
-    ZStream.unwrap {
+    ZStream.unwrapScoped {
       for {
-        connection <- ZIO.service[ZConnection]
-        result     <- connection.executeSqlWith(sql)(_.executeQuery())
-        zrs         = ZResultSet(result)
-        stream      = ZStream.fromZIOOption(ZIO.suspend {
-                        if (result.next()) ZIO.attempt(Some(sql.decode(zrs))) else ZIO.none
-                      }.some)
-      } yield stream
+        zrs <- withResultSet(sql)
+      } yield ZStream.repeatZIOOption {
+        ZIO.suspend {
+          for {
+            hasNext <- zrs.access(_.next())
+            maybeValue <- if (hasNext) ZIO.attempt(Some(sql.decode(zrs))) else ZIO.none
+          } yield maybeValue
+        }
+          .mapError(Option(_))
+          .flatMap {
+            case None => ZIO.fail(None)
+            case Some(v) => ZIO.succeed(v)
+          }
+      }
     }
 
   /**
@@ -128,6 +139,13 @@ package object jdbc {
   def update(sql: SqlFragment): ZIO[ZConnection, Throwable, Long] =
     for {
       connection <- ZIO.service[ZConnection]
-      result     <- connection.executeSqlWith(sql)(_.executeLargeUpdate())
+      result <- ZIO.scoped(connection.executeSqlWith(sql)(_.executeLargeUpdate()))
     } yield result
+
+  private def withResultSet[A](sql: Sql[A]): ZIO[ZConnection with Scope, Throwable, ZResultSet] =
+    for {
+      connection <- ZIO.service[ZConnection]
+      zrs <- ZIO.acquireRelease(connection.executeSqlWith(sql)(_.executeQuery()).map(ZResultSet.apply))(_.access(_.close()).ignore)
+    } yield zrs
+
 }

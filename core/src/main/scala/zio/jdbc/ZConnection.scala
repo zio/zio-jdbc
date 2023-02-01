@@ -31,7 +31,7 @@ final class ZConnection(private[jdbc] val connection: Connection) extends AnyVal
   def close: Task[Any]    = access(_.close())
   def rollback: Task[Any] = access(_.rollback())
 
-  private[jdbc] def executeSqlWith[A](sql: Sql[_])(f: PreparedStatement => A): ZIO[Any, Throwable, A] =
+  private[jdbc] def executeSqlWith[A](sql: Sql[_])(f: PreparedStatement => A): ZIO[Scope, Throwable, A] =
     access { connection =>
       import Sql.Segment._
 
@@ -87,8 +87,9 @@ final class ZConnection(private[jdbc] val connection: Connection) extends AnyVal
         i += 1
       }
 
-      f(statement)
-    }.tapErrorCause { cause =>
+      val close = ZIO.addFinalizer(ZIO.attemptBlocking(statement.close()).ignore)
+      (f(statement), close)
+    }.flatMap(vs => vs._2.as(vs._1)).tapErrorCause { cause =>
       ZIO.logAnnotate("SQL", sql.toString)(ZIO.logError(s"Error executing SQL due to: ${cause.prettyPrint}"))
     }
 
@@ -107,6 +108,7 @@ final class ZConnection(private[jdbc] val connection: Connection) extends AnyVal
       closed    <- ZIO.attempt(this.connection.isClosed)
       statement <- ZIO.attempt(this.connection.prepareStatement("SELECT 1"))
       isAlive   <- ZIO.succeed(!closed && statement != null)
+      _         <- ZIO.attempt(statement.close()).ignore
     } yield isAlive
 
   /**
