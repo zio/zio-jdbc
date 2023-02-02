@@ -34,12 +34,14 @@ object SqlSpec extends ZIOSpecDefault {
           assertTrue(sql"select name, age from users where age = $age and name = $name".segments.size == 4)
         } +
         test("interpolate Sql values") {
-          val tableName = sql"table1"
+          val tableName    = sql"table1"
           val (a, b, c, d) = (1, 3, "foo", "bar")
-          val filter = sql"a between $a and $b"
-          val fields = Sql("a, b")
-          val testSql = sql"select $fields from $tableName where c = $c and $filter and d = $d"
-          assertTrue(testSql.toString == "Sql(select a, b from table1 where c = ? and a between ? and ? and d = ?, foo, 1, 3, bar)")
+          val filter       = sql"a between $a and $b"
+          val fields       = Sql("a, b")
+          val testSql      = sql"select $fields from $tableName where c = $c and $filter and d = $d"
+          assertTrue(
+            testSql.toString == "Sql(select a, b from table1 where c = ? and a between ? and ? and d = ?, foo, 1, 3, bar)"
+          )
         } +
         suite("operators") {
           val id   = "foo"

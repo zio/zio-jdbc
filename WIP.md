@@ -5,6 +5,11 @@
 * Interpolation of Sql values
 * Use Debug level logging
   - [ ] revisit and remove
+* Closing statements and resultsets
 
 TODOs
-* [ ] Closing statements and resultsets
+* [ ] Decide on level where use `ZIO.blocking` as its x6 slower, e.g. `zrs.next()` or `zrs.close()`
+* [ ] Encapsulate into (akin Doobie):
+   - ??? `Query` with `executeQuery` 
+   - `Update` with `executeLargeUpdate` and later to add support for `.manyUpdate` and `.withGeneratedKeys`
+   - 

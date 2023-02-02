@@ -14,7 +14,7 @@ object App extends ZIOAppDefault {
     execute(Basic.ex0)
   }
 
-  val insertRow: ZIO[ZConnectionPool, Throwable, UpdateResult] = transaction {
+  val insertRow: ZIO[ZConnectionPool, Throwable, Long] = transaction {
     insert(sql"insert into users (name, age)".values(sampleUser1, sampleUser2))
   }
 

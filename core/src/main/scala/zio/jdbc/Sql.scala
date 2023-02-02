@@ -136,7 +136,7 @@ object Sql {
     final case class Param(value: Any)     extends Segment
   }
 
-  def apply(sql: String): Sql[ZResultSet] = empty ++ sql
+  def apply(sql: String): Sql[ZResultSet] = sql
 
   def apply[A](segments: Chunk[Sql.Segment], decode: ZResultSet => A): Sql[A] =
     new Sql(builder => builder ++= segments, decode)
