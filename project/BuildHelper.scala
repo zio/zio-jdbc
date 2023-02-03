@@ -193,8 +193,8 @@ object BuildHelper {
       semanticdbVersion                      := scalafixSemanticdb.revision, // use Scalafix compatible version
       ThisBuild / scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(scalaVersion.value),
       ThisBuild / scalafixDependencies ++= List(
-        "com.github.liancheng" %% "organize-imports" % "0.5.0",
-        "com.github.vovapolu"  %% "scaluzzi"         % "0.1.18"
+        "com.github.liancheng" %% "organize-imports" % "0.6.0",
+        "com.github.vovapolu"  %% "scaluzzi"         % "0.1.23"
       ),
       Test / parallelExecution               := true,
       incOptions ~= (_.withLogRecompileOnMacro(false)),
@@ -232,8 +232,8 @@ object BuildHelper {
 
   def jsSettings =
     Seq(
-      libraryDependencies += "io.github.cquiroz" %% "scala-java-time"      % "2.3.0",
-      libraryDependencies += "io.github.cquiroz" %% "scala-java-time-tzdb" % "2.2.2"
+      libraryDependencies += "io.github.cquiroz" %% "scala-java-time"      % "2.5.0",
+      libraryDependencies += "io.github.cquiroz" %% "scala-java-time-tzdb" % "2.5.0"
     )
 
   def nativeSettings =
