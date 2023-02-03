@@ -109,9 +109,15 @@ package object jdbc {
         connection <- ZIO.service[ZConnection]
         result     <- connection.executeSqlWith(sql)(_.executeQuery())
         zrs         = ZResultSet(result)
-        stream      = ZStream.fromZIOOption(ZIO.suspend {
-                        if (result.next()) ZIO.attempt(Some(sql.decode(zrs))) else ZIO.none
-                      }.some)
+        stream      = ZStream.repeatZIOOption {
+                        ZIO
+                          .suspend(if (result.next()) ZIO.attempt(Some(sql.decode(zrs))) else ZIO.none)
+                          .mapError(Option(_))
+                          .flatMap {
+                            case None    => ZIO.fail(None)
+                            case Some(v) => ZIO.succeed(v)
+                          }
+                      }
       } yield stream
     }
 
