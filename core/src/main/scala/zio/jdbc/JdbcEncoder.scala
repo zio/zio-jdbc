@@ -702,7 +702,7 @@ trait JdbcEncoderLowPriorityImplicits { self =>
 
   private[jdbc] def caseClassEncoder[A](fields: (Schema.Field[_], A => Any)*): JdbcEncoder[A] = { (a: A) =>
     fields.map { case (Schema.Field(_, schema, _, _), extractor) =>
-      val encoder = self.fromSchema(schema)
+      val encoder = self.fromSchema(schema).asInstanceOf[JdbcEncoder[Any]]
       encoder.encode(extractor(a))
     }.reduce(_ ++ Sql.comma ++ _)
   }
