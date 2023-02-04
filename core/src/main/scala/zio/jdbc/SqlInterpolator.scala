@@ -26,8 +26,8 @@ final class SqlInterpolator(val context: StringContext) extends AnyVal {
     chunkBuilder => {
       import Sql.Segment
 
-      val partsIterator  = context.parts.toIterable.iterator
-      val paramsIterator = params.toIterable.iterator
+      val partsIterator  = context.parts.iterator
+      val paramsIterator = params.iterator
 
       while (partsIterator.hasNext) {
         val next = partsIterator.next()
