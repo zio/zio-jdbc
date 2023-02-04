@@ -86,12 +86,12 @@ final class ZConnection(private[jdbc] val connection: Connection) extends AnyVal
         }
         i += 1
       }
-
-      val close = ZIO.addFinalizer(ZIO.attemptBlocking(statement.close()).ignore)
-      (f(statement), close)
-    }.flatMap(vs => vs._2.as(vs._1)).tapErrorCause { cause =>
-      ZIO.logAnnotate("SQL", sql.toString)(ZIO.logError(s"Error executing SQL due to: ${cause.prettyPrint}"))
+      statement
     }
+      .flatMap(stmt => ZIO.addFinalizer(ZIO.attemptBlocking(stmt.close()).ignore).as(f(stmt)))
+      .tapErrorCause { cause =>
+        ZIO.logAnnotate("SQL", sql.toString)(ZIO.logError(s"Error executing SQL due to: ${cause.prettyPrint}"))
+      }
 
   /**
    * Return whether the connection is still alive or not,
