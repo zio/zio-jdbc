@@ -6,6 +6,8 @@ val ZioSchemaVersion = "0.2.1"
 
 name := "zio-jdbc"
 
+Global / onChangedBuildSource := ReloadOnSourceChanges
+
 inThisBuild(
   List(
     organization := "dev.zio",
