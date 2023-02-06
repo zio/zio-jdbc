@@ -1,6 +1,7 @@
 package zio.jdbc
 
 import zio.schema.{ Schema, TypeId }
+import zio._
 import zio.test._
 import zio.test.Assertion._
 import zio.jdbc.{ transaction => transact }
@@ -42,6 +43,15 @@ object SqlSpec extends ZIOSpecDefault {
           assertTrue(
             testSql.toString == "Sql(select a, b from table1 where c = ? and a between ? and ? and d = ?, foo, 1, 3, bar)"
           )
+        } +
+        test("type safe interpolation") {
+          final case class Foo(value: String)
+          implicit val fooParamSetter: Sql.ParamSetter[Foo] = (ps, i, value) => ???
+
+          val testSql = sql"${Foo("test")}"
+
+          assertTrue(testSql.segments.collect { case Sql.Segment.Param(_, setter) => setter }.head eq fooParamSetter) &&
+          assertTrue(testSql.toString == "Sql(?, Foo(test))")
         } +
         suite("operators") {
           val id   = "foo"

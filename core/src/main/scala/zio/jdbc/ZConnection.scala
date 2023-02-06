@@ -17,7 +17,7 @@ package zio.jdbc
 
 import zio._
 
-import java.sql.{ Blob, Connection, PreparedStatement, Statement }
+import java.sql.{ Connection, PreparedStatement }
 
 /**
  * A `ZConnection` is a straightforward wrapper around `java.sql.Connection`. In order
@@ -37,66 +37,23 @@ final class ZConnection(private[jdbc] val connection: Connection) extends AnyVal
     sql: Sql[_]
   )(f: PreparedStatement => ZIO[Scope, Throwable, A]): ZIO[Scope, Throwable, A] =
     accessZIO { connection =>
-      import Sql.Segment._
-
       for {
         statement <- ZIO.acquireRelease(ZIO.attempt {
-                       val segments = sql.segments
-
-                       val stringBuilder = new StringBuilder()
-
-                       var i = 0
-
-                       while (i < segments.length) {
-                         segments(i) match {
-                           case Syntax(value) => stringBuilder.append(value)
-                           case _             => stringBuilder.append("?")
-                         }
-                         i += 1
-                       }
-
-                       connection.prepareStatement(stringBuilder.toString, Statement.RETURN_GENERATED_KEYS)
+                       val sb = new StringBuilder()
+                       sql.foreachSegment(syntax => sb.append(syntax.value))(_ => sb.append("?"))
+                       connection.prepareStatement(sb.toString)
                      })(statement => ZIO.attemptBlocking(statement.close()).ignoreLogged)
         _         <- ZIO.attempt {
-                       val segments   = sql.segments
-                       var i          = 0
                        var paramIndex = 1
+                       sql.foreachSegment(_ => ()) { param =>
+                         param.setter(statement, paramIndex, param.value)
+                         paramIndex += 1
 
-                       while (i < segments.length) {
-                         segments(i) match {
-                           case Param(value) =>
-                             value match {
-                               case v: String                => statement.setString(paramIndex, v)
-                               case v: Int                   => statement.setInt(paramIndex, v)
-                               case v: Long                  => statement.setLong(paramIndex, v)
-                               case v: Short                 => statement.setShort(paramIndex, v)
-                               case v: Byte                  => statement.setByte(paramIndex, v)
-                               case v: Char                  => statement.setString(paramIndex, v.toString)
-                               case v: Double                => statement.setDouble(paramIndex, v)
-                               case v: Blob                  => statement.setBlob(paramIndex, v)
-                               case v: java.math.BigDecimal  => statement.setBigDecimal(paramIndex, v)
-                               case v: scala.math.BigDecimal => statement.setBigDecimal(paramIndex, v.bigDecimal)
-                               case v: java.math.BigInteger  => statement.setBigDecimal(paramIndex, new java.math.BigDecimal(v))
-                               case v: scala.math.BigInt     =>
-                                 statement.setBigDecimal(paramIndex, new java.math.BigDecimal(v.bigInteger))
-                               case v: java.sql.Date         => statement.setDate(paramIndex, v)
-                               case v: java.sql.Time         => statement.setTime(paramIndex, v)
-                               case v: java.sql.Timestamp    => statement.setTimestamp(paramIndex, v)
-                               case v: Boolean               => statement.setBoolean(paramIndex, v)
-                               case v: Float                 => statement.setFloat(paramIndex, v)
-                               case v                        => statement.setObject(paramIndex, v)
-                             }
-
-                             paramIndex += 1
-
-                           case Syntax(_) =>
-                         }
-                         i += 1
                        }
                      }
         result    <- f(statement)
       } yield result
-    }.tapErrorCause { cause => // TODO: Question: do we want logging here
+    }.tapErrorCause { cause => // TODO: Question: do we want logging here, switch to debug for now
       ZIO.logAnnotate("SQL", sql.toString)(
         ZIO.logDebugCause(s"Error executing SQL due to: ${cause.prettyPrint}", cause)
       )

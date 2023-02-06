@@ -15,7 +15,10 @@
  */
 package zio.jdbc
 
+import zio.jdbc.Sql.Segment
 import zio.{ Chunk, ChunkBuilder }
+
+import java.sql.PreparedStatement
 
 /**
  * A `Sql[A]` represents part or all of a SQL query, together with an
@@ -86,16 +89,22 @@ final class Sql[+A](
     builder.result()
   }
 
+  private[jdbc] def foreachSegment(addSyntax: Segment.Syntax => Any)(addParam: Segment.Param => Any): Unit =
+    segments.foreach {
+      case syntax: Segment.Syntax => addSyntax(syntax)
+      case param: Segment.Param   => addParam(param)
+      case nested: Segment.Nested => nested.sql.foreachSegment(addSyntax)(addParam)
+    }
+
   override def toString: String = {
-    import Sql.Segment
-
-    val sql = new StringBuilder()
-
+    val sql           = new StringBuilder()
     val paramsBuilder = ChunkBuilder.make[String]()
 
-    segments.foreach {
-      case Segment.Syntax(value) => sql.append(value)
-      case Segment.Param(value)  => sql.append("?"); paramsBuilder += value.toString
+    foreachSegment { syntax =>
+      sql.append(syntax.value)
+    } { param =>
+      sql.append("?")
+      paramsBuilder += param.value.toString
     }
 
     val params       = paramsBuilder.result()
@@ -128,12 +137,45 @@ final class Sql[+A](
 }
 
 object Sql {
-  val empty: SqlFragment = Sql(Chunk.empty, identity(_))
+  val empty: SqlFragment = Sql(Chunk.empty, identity)
 
   sealed trait Segment
   object Segment {
-    final case class Syntax(value: String) extends Segment
-    final case class Param(value: Any)     extends Segment
+    final case class Syntax(value: String)                       extends Segment
+    final case class Param(value: Any, setter: ParamSetter[Any]) extends Segment
+    final case class Nested(sql: Sql[_])                         extends Segment
+  }
+
+  trait ParamSetter[A] { self =>
+    def apply(preparedStatement: PreparedStatement, index: Int, value: A): Unit
+
+    final def contramap[B](f: B => A): ParamSetter[B] = (ps, i, bValue) => self(ps, i, f(bValue))
+  }
+
+  object ParamSetter {
+    implicit val intParamSetter: ParamSetter[Int]                               = (ps, i, value) => ps.setInt(i, value)
+    implicit val longParamSetter: ParamSetter[Long]                             = (ps, i, value) => ps.setLong(i, value)
+    implicit val doubleParamSetter: ParamSetter[Double]                         = (ps, i, value) => ps.setDouble(i, value)
+    implicit val stringParamSetter: ParamSetter[String]                         = (ps, i, value) => ps.setString(i, value)
+    implicit val charParamSetter: ParamSetter[Char]                             = stringParamSetter.contramap(_.toString)
+    implicit val booleanParamSetter: ParamSetter[Boolean]                       = (ps, i, value) => ps.setBoolean(i, value)
+    implicit val bigDecimalParamSetter: ParamSetter[java.math.BigDecimal]       = (ps, i, value) => ps.setBigDecimal(i, value)
+    implicit val bigIntParamSetter: ParamSetter[java.math.BigInteger]           =
+      bigDecimalParamSetter.contramap(new java.math.BigDecimal(_))
+    implicit val bigDecimalScalaParamSetter: ParamSetter[scala.math.BigDecimal] =
+      bigDecimalParamSetter.contramap(_.bigDecimal)
+    implicit val shortParamSetter: ParamSetter[Short]                           = (ps, i, value) => ps.setShort(i, value)
+    implicit val floatParamSetter: ParamSetter[Float]                           = (ps, i, value) => ps.setFloat(i, value)
+    implicit val byteParamSetter: ParamSetter[Byte]                             = (ps, i, value) => ps.setByte(i, value)
+    implicit val byteArrayParamSetter: ParamSetter[Array[Byte]]                 = (ps, i, value) => ps.setBytes(i, value)
+    implicit val byteChunkParamSetter: ParamSetter[Chunk[Byte]]                 = byteArrayParamSetter.contramap(_.toArray)
+    implicit val blobParamSetter: ParamSetter[java.sql.Blob]                    = (ps, i, value) => ps.setBlob(i, value)
+    implicit val sqlDateParamSetter: ParamSetter[java.sql.Date]                 = (ps, i, value) => ps.setDate(i, value)
+    implicit val sqlTimeParamSetter: ParamSetter[java.sql.Time]                 = (ps, i, value) => ps.setTime(i, value)
+    implicit val sqlTimestampParamSetter: ParamSetter[java.sql.Timestamp]       = (ps, i, value) => ps.setTimestamp(i, value)
+    implicit val instantParamSetter: ParamSetter[java.time.Instant]             =
+      sqlTimestampParamSetter.contramap(java.sql.Timestamp.from)
+    implicit val uuidParamSetter: ParamSetter[java.util.UUID]                   = (ps, i, value) => ps.setObject(i, value)
   }
 
   def apply(sql: String): Sql[ZResultSet] = sql

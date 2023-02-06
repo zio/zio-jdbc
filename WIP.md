@@ -6,6 +6,7 @@
 * Use Debug level logging
   - [ ] revisit and remove
 * Closing statements and resultsets
+* Type-safe `SqlInterpolator` 
 
 TODOs
 * [ ] Decide on level where use `ZIO.blocking` as its x6 slower, e.g. `zrs.next()` or `zrs.close()`
