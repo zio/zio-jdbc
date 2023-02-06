@@ -34,10 +34,12 @@ object IsSqlFragmentSpec extends ZIOSpecDefault {
           """
           }
 
-          assertZIO(result)(isLeft(
-            startsWithString("This method can only be invoked on a fragment of SQL") ||
-            startsWithString("Reporting of compilation error messages on Scala 3 is not currently supported")
-          ))
+          assertZIO(result)(
+            isLeft(
+              startsWithString("This method can only be invoked on a fragment of SQL") ||
+                startsWithString("Reporting of compilation error messages on Scala 3 is not currently supported")
+            )
+          )
         }
     }
 }

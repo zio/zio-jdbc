@@ -22,7 +22,7 @@ object BuildHelper {
 
   lazy val Scala212: String = versions("2.12")
   lazy val Scala213: String = versions("2.13")
-  lazy val Scala3: String = versions("3.2")
+  lazy val Scala3: String   = versions("3.2")
 
   val SilencerVersion = "1.7.12"
 
@@ -186,17 +186,18 @@ object BuildHelper {
       libraryDependencies ++= {
         CrossVersion.partialVersion(scalaVersion.value) match {
           case Some((3, _)) => Nil
-          case _ => Seq(
-            "com.github.ghik" % "silencer-lib" % SilencerVersion % Provided cross CrossVersion.full,
-            compilerPlugin("com.github.ghik" % "silencer-plugin" % SilencerVersion cross CrossVersion.full)
-          )
+          case _            =>
+            Seq(
+              "com.github.ghik" % "silencer-lib" % SilencerVersion % Provided cross CrossVersion.full,
+              compilerPlugin("com.github.ghik" % "silencer-plugin" % SilencerVersion cross CrossVersion.full)
+            )
         }
       },
       semanticdbEnabled                      := true,                        // enable SemanticDB
       semanticdbOptions ++= {
         CrossVersion.partialVersion(scalaVersion.value) match {
           case Some((3, _)) => Nil
-          case _ => Seq("-P:semanticdb:synthetics:on")
+          case _            => Seq("-P:semanticdb:synthetics:on")
         }
       },
       semanticdbVersion                      := scalafixSemanticdb.revision, // use Scalafix compatible version
