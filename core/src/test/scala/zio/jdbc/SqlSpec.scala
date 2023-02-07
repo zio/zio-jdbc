@@ -1,10 +1,9 @@
 package zio.jdbc
 
-import zio.schema.{ Schema, TypeId }
-import zio._
-import zio.test._
-import zio.test.Assertion._
 import zio.jdbc.{ transaction => transact }
+import zio.schema.{ Schema, TypeId }
+import zio.test.Assertion._
+import zio.test._
 
 import java.sql.SQLException
 
@@ -46,7 +45,7 @@ object SqlSpec extends ZIOSpecDefault {
         } +
         test("type safe interpolation") {
           final case class Foo(value: String)
-          implicit val fooParamSetter: Sql.ParamSetter[Foo] = (ps, i, value) => ???
+          implicit val fooParamSetter: Sql.ParamSetter[Foo] = (_, _, _) => ()
 
           val testSql = sql"${Foo("test")}"
 
