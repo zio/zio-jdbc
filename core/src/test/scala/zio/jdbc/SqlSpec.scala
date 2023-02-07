@@ -45,7 +45,7 @@ object SqlSpec extends ZIOSpecDefault {
         } +
         test("type safe interpolation") {
           final case class Foo(value: String)
-          implicit val fooParamSetter: Sql.Setter[Foo] = Sql.Setter[String].contramap(_.toString)
+          implicit val fooParamSetter: Sql.Setter[Foo] = Sql.Setter[String]().contramap(_.toString)
 
           val testSql = sql"${Foo("test")}"
 

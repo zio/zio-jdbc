@@ -155,7 +155,7 @@ object Sql {
   }
 
   object Setter {
-    def apply[A](implicit setter: Setter[A]): Setter[A] = setter
+    def apply[A]()(implicit setter: Setter[A]): Setter[A] = setter
 
     def apply[A](onValue: (PreparedStatement, Int, A) => Unit, onNull: (PreparedStatement, Int) => Unit): Setter[A] =
       new Setter[A] {
