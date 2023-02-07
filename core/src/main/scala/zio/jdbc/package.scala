@@ -34,8 +34,8 @@ package object jdbc {
    */
   implicit def stringToSql(s: String): SqlFragment = Sql(Chunk(Sql.Segment.Syntax(s)), identity)
 
-  implicit def paramSegment[A](a: A)(implicit setter: Sql.ParamSetter[A]): Segment.Param =
-    Segment.Param(a, setter.asInstanceOf[Sql.ParamSetter[Any]])
+  implicit def paramSegment[A](a: A)(implicit setter: Sql.Setter[A]): Segment.Param =
+    Segment.Param(a, setter.asInstanceOf[Sql.Setter[Any]])
 
   implicit def nestedSqlSegment[A](sql: Sql[A]): Segment.Nested = Segment.Nested(sql)
 

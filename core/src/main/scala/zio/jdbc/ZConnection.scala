@@ -46,7 +46,7 @@ final class ZConnection(private[jdbc] val connection: Connection) extends AnyVal
         _         <- ZIO.attempt {
                        var paramIndex = 1
                        sql.foreachSegment(_ => ()) { param =>
-                         param.setter(statement, paramIndex, param.value)
+                         param.setter.setValue(statement, paramIndex, param.value)
                          paramIndex += 1
 
                        }

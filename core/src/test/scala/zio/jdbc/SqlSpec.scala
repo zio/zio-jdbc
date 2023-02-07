@@ -45,12 +45,18 @@ object SqlSpec extends ZIOSpecDefault {
         } +
         test("type safe interpolation") {
           final case class Foo(value: String)
-          implicit val fooParamSetter: Sql.ParamSetter[Foo] = (_, _, _) => ()
+          implicit val fooParamSetter: Sql.Setter[Foo] = Sql.Setter[String].contramap(_.toString)
 
           val testSql = sql"${Foo("test")}"
 
           assertTrue(testSql.segments.collect { case Sql.Segment.Param(_, setter) => setter }.head eq fooParamSetter) &&
           assertTrue(testSql.toString == "Sql(?, Foo(test))")
+        } +
+        suite("Sql.ParamSetter instances") { // TODO figure out how to test at PrepareStatement level
+          test("Option") {
+            val none: Option[Int] = None
+            assertTrue(sql"${none}".toString == "Sql(?, None)" && sql"${Option(123)}".toString == "Sql(?, Some(123))")
+          }
         } +
         suite("operators") {
           val id   = "foo"

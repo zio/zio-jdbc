@@ -48,9 +48,10 @@ object JdbcEncoder extends JdbcEncoderLowPriorityImplicits {
   implicit val blobEncoder: JdbcEncoder[java.sql.Blob]                    = value => sql"$value"
   implicit val uuidEncoder: JdbcEncoder[java.util.UUID]                   = value => sql"$value"
 
-  implicit def singleParamEncoder[A: Sql.ParamSetter]: JdbcEncoder[A] = value => sql"$value"
+  implicit def singleParamEncoder[A: Sql.Setter]: JdbcEncoder[A] = value => sql"$value"
 
-  implicit def optionEncoder[A](implicit encoder: JdbcEncoder[A]): JdbcEncoder[Option[A]] =
+  // TODO: review for cases like Option of a tuple
+  def optionEncoder[A](implicit encoder: JdbcEncoder[A]): JdbcEncoder[Option[A]] =
     value => value.fold(Sql.nullLiteral)(encoder.encode)
 
   implicit def tuple2Encoder[A: JdbcEncoder, B: JdbcEncoder]: JdbcEncoder[(A, B)] =

@@ -18,7 +18,7 @@ package zio.jdbc
 import zio.jdbc.Sql.Segment
 import zio.{ Chunk, ChunkBuilder }
 
-import java.sql.PreparedStatement
+import java.sql.{ PreparedStatement, Types }
 
 /**
  * A `Sql[A]` represents part or all of a SQL query, together with an
@@ -141,41 +141,73 @@ object Sql {
 
   sealed trait Segment
   object Segment {
-    final case class Syntax(value: String)                       extends Segment
-    final case class Param(value: Any, setter: ParamSetter[Any]) extends Segment
-    final case class Nested(sql: Sql[_])                         extends Segment
+    final case class Syntax(value: String)                  extends Segment
+    final case class Param(value: Any, setter: Setter[Any]) extends Segment
+    final case class Nested(sql: Sql[_])                    extends Segment
   }
 
-  trait ParamSetter[A] { self =>
-    def apply(preparedStatement: PreparedStatement, index: Int, value: A): Unit
+  trait Setter[A] { self =>
+    def setValue(ps: PreparedStatement, index: Int, value: A): Unit
+    def setNull(ps: PreparedStatement, index: Int): Unit
 
-    final def contramap[B](f: B => A): ParamSetter[B] = (ps, i, bValue) => self(ps, i, f(bValue))
+    final def contramap[B](f: B => A): Setter[B] =
+      Setter((ps, i, value) => self.setValue(ps, i, f(value)), (ps, i) => self.setNull(ps, i))
   }
 
-  object ParamSetter {
-    implicit val intParamSetter: ParamSetter[Int]                               = (ps, i, value) => ps.setInt(i, value)
-    implicit val longParamSetter: ParamSetter[Long]                             = (ps, i, value) => ps.setLong(i, value)
-    implicit val doubleParamSetter: ParamSetter[Double]                         = (ps, i, value) => ps.setDouble(i, value)
-    implicit val stringParamSetter: ParamSetter[String]                         = (ps, i, value) => ps.setString(i, value)
-    implicit val charParamSetter: ParamSetter[Char]                             = stringParamSetter.contramap(_.toString)
-    implicit val booleanParamSetter: ParamSetter[Boolean]                       = (ps, i, value) => ps.setBoolean(i, value)
-    implicit val bigDecimalParamSetter: ParamSetter[java.math.BigDecimal]       = (ps, i, value) => ps.setBigDecimal(i, value)
-    implicit val bigIntParamSetter: ParamSetter[java.math.BigInteger]           =
-      bigDecimalParamSetter.contramap(new java.math.BigDecimal(_))
-    implicit val bigDecimalScalaParamSetter: ParamSetter[scala.math.BigDecimal] =
-      bigDecimalParamSetter.contramap(_.bigDecimal)
-    implicit val shortParamSetter: ParamSetter[Short]                           = (ps, i, value) => ps.setShort(i, value)
-    implicit val floatParamSetter: ParamSetter[Float]                           = (ps, i, value) => ps.setFloat(i, value)
-    implicit val byteParamSetter: ParamSetter[Byte]                             = (ps, i, value) => ps.setByte(i, value)
-    implicit val byteArrayParamSetter: ParamSetter[Array[Byte]]                 = (ps, i, value) => ps.setBytes(i, value)
-    implicit val byteChunkParamSetter: ParamSetter[Chunk[Byte]]                 = byteArrayParamSetter.contramap(_.toArray)
-    implicit val blobParamSetter: ParamSetter[java.sql.Blob]                    = (ps, i, value) => ps.setBlob(i, value)
-    implicit val sqlDateParamSetter: ParamSetter[java.sql.Date]                 = (ps, i, value) => ps.setDate(i, value)
-    implicit val sqlTimeParamSetter: ParamSetter[java.sql.Time]                 = (ps, i, value) => ps.setTime(i, value)
-    implicit val sqlTimestampParamSetter: ParamSetter[java.sql.Timestamp]       = (ps, i, value) => ps.setTimestamp(i, value)
-    implicit val instantParamSetter: ParamSetter[java.time.Instant]             =
-      sqlTimestampParamSetter.contramap(java.sql.Timestamp.from)
-    implicit val uuidParamSetter: ParamSetter[java.util.UUID]                   = (ps, i, value) => ps.setObject(i, value)
+  object Setter {
+    def apply[A](implicit setter: Setter[A]): Setter[A] = setter
+
+    def apply[A](onValue: (PreparedStatement, Int, A) => Unit, onNull: (PreparedStatement, Int) => Unit): Setter[A] =
+      new Setter[A] {
+        def setValue(ps: PreparedStatement, index: Int, value: A): Unit = onValue(ps, index, value)
+        def setNull(ps: PreparedStatement, index: Int): Unit            = onNull(ps, index)
+      }
+
+    def forSqlType[A](onValue: (PreparedStatement, Int, A) => Unit, sqlType: Int): Setter[A] = new Setter[A] {
+      def setValue(ps: PreparedStatement, index: Int, value: A): Unit = onValue(ps, index, value)
+      def setNull(ps: PreparedStatement, index: Int): Unit            = ps.setNull(index, sqlType)
+    }
+
+    def other[A](onValue: (PreparedStatement, Int, A) => Unit, sqlType: String): Setter[A] = new Setter[A] {
+      def setValue(ps: PreparedStatement, index: Int, value: A): Unit = onValue(ps, index, value)
+      def setNull(ps: PreparedStatement, index: Int): Unit            = ps.setNull(index, Types.OTHER, sqlType)
+    }
+
+    implicit def optionParamSetter[A](implicit setter: Setter[A]): Setter[Option[A]] =
+      Setter(
+        (ps, i, value) =>
+          value match {
+            case Some(value) => setter.setValue(ps, i, value)
+            case None        => setter.setNull(ps, i)
+          },
+        (ps, i) => setter.setNull(ps, i)
+      )
+
+    implicit val intSetter: Setter[Int]               = forSqlType((ps, i, value) => ps.setInt(i, value), Types.INTEGER)
+    implicit val longSetter: Setter[Long]             = forSqlType((ps, i, value) => ps.setLong(i, value), Types.BIGINT)
+    implicit val doubleSetter: Setter[Double]         = forSqlType((ps, i, value) => ps.setDouble(i, value), Types.DOUBLE)
+    implicit val stringSetter: Setter[String]         = forSqlType((ps, i, value) => ps.setString(i, value), Types.VARCHAR)
+    implicit val booleanSetter: Setter[Boolean]       = forSqlType((ps, i, value) => ps.setBoolean(i, value), Types.BOOLEAN)
+    implicit val shortSetter: Setter[Short]           = forSqlType((ps, i, value) => ps.setShort(i, value), Types.SMALLINT)
+    implicit val floatSetter: Setter[Float]           = forSqlType((ps, i, value) => ps.setFloat(i, value), Types.FLOAT)
+    implicit val byteSetter: Setter[Byte]             = forSqlType((ps, i, value) => ps.setByte(i, value), Types.TINYINT)
+    implicit val byteArraySetter: Setter[Array[Byte]] = forSqlType((ps, i, value) => ps.setBytes(i, value), Types.ARRAY)
+    implicit val blobSetter: Setter[java.sql.Blob]    = forSqlType((ps, i, value) => ps.setBlob(i, value), Types.BLOB)
+    implicit val sqlDateSetter: Setter[java.sql.Date] = forSqlType((ps, i, value) => ps.setDate(i, value), Types.DATE)
+    implicit val sqlTimeSetter: Setter[java.sql.Time] = forSqlType((ps, i, value) => ps.setTime(i, value), Types.TIME)
+
+    implicit val bigDecimalSetter: Setter[java.math.BigDecimal] =
+      forSqlType((ps, i, value) => ps.setBigDecimal(i, value), Types.NUMERIC)
+    implicit val sqlTimestampSetter: Setter[java.sql.Timestamp] =
+      forSqlType((ps, i, value) => ps.setTimestamp(i, value), Types.TIMESTAMP)
+
+    implicit val uuidParamSetter: Setter[java.util.UUID] = other((ps, i, value) => ps.setObject(i, value), "uuid")
+
+    implicit val charSetter: Setter[Char]                             = stringSetter.contramap(_.toString)
+    implicit val bigIntSetter: Setter[java.math.BigInteger]           = bigDecimalSetter.contramap(new java.math.BigDecimal(_))
+    implicit val bigDecimalScalaSetter: Setter[scala.math.BigDecimal] = bigDecimalSetter.contramap(_.bigDecimal)
+    implicit val byteChunkSetter: Setter[Chunk[Byte]]                 = byteArraySetter.contramap(_.toArray)
+    implicit val instantSetter: Setter[java.time.Instant]             = sqlTimestampSetter.contramap(java.sql.Timestamp.from)
   }
 
   def apply(sql: String): Sql[ZResultSet] = sql
