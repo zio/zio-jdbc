@@ -15,7 +15,6 @@
  */
 package zio
 
-import zio.jdbc.Sql.Segment
 import zio.stream._
 
 import scala.language.implicitConversions
@@ -33,11 +32,6 @@ package object jdbc {
    * Converts a String into a pure SQL expression
    */
   implicit def stringToSql(s: String): SqlFragment = Sql(Chunk(Sql.Segment.Syntax(s)), identity)
-
-  implicit def paramSegment[A](a: A)(implicit setter: Sql.Setter[A]): Segment.Param =
-    Segment.Param(a, setter.asInstanceOf[Sql.Setter[Any]])
-
-  implicit def nestedSqlSegment[A](sql: Sql[A]): Segment.Nested = Segment.Nested(sql)
 
   /**
    * Executes a SQL delete query.

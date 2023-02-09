@@ -19,6 +19,7 @@ import zio.jdbc.Sql.Segment
 import zio.{ Chunk, ChunkBuilder }
 
 import java.sql.{ PreparedStatement, Types }
+import scala.language.implicitConversions
 
 /**
  * A `Sql[A]` represents part or all of a SQL query, together with an
@@ -144,6 +145,11 @@ object Sql {
     final case class Syntax(value: String)                  extends Segment
     final case class Param(value: Any, setter: Setter[Any]) extends Segment
     final case class Nested(sql: Sql[_])                    extends Segment
+
+    implicit def paramSegment[A](a: A)(implicit setter: Sql.Setter[A]): Segment.Param =
+      Segment.Param(a, setter.asInstanceOf[Sql.Setter[Any]])
+
+    implicit def nestedSqlSegment[A](sql: Sql[A]): Segment.Nested = Segment.Nested(sql)
   }
 
   trait Setter[A] { self =>
