@@ -1,9 +1,9 @@
 package zio.jdbc
 
-import zio.schema.{ Schema, TypeId }
-import zio.test._
-import zio.test.Assertion._
 import zio.jdbc.{ transaction => transact }
+import zio.schema.{ Schema, TypeId }
+import zio.test.Assertion._
+import zio.test._
 
 import java.sql.SQLException
 
@@ -32,6 +32,31 @@ object SqlSpec extends ZIOSpecDefault {
           val age  = 42
           val name = "sholmes"
           assertTrue(sql"select name, age from users where age = $age and name = $name".segments.size == 4)
+        } +
+        test("interpolate Sql values") {
+          val tableName    = sql"table1"
+          val (a, b, c, d) = (1, 3, "foo", "bar")
+          val filter       = sql"a between $a and $b"
+          val fields       = Sql("a, b")
+          val testSql      = sql"select $fields from $tableName where c = $c and $filter and d = $d"
+          assertTrue(
+            testSql.toString == "Sql(select a, b from table1 where c = ? and a between ? and ? and d = ?, foo, 1, 3, bar)"
+          )
+        } +
+        test("type safe interpolation") {
+          final case class Foo(value: String)
+          implicit val fooParamSetter: Sql.Setter[Foo] = Sql.Setter[String]().contramap(_.toString)
+
+          val testSql = sql"${Foo("test")}"
+
+          assertTrue(testSql.segments.collect { case Sql.Segment.Param(_, setter) => setter }.head eq fooParamSetter) &&
+          assertTrue(testSql.toString == "Sql(?, Foo(test))")
+        } +
+        suite("Sql.ParamSetter instances") { // TODO figure out how to test at PrepareStatement level
+          test("Option") {
+            val none: Option[Int] = None
+            assertTrue(sql"${none}".toString == "Sql(?, None)" && sql"${Option(123)}".toString == "Sql(?, Some(123))")
+          }
         } +
         suite("operators") {
           val id   = "foo"
@@ -164,10 +189,7 @@ object SqlSpec extends ZIOSpecDefault {
 
           (for {
             res   <- transact(execute(defectiveSql)).exit
-            error <- ZTestLogger.logOutput.map(logs =>
-                       logs
-                         .filter(log => log.logLevel == zio.LogLevel.Error)
-                     )
+            error <- ZTestLogger.logOutput.map(_.filter(log => log.logLevel == zio.LogLevel.Debug))
           } yield assert(res)(
             fails(isSubtype[SQLException](anything))
           ) && assert(error.head.annotations.keys)(contains("SQL"))

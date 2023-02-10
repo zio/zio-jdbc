@@ -15,6 +15,8 @@
  */
 package zio.jdbc
 
+import zio.jdbc.Sql.Segment
+
 /**
  * An interpolator for SQL strings, which produces `Sql` values.
  *
@@ -22,24 +24,20 @@ package zio.jdbc
  */
 
 final class SqlInterpolator(val context: StringContext) extends AnyVal {
-  def sql(params: Any*): SqlFragment = new Sql(
+  def sql(params: Segment*): SqlFragment = new Sql(
     chunkBuilder => {
-      import Sql.Segment
+      val syntaxInterator = context.parts.iterator
+      val paramsIterator  = params.iterator
 
-      val partsIterator  = context.parts.toIterable.iterator
-      val paramsIterator = params.toIterable.iterator
-
-      while (partsIterator.hasNext) {
-        val next = partsIterator.next()
-        if (next.nonEmpty) {
-          chunkBuilder += Segment.Syntax(next)
-          if (paramsIterator.hasNext) {
-            chunkBuilder += Segment.Param(paramsIterator.next())
-          }
+      while (syntaxInterator.hasNext) {
+        val syntax = syntaxInterator.next()
+        if (syntax.nonEmpty) {
+          chunkBuilder += Segment.Syntax(syntax)
+          if (paramsIterator.hasNext) chunkBuilder += paramsIterator.next()
         }
       }
       while (paramsIterator.hasNext)
-        chunkBuilder += Segment.Param(paramsIterator.next())
+        chunkBuilder += paramsIterator.next()
     },
     Sql.identityFn
   )
