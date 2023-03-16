@@ -18,7 +18,7 @@ package zio.jdbc
 import zio.jdbc.Sql.Segment
 import zio.{ Chunk, ChunkBuilder }
 
-import java.sql.{ PreparedStatement, Types }
+import java.sql.{PreparedStatement, Types}
 import scala.language.implicitConversions
 
 /**
@@ -114,13 +114,22 @@ final class Sql[+A](
     s"Sql(${sql.result()}$paramsString)"
   }
 
-  def values[B](bs: Iterable[B])(implicit encode: JdbcEncoder[B], ev: IsSqlFragment[A]): SqlFragment =
-    this ++
-      Sql.values ++
-      Sql.intersperse(
-        Sql.comma,
-        bs.map(b => Sql.lparen ++ encode.encode(b) ++ Sql.rparen)
-      )
+    def values[B](bs: Iterable[B])(implicit encode: JdbcEncoder[B], ev: IsSqlFragment[A]): SqlFragment = {
+      this ++
+        Sql.values ++
+        Sql.intersperse(
+          Sql.comma,
+          bs.map(b => {
+            Sql.lparen ++ encode.encode(b) ++ Sql.rparen
+          })
+        )
+    }
+
+  def valuesBatched[B](bs: Iterable[B], batchSize: Int = 2000, tableName: String)(keys: String*)(implicit encode: JdbcEncoder[B], ev: IsSqlFragment[A]): Seq[SqlFragment] = {
+    val batches = bs.grouped(batchSize)
+    val insertStatements = batches.map(batch => Sql.insertInto(tableName)(keys.mkString(", ")).values(batch)).toSeq
+    insertStatements
+  }
 
   def values[B](b: B, bs: B*)(implicit encoder: JdbcEncoder[B], ev: IsSqlFragment[A]): SqlFragment = values(b +: bs)
 
@@ -237,9 +246,7 @@ object Sql {
     sep: SqlFragment,
     elements: Iterable[SqlFragment]
   ): SqlFragment = {
-
     var first = true
-
     elements.foldLeft(empty) { (acc, element) =>
       if (!first) acc ++ sep ++ element
       else {
