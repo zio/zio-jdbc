@@ -124,6 +124,12 @@ final class Sql[+A](
 
   def values[B](b: B, bs: B*)(implicit encoder: JdbcEncoder[B], ev: IsSqlFragment[A]): SqlFragment = values(b +: bs)
 
+  def valuesBatched[B](bs: Iterable[B], batchSize: Int = 2000, tableName: String)(keys: String*)(implicit encode: JdbcEncoder[B], ev: IsSqlFragment[A]): Seq[SqlFragment] = {
+    val batches = bs.grouped(batchSize)
+    val insertStatements = batches.map(batch => Sql.insertInto(tableName)(keys.mkString(", ")).values(batch)).toSeq
+    insertStatements
+  }
+
   def where(predicate: SqlFragment)(implicit ev: IsSqlFragment[A]): SqlFragment =
     self ++ Sql.where ++ predicate
 
