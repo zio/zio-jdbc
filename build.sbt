@@ -1,12 +1,12 @@
 import BuildHelper._
 
-val ZioVersion        = "2.0.4"
+val ZioVersion        = "2.0.6"
 val H2Version         = "2.1.214"
-val ZioConfigVersion  = "3.0.2"
-val ZioLoggingVersion = "2.1.5"
 val ZioSchemaVersion  = "0.3.1"
 
 name := "zio-jdbc"
+
+Global / onChangedBuildSource := ReloadOnSourceChanges
 
 inThisBuild(
   List(
@@ -42,8 +42,6 @@ lazy val core = project
     libraryDependencies ++= Seq(
       "dev.zio"       %% "zio"          % ZioVersion,
       "dev.zio"       %% "zio-streams"  % ZioVersion,
-      "dev.zio"       %% "zio-config"   % ZioConfigVersion,
-      "dev.zio"       %% "zio-logging"  % ZioLoggingVersion,
       "dev.zio"       %% "zio-schema"   % ZioSchemaVersion,
       "dev.zio"       %% "zio-test"     % ZioVersion % Test,
       "dev.zio"       %% "zio-test-sbt" % ZioVersion % Test,
@@ -56,12 +54,14 @@ lazy val core = project
 
 lazy val docs = project
   .in(file("zio-jdbc-docs"))
-  .settings(stdSettings("zio-jdbc-docs"))
   .settings(
-    publish / skip := true,
-    moduleName     := "zio-jdbc-docs",
+    moduleName                                 := "zio-jdbc-docs",
     scalacOptions -= "-Yno-imports",
-    scalacOptions -= "-Xfatal-warnings"
+    scalacOptions -= "-Xfatal-warnings",
+    projectName                                := "ZIO JDBC",
+    mainModuleName                             := (core / moduleName).value,
+    projectStage                               := ProjectStage.Research,
+    ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(core)
   )
   .dependsOn(core)
   .enablePlugins(WebsitePlugin)

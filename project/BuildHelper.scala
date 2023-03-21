@@ -22,7 +22,7 @@ object BuildHelper {
 
   lazy val Scala212: String = versions("2.12")
   lazy val Scala213: String = versions("2.13")
-  lazy val Scala3: String = versions("3.2")
+  lazy val Scala3: String   = versions("3.2")
 
   val SilencerVersion = "1.7.12"
 
@@ -186,24 +186,25 @@ object BuildHelper {
       libraryDependencies ++= {
         CrossVersion.partialVersion(scalaVersion.value) match {
           case Some((3, _)) => Nil
-          case _ => Seq(
-            "com.github.ghik" % "silencer-lib" % SilencerVersion % Provided cross CrossVersion.full,
-            compilerPlugin("com.github.ghik" % "silencer-plugin" % SilencerVersion cross CrossVersion.full)
-          )
+          case _            =>
+            Seq(
+              "com.github.ghik" % "silencer-lib" % SilencerVersion % Provided cross CrossVersion.full,
+              compilerPlugin("com.github.ghik" % "silencer-plugin" % SilencerVersion cross CrossVersion.full)
+            )
         }
       },
       semanticdbEnabled                      := true,                        // enable SemanticDB
       semanticdbOptions ++= {
         CrossVersion.partialVersion(scalaVersion.value) match {
           case Some((3, _)) => Nil
-          case _ => Seq("-P:semanticdb:synthetics:on")
+          case _            => Seq("-P:semanticdb:synthetics:on")
         }
       },
       semanticdbVersion                      := scalafixSemanticdb.revision, // use Scalafix compatible version
       ThisBuild / scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(scalaVersion.value),
       ThisBuild / scalafixDependencies ++= List(
-        "com.github.liancheng" %% "organize-imports" % "0.5.0",
-        "com.github.vovapolu"  %% "scaluzzi"         % "0.1.18"
+        "com.github.liancheng" %% "organize-imports" % "0.6.0",
+        "com.github.vovapolu"  %% "scaluzzi"         % "0.1.23"
       ),
       Test / parallelExecution               := true,
       incOptions ~= (_.withLogRecompileOnMacro(false)),
@@ -241,8 +242,8 @@ object BuildHelper {
 
   def jsSettings =
     Seq(
-      libraryDependencies += "io.github.cquiroz" %% "scala-java-time"      % "2.3.0",
-      libraryDependencies += "io.github.cquiroz" %% "scala-java-time-tzdb" % "2.2.2"
+      libraryDependencies += "io.github.cquiroz" %% "scala-java-time"      % "2.5.0",
+      libraryDependencies += "io.github.cquiroz" %% "scala-java-time-tzdb" % "2.5.0"
     )
 
   def nativeSettings =

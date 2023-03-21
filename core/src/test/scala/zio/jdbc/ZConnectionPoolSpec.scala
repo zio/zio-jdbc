@@ -37,6 +37,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
       )
   }
   val sherlockHolmes: User = User("Sherlock Holmes", 42)
+  val johnWatson: User = User("John Watson", 40)
 
   val createUsers: ZIO[ZConnectionPool with Any, Throwable, Unit] =
     transaction {
@@ -53,6 +54,13 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
     transaction {
       insert {
         sql"insert into users values (default, ${sherlockHolmes.name}, ${sherlockHolmes.age})"
+      }
+    }
+
+  val insertWatson: ZIO[ZConnectionPool with Any, Throwable, UpdateResult] =
+    transaction {
+      insert {
+        sql"insert into users values (default, ${johnWatson.name}, ${johnWatson.age})"
       }
     }
 
@@ -147,23 +155,23 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
               } +
               test("select all") {
                 for {
-                  _     <- createUsers *> insertSherlock
+                  _     <- createUsers *> insertSherlock *> insertWatson
                   value <- transaction {
                              selectAll {
-                               sql"select name, age from users where name = ${sherlockHolmes.name}".as[User]
+                               sql"select name, age from users".as[User]
                              }
                            }
-                } yield assertTrue(value == Chunk(sherlockHolmes))
+                } yield assertTrue(value == Chunk(sherlockHolmes, johnWatson))
               } +
               test("select stream") {
                 for {
-                  _     <- createUsers *> insertSherlock
+                  _     <- createUsers *> insertSherlock *> insertWatson
                   value <- transaction {
                              selectStream {
-                               sql"select name, age from users where name = ${sherlockHolmes.name}".as[User]
+                               sql"select name, age from users".as[User]
                              }.runCollect
                            }
-                } yield assertTrue(value == Chunk(sherlockHolmes))
+                } yield assertTrue(value == Chunk(sherlockHolmes, johnWatson))
               } +
               test("delete") {
                 for {

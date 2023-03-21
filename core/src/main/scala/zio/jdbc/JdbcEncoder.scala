@@ -25,7 +25,7 @@ import zio.schema.{ Schema, StandardType }
 trait JdbcEncoder[-A] {
   def encode(value: A): SqlFragment
 
-  final def contramap[B](f: B => A): JdbcEncoder[B] = (value) => encode(f(value))
+  final def contramap[B](f: B => A): JdbcEncoder[B] = value => encode(f(value))
 }
 
 object JdbcEncoder extends JdbcEncoderLowPriorityImplicits {
@@ -48,8 +48,11 @@ object JdbcEncoder extends JdbcEncoderLowPriorityImplicits {
   implicit val blobEncoder: JdbcEncoder[java.sql.Blob]                    = value => sql"$value"
   implicit val uuidEncoder: JdbcEncoder[java.util.UUID]                   = value => sql"$value"
 
-  implicit def optionEncoder[A](implicit encoder: JdbcEncoder[A]): JdbcEncoder[Option[A]] =
-    value => value.fold(Sql.nullLiteral)(encoder.encode(_))
+  implicit def singleParamEncoder[A: Sql.Setter]: JdbcEncoder[A] = value => sql"$value"
+
+  // TODO: review for cases like Option of a tuple
+  def optionEncoder[A](implicit encoder: JdbcEncoder[A]): JdbcEncoder[Option[A]] =
+    value => value.fold(Sql.nullLiteral)(encoder.encode)
 
   implicit def tuple2Encoder[A: JdbcEncoder, B: JdbcEncoder]: JdbcEncoder[(A, B)] =
     tuple => JdbcEncoder[A]().encode(tuple._1) ++ Sql.comma ++ JdbcEncoder[B]().encode(tuple._2)
