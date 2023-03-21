@@ -2,7 +2,7 @@ import BuildHelper._
 
 val ZioVersion        = "2.0.6"
 val H2Version         = "2.1.214"
-val ZioSchemaVersion  = "0.3.1"
+val ZioSchemaVersion  = "0.4.8"
 
 name := "zio-jdbc"
 
@@ -73,7 +73,7 @@ lazy val examples = project
   .settings(
     publish / skip := true,
     libraryDependencies ++= Seq(
-      "ch.qos.logback"       % "logback-classic"          % "1.4.5",
-      "net.logstash.logback" % "logstash-logback-encoder" % "7.2"
+      "ch.qos.logback"       % "logback-classic"          % "1.4.6",
+      "net.logstash.logback" % "logstash-logback-encoder" % "7.3"
     )
   )
