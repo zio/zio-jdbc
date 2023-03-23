@@ -779,7 +779,7 @@ trait JdbcDecoderLowPriorityImplicits {
               DynamicValue.Primitive(clob.getSubString(0L, clob.length().toInt), StandardType.StringType)
 
             case SqlTypes.DATE =>
-              val date      = resultSet.getDate(columnIndex)
+              val date = resultSet.getDate(columnIndex)
 
               DynamicValue.Primitive(date.toLocalDate(), StandardType.LocalDateType)
 

@@ -62,6 +62,6 @@ object ZConnectionPoolConfig {
         get0 = _.timeToLive,
         set0 = (c, x) => c.copy(timeToLive = x)
       ),
-      (min, max, ttl) => ZConnectionPoolConfig(min, max, defaultRetryPolicy, ttl),
+      (min, max, ttl) => ZConnectionPoolConfig(min, max, defaultRetryPolicy, ttl)
     )
 }
