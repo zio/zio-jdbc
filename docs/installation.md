@@ -8,7 +8,7 @@ title: "Installation"
 _ZIO JDBC_ is available via Maven so importing in `build.sbt` is sufficient:
 
 ```scala
-libraryDependencies += "dev.zio" %% "zio-jdbc" % @VERSION@
+libraryDependencies += "dev.zio" %% "zio-jdbc" % "@VERSION@"
 ```
 
 ## Hello World
