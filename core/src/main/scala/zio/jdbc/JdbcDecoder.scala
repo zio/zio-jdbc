@@ -62,6 +62,9 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
   implicit val timeDecoder: JdbcDecoder[java.sql.Time]              = JdbcDecoder(_.getTime(1))
   implicit val timestampDecoder: JdbcDecoder[java.sql.Timestamp]    = JdbcDecoder(_.getTimestamp(1))
 
+  implicit def optionDecoder[A](implicit decoder: JdbcColumnDecoder[A]): JdbcDecoder[Option[A]] =
+    JdbcDecoder(rs => Option(decoder.unsafeDecode(1, rs)))
+
   implicit def tuple2Decoder[A, B](implicit
     a: JdbcColumnDecoder[A],
     b: JdbcColumnDecoder[B]
