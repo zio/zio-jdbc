@@ -5,9 +5,22 @@ import zio.schema._
 import zio.test.TestAspect._
 import zio.test._
 
-import java.sql.{Blob, CallableStatement, Clob, Connection, DatabaseMetaData, NClob, PreparedStatement, SQLWarning, SQLXML, Savepoint, Statement, Struct}
-import java.util.{Properties, concurrent}
-import java.{sql, util}
+import java.sql.{
+  Blob,
+  CallableStatement,
+  Clob,
+  Connection,
+  DatabaseMetaData,
+  NClob,
+  PreparedStatement,
+  SQLWarning,
+  SQLXML,
+  Savepoint,
+  Statement,
+  Struct
+}
+import java.util.{ Properties, concurrent }
+import java.{ sql, util }
 import scala.util.Random
 
 object ZConnectionPoolSpec extends ZIOSpecDefault {
@@ -29,7 +42,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
   }
 
   val sherlockHolmes: User = User("Sherlock Holmes", 42)
-  val johnWatson: User = User("John Watson", 40)
+  val johnWatson: User     = User("John Watson", 40)
 
   val user1: UserNoId = UserNoId("User 1", 3)
   val user2: UserNoId = UserNoId("User 2", 4)
@@ -39,18 +52,16 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
 
   def genUser = {
     val name = Random.nextString(8)
-    val id = Random.nextInt(100000)
+    val id   = Random.nextInt(100000)
     UserNoId(name, id)
   }
 
-  def genUsers(size: Int) = {
+  def genUsers(size: Int) =
     List.fill(size)(genUser)
-  }
 
   val createUsers: ZIO[ZConnectionPool with Any, Throwable, Unit] =
     transaction {
-      execute(
-        sql"""
+      execute(sql"""
       create table users (
         id identity primary key,
         name varchar not null,
@@ -60,8 +71,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
     }
 
   val createUsersNoId: ZIO[ZConnectionPool with Any, Throwable, Unit] = transaction {
-    execute(
-      sql"""
+    execute(sql"""
     create table users_no_id (
         name varchar not null,
         age int not null
@@ -84,33 +94,27 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
     }
 
   val insertBatches: ZIO[ZConnectionPool, Throwable, Long] = transaction {
-    val users = genUsers(10000).toSeq
+    val users  = genUsers(10000).toSeq
     val mapped = users.map(Sql.insertInto("users_no_id")("name", "age").values(_))
     for {
       inserted <- ZIO.foreach(mapped)(zio.jdbc.insert(_))
-    } yield {
-      inserted.map(_.rowsUpdated).sum
-    }
+    } yield inserted.map(_.rowsUpdated).sum
   }
 
   val insertFive: ZIO[ZConnectionPool, Throwable, Long] = transaction {
-    val users = Seq(user1, user2, user3, user4, user5)
+    val users           = Seq(user1, user2, user3, user4, user5)
     val insertStatement = Sql.insertInto("users_no_id")("name", "age").values(users)
     for {
       inserted <- zio.jdbc.insert(insertStatement)
-    } yield {
-      inserted.rowsUpdated
-    }
+    } yield inserted.rowsUpdated
   }
 
   val insertEverything: ZIO[ZConnectionPool, Throwable, Long] = transaction {
-    val users = genUsers(3000)
+    val users           = genUsers(3000)
     val insertStatement = Sql.insertInto("users_no_id")("name", "age").values(users)
     for {
       inserted <- zio.jdbc.insert(insertStatement)
-    } yield {
-      inserted.rowsUpdated
-    }
+    } yield inserted.rowsUpdated
   }
 
   final case class User(name: String, age: Int)
@@ -121,7 +125,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
 
     implicit val jdbcEncoder: JdbcEncoder[User] = (value: User) => {
       val name = value.name
-      val age = value.age
+      val age  = value.age
       sql"""${name}""" ++ ", " ++ s"${age}"
     }
   }
@@ -134,7 +138,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
 
     implicit val jdbcEncoder: JdbcEncoder[UserNoId] = (value: UserNoId) => {
       val name = value.name
-      val age = value.age
+      val age  = value.age
       sql"""${name}""" ++ ", " ++ s"${age}"
     }
   }
@@ -142,9 +146,9 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
   def spec: Spec[TestEnvironment, Any] =
     suite("ZConnectionPoolSpec") {
       def testPool(config: ZConnectionPoolConfig = ZConnectionPoolConfig.default) = for {
-        conns <- Queue.unbounded[TestConnection]
+        conns  <- Queue.unbounded[TestConnection]
         getConn = ZIO.succeed(new TestConnection).tap(conns.offer(_))
-        pool <- ZLayer.succeed(config).to(ZConnectionPool.make(getConn)).build.map(_.get)
+        pool   <- ZLayer.succeed(config).to(ZConnectionPool.make(getConn)).build.map(_.get)
       } yield conns -> pool
 
       test("make") {
@@ -168,9 +172,9 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
             for {
               pool <- testPool().map(_._2)
               conn <- ZIO.scoped(for {
-                conn <- pool.transaction.build.map(_.get)
-                _ <- pool.invalidate(conn)
-              } yield conn.connection)
+                        conn <- pool.transaction.build.map(_.get)
+                        _    <- pool.invalidate(conn)
+                      } yield conn.connection)
               invalidatedClosed = conn.isClosed // temp workaround for assertTrue eval out of scope
             } yield assertTrue(invalidatedClosed)
           }
@@ -178,15 +182,15 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
         test("shutdown closes all conns") {
           ZIO.scoped {
             for {
-              t1 <- testPool()
-              (conns, pool) = t1
-              conn <- pool.transaction.build.map(_.get)
-              isClosedBeforePoolShutdown = conn.connection.isClosed
+              t1                          <- testPool()
+              (conns, pool)                = t1
+              conn                        <- pool.transaction.build.map(_.get)
+              isClosedBeforePoolShutdown   = conn.connection.isClosed
               isClosedAfterPoolShutdownZIO = ZIO.succeed(conn.connection.isClosed)
             } yield (isClosedBeforePoolShutdown, isClosedAfterPoolShutdownZIO, conns.takeAll)
           }.flatMap { case (isClosedBeforePoolShutdown, isClosedAfterPoolShutdownZIO, allConnsZIO) =>
             for {
-              allConns <- allConnsZIO
+              allConns                  <- allConnsZIO
               isClosedAfterPoolShutdown <- isClosedAfterPoolShutdownZIO
             } yield assertTrue(!isClosedBeforePoolShutdown && isClosedAfterPoolShutdown && allConns.forall(_.isClosed))
           }
@@ -208,55 +212,55 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
             } +
               test("insert") {
                 for {
-                  _ <- createUsers
+                  _      <- createUsers
                   result <- insertSherlock
                 } yield assertTrue(result.rowsUpdated == 1L) && assertTrue(result.updatedKeys.nonEmpty)
               } +
               test("insertBatch of 10000") {
                 for {
-                  _ <- createUsersNoId
+                  _      <- createUsersNoId
                   result <- insertBatches
                 } yield assertTrue(result == 10000)
               } +
               test("select one") {
                 for {
-                  _ <- createUsers *> insertSherlock
+                  _     <- createUsers *> insertSherlock
                   value <- transaction {
-                    selectOne {
-                      sql"select name, age from users where name = ${sherlockHolmes.name}".as[User]
-                    }
-                  }
+                             selectOne {
+                               sql"select name, age from users where name = ${sherlockHolmes.name}".as[User]
+                             }
+                           }
                 } yield assertTrue(value.contains(sherlockHolmes))
               } +
               test("select all") {
                 for {
-                  _ <- createUsers *> insertSherlock *> insertWatson
+                  _     <- createUsers *> insertSherlock *> insertWatson
                   value <- transaction {
-                    selectAll {
-                      sql"select name, age from users".as[User]
-                    }
-                  }
+                             selectAll {
+                               sql"select name, age from users".as[User]
+                             }
+                           }
                 } yield assertTrue(value == Chunk(sherlockHolmes, johnWatson))
               } +
               test("select stream") {
                 for {
-                  _ <- createUsers *> insertSherlock *> insertWatson
+                  _     <- createUsers *> insertSherlock *> insertWatson
                   value <- transaction {
-                    selectStream {
-                      sql"select name, age from users".as[User]
-                    }.runCollect
-                  }
+                             selectStream {
+                               sql"select name, age from users".as[User]
+                             }.runCollect
+                           }
                 } yield assertTrue(value == Chunk(sherlockHolmes, johnWatson))
               } +
               test("delete") {
                 for {
-                  _ <- createUsers *> insertSherlock
+                  _   <- createUsers *> insertSherlock
                   num <- transaction(delete(sql"delete from users where name = ${sherlockHolmes.name}"))
                 } yield assertTrue(num == 1L)
               } +
               test("update") {
                 for {
-                  _ <- createUsers *> insertSherlock
+                  _   <- createUsers *> insertSherlock
                   num <- transaction(update(sql"update users set age = 43 where name = ${sherlockHolmes.name}"))
                 } yield assertTrue(num == 1L)
               }
@@ -264,14 +268,14 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
           suite("decoding") {
             test("schema-derived") {
               for {
-                _ <- createUsers *> insertSherlock
+                _     <- createUsers *> insertSherlock
                 value <- transaction {
-                  selectOne {
-                    sql"select name, age from users where name = ${sherlockHolmes.name}".as[Person](
-                      JdbcDecoder.fromSchema(Person.schema)
-                    )
-                  }
-                }
+                           selectOne {
+                             sql"select name, age from users where name = ${sherlockHolmes.name}".as[Person](
+                               JdbcDecoder.fromSchema(Person.schema)
+                             )
+                           }
+                         }
               } yield assertTrue(value.contains(Person(sherlockHolmes.name, sherlockHolmes.age)))
             }
           }
@@ -321,10 +325,10 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
     def createStatement(resultSetType: RuntimeFlags, resultSetConcurrency: RuntimeFlags): Statement = ???
 
     def prepareStatement(
-                          sql: String,
-                          resultSetType: RuntimeFlags,
-                          resultSetConcurrency: RuntimeFlags
-                        ): PreparedStatement = ???
+      sql: String,
+      resultSetType: RuntimeFlags,
+      resultSetConcurrency: RuntimeFlags
+    ): PreparedStatement = ???
 
     def prepareCall(sql: String, resultSetType: RuntimeFlags, resultSetConcurrency: RuntimeFlags): CallableStatement =
       ???
@@ -346,24 +350,24 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
     def releaseSavepoint(savepoint: Savepoint): Unit = ???
 
     def createStatement(
-                         resultSetType: RuntimeFlags,
-                         resultSetConcurrency: RuntimeFlags,
-                         resultSetHoldability: RuntimeFlags
-                       ): Statement = ???
+      resultSetType: RuntimeFlags,
+      resultSetConcurrency: RuntimeFlags,
+      resultSetHoldability: RuntimeFlags
+    ): Statement = ???
 
     def prepareStatement(
-                          sql: String,
-                          resultSetType: RuntimeFlags,
-                          resultSetConcurrency: RuntimeFlags,
-                          resultSetHoldability: RuntimeFlags
-                        ): PreparedStatement = ???
+      sql: String,
+      resultSetType: RuntimeFlags,
+      resultSetConcurrency: RuntimeFlags,
+      resultSetHoldability: RuntimeFlags
+    ): PreparedStatement = ???
 
     def prepareCall(
-                     sql: String,
-                     resultSetType: RuntimeFlags,
-                     resultSetConcurrency: RuntimeFlags,
-                     resultSetHoldability: RuntimeFlags
-                   ): CallableStatement = ???
+      sql: String,
+      resultSetType: RuntimeFlags,
+      resultSetConcurrency: RuntimeFlags,
+      resultSetHoldability: RuntimeFlags
+    ): CallableStatement = ???
 
     def prepareStatement(sql: String, autoGeneratedKeys: RuntimeFlags): PreparedStatement = ???
 
