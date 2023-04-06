@@ -5,27 +5,16 @@ import zio.schema._
 import zio.test.TestAspect._
 import zio.test._
 
-import java.sql.{
-  Blob,
-  CallableStatement,
-  Clob,
-  Connection,
-  DatabaseMetaData,
-  NClob,
-  PreparedStatement,
-  SQLWarning,
-  SQLXML,
-  Savepoint,
-  Statement,
-  Struct
-}
-import java.util.{ Properties, concurrent }
-import java.{ sql, util }
+import java.sql.{Blob, CallableStatement, Clob, Connection, DatabaseMetaData, NClob, PreparedStatement, SQLWarning, SQLXML, Savepoint, Statement, Struct}
+import java.util.{Properties, concurrent}
+import java.{sql, util}
+import scala.util.Random
 
 object ZConnectionPoolSpec extends ZIOSpecDefault {
   final case class Person(name: String, age: Int)
 
   object Person {
+
     import Schema.Field
 
     implicit val schema: Schema[Person] =
@@ -38,12 +27,30 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
         _.age
       )
   }
+
   val sherlockHolmes: User = User("Sherlock Holmes", 42)
   val johnWatson: User = User("John Watson", 40)
 
+  val user1: UserNoId = UserNoId("User 1", 3)
+  val user2: UserNoId = UserNoId("User 2", 4)
+  val user3: UserNoId = UserNoId("John Watson II", 32)
+  val user4: UserNoId = UserNoId("John Watson III", 98)
+  val user5: UserNoId = UserNoId("Sherlock Holmes II", 2)
+
+  def genUser = {
+    val name = Random.nextString(8)
+    val id = Random.nextInt(100000)
+    UserNoId(name, id)
+  }
+
+  def genUsers(size: Int) = {
+    List.fill(size)(genUser)
+  }
+
   val createUsers: ZIO[ZConnectionPool with Any, Throwable, Unit] =
     transaction {
-      execute(sql"""
+      execute(
+        sql"""
       create table users (
         id identity primary key,
         name varchar not null,
@@ -51,6 +58,16 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
       )
       """)
     }
+
+  val createUsersNoId: ZIO[ZConnectionPool with Any, Throwable, Unit] = transaction {
+    execute(
+      sql"""
+    create table users_no_id (
+        name varchar not null,
+        age int not null
+    )
+     """)
+  }
 
   val insertSherlock: ZIO[ZConnectionPool with Any, Throwable, UpdateResult] =
     transaction {
@@ -66,18 +83,68 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
       }
     }
 
+  val insertBatches: ZIO[ZConnectionPool, Throwable, Long] = transaction {
+    val users = genUsers(10000).toSeq
+    val mapped = users.map(Sql.insertInto("users_no_id")("name", "age").values(_))
+    for {
+      inserted <- ZIO.foreach(mapped)(zio.jdbc.insert(_))
+    } yield {
+      inserted.map(_.rowsUpdated).sum
+    }
+  }
+
+  val insertFive: ZIO[ZConnectionPool, Throwable, Long] = transaction {
+    val users = Seq(user1, user2, user3, user4, user5)
+    val insertStatement = Sql.insertInto("users_no_id")("name", "age").values(users)
+    for {
+      inserted <- zio.jdbc.insert(insertStatement)
+    } yield {
+      inserted.rowsUpdated
+    }
+  }
+
+  val insertEverything: ZIO[ZConnectionPool, Throwable, Long] = transaction {
+    val users = genUsers(3000)
+    val insertStatement = Sql.insertInto("users_no_id")("name", "age").values(users)
+    for {
+      inserted <- zio.jdbc.insert(insertStatement)
+    } yield {
+      inserted.rowsUpdated
+    }
+  }
+
   final case class User(name: String, age: Int)
+
   object User {
     implicit val jdbcDecoder: JdbcDecoder[User] =
       JdbcDecoder[(String, Int)]().map[User](t => User(t._1, t._2))
+
+    implicit val jdbcEncoder: JdbcEncoder[User] = (value: User) => {
+      val name = value.name
+      val age = value.age
+      sql"""${name}""" ++ ", " ++ s"${age}"
+    }
+  }
+
+  final case class UserNoId(name: String, age: Int)
+
+  object UserNoId {
+    implicit val jdbcDecoder: JdbcDecoder[UserNoId] =
+      JdbcDecoder[(String, Int)]().map[UserNoId](t => UserNoId(t._1, t._2))
+
+    implicit val jdbcEncoder: JdbcEncoder[UserNoId] = (value: UserNoId) => {
+      val name = value.name
+      val age = value.age
+      sql"""${name}""" ++ ", " ++ s"${age}"
+    }
   }
 
   def spec: Spec[TestEnvironment, Any] =
     suite("ZConnectionPoolSpec") {
       def testPool(config: ZConnectionPoolConfig = ZConnectionPoolConfig.default) = for {
-        conns  <- Queue.unbounded[TestConnection]
+        conns <- Queue.unbounded[TestConnection]
         getConn = ZIO.succeed(new TestConnection).tap(conns.offer(_))
-        pool   <- ZLayer.succeed(config).to(ZConnectionPool.make(getConn)).build.map(_.get)
+        pool <- ZLayer.succeed(config).to(ZConnectionPool.make(getConn)).build.map(_.get)
       } yield conns -> pool
 
       test("make") {
@@ -101,9 +168,9 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
             for {
               pool <- testPool().map(_._2)
               conn <- ZIO.scoped(for {
-                        conn <- pool.transaction.build.map(_.get)
-                        _    <- pool.invalidate(conn)
-                      } yield conn.connection)
+                conn <- pool.transaction.build.map(_.get)
+                _ <- pool.invalidate(conn)
+              } yield conn.connection)
               invalidatedClosed = conn.isClosed // temp workaround for assertTrue eval out of scope
             } yield assertTrue(invalidatedClosed)
           }
@@ -111,15 +178,15 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
         test("shutdown closes all conns") {
           ZIO.scoped {
             for {
-              t1                          <- testPool()
-              (conns, pool)                = t1
-              conn                        <- pool.transaction.build.map(_.get)
-              isClosedBeforePoolShutdown   = conn.connection.isClosed
+              t1 <- testPool()
+              (conns, pool) = t1
+              conn <- pool.transaction.build.map(_.get)
+              isClosedBeforePoolShutdown = conn.connection.isClosed
               isClosedAfterPoolShutdownZIO = ZIO.succeed(conn.connection.isClosed)
             } yield (isClosedBeforePoolShutdown, isClosedAfterPoolShutdownZIO, conns.takeAll)
           }.flatMap { case (isClosedBeforePoolShutdown, isClosedAfterPoolShutdownZIO, allConnsZIO) =>
             for {
-              allConns                  <- allConnsZIO
+              allConns <- allConnsZIO
               isClosedAfterPoolShutdown <- isClosedAfterPoolShutdownZIO
             } yield assertTrue(!isClosedBeforePoolShutdown && isClosedAfterPoolShutdown && allConns.forall(_.isClosed))
           }
@@ -141,49 +208,55 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
             } +
               test("insert") {
                 for {
-                  _      <- createUsers
+                  _ <- createUsers
                   result <- insertSherlock
                 } yield assertTrue(result.rowsUpdated == 1L) && assertTrue(result.updatedKeys.nonEmpty)
               } +
+              test("insertBatch of 10000") {
+                for {
+                  _ <- createUsersNoId
+                  result <- insertBatches
+                } yield assertTrue(result == 10000)
+              } +
               test("select one") {
                 for {
-                  _     <- createUsers *> insertSherlock
+                  _ <- createUsers *> insertSherlock
                   value <- transaction {
-                             selectOne {
-                               sql"select name, age from users where name = ${sherlockHolmes.name}".as[User]
-                             }
-                           }
+                    selectOne {
+                      sql"select name, age from users where name = ${sherlockHolmes.name}".as[User]
+                    }
+                  }
                 } yield assertTrue(value.contains(sherlockHolmes))
               } +
               test("select all") {
                 for {
-                  _     <- createUsers *> insertSherlock *> insertWatson
+                  _ <- createUsers *> insertSherlock *> insertWatson
                   value <- transaction {
-                             selectAll {
-                               sql"select name, age from users".as[User]
-                             }
-                           }
+                    selectAll {
+                      sql"select name, age from users".as[User]
+                    }
+                  }
                 } yield assertTrue(value == Chunk(sherlockHolmes, johnWatson))
               } +
               test("select stream") {
                 for {
-                  _     <- createUsers *> insertSherlock *> insertWatson
+                  _ <- createUsers *> insertSherlock *> insertWatson
                   value <- transaction {
-                             selectStream {
-                               sql"select name, age from users".as[User]
-                             }.runCollect
-                           }
+                    selectStream {
+                      sql"select name, age from users".as[User]
+                    }.runCollect
+                  }
                 } yield assertTrue(value == Chunk(sherlockHolmes, johnWatson))
               } +
               test("delete") {
                 for {
-                  _   <- createUsers *> insertSherlock
+                  _ <- createUsers *> insertSherlock
                   num <- transaction(delete(sql"delete from users where name = ${sherlockHolmes.name}"))
                 } yield assertTrue(num == 1L)
               } +
               test("update") {
                 for {
-                  _   <- createUsers *> insertSherlock
+                  _ <- createUsers *> insertSherlock
                   num <- transaction(update(sql"update users set age = 43 where name = ${sherlockHolmes.name}"))
                 } yield assertTrue(num == 1L)
               }
@@ -191,93 +264,147 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
           suite("decoding") {
             test("schema-derived") {
               for {
-                _     <- createUsers *> insertSherlock
+                _ <- createUsers *> insertSherlock
                 value <- transaction {
-                           selectOne {
-                             sql"select name, age from users where name = ${sherlockHolmes.name}".as[Person](
-                               JdbcDecoder.fromSchema(Person.schema)
-                             )
-                           }
-                         }
+                  selectOne {
+                    sql"select name, age from users where name = ${sherlockHolmes.name}".as[Person](
+                      JdbcDecoder.fromSchema(Person.schema)
+                    )
+                  }
+                }
               } yield assertTrue(value.contains(Person(sherlockHolmes.name, sherlockHolmes.age)))
             }
           }
       }.provide(ZConnectionPool.h2test.orDie) @@ sequential
 
   class TestConnection extends Connection {
-    private var closed                                                                                               = false
-    def close(): Unit                                                                                                = closed = true
-    def isClosed: Boolean                                                                                            = closed
-    def createStatement(): Statement                                                                                 = ???
-    def prepareStatement(sql: String): PreparedStatement                                                             = ???
-    def prepareCall(sql: String): CallableStatement                                                                  = ???
-    def nativeSQL(sql: String): String                                                                               = ???
-    def setAutoCommit(autoCommit: Boolean): Unit                                                                     = ???
-    def getAutoCommit: Boolean                                                                                       = ???
-    def commit(): Unit                                                                                               = ???
-    def rollback(): Unit                                                                                             = ???
-    def getMetaData: DatabaseMetaData                                                                                = ???
-    def setReadOnly(readOnly: Boolean): Unit                                                                         = ???
-    def isReadOnly: Boolean                                                                                          = ???
-    def setCatalog(catalog: String): Unit                                                                            = ???
-    def getCatalog: String                                                                                           = ???
-    def setTransactionIsolation(level: RuntimeFlags): Unit                                                           = ???
-    def getTransactionIsolation: RuntimeFlags                                                                        = ???
-    def getWarnings: SQLWarning                                                                                      = ???
-    def clearWarnings(): Unit                                                                                        = ???
-    def createStatement(resultSetType: RuntimeFlags, resultSetConcurrency: RuntimeFlags): Statement                  = ???
+    private var closed = false
+
+    def close(): Unit = closed = true
+
+    def isClosed: Boolean = closed
+
+    def createStatement(): Statement = ???
+
+    def prepareStatement(sql: String): PreparedStatement = ???
+
+    def prepareCall(sql: String): CallableStatement = ???
+
+    def nativeSQL(sql: String): String = ???
+
+    def setAutoCommit(autoCommit: Boolean): Unit = ???
+
+    def getAutoCommit: Boolean = ???
+
+    def commit(): Unit = ???
+
+    def rollback(): Unit = ???
+
+    def getMetaData: DatabaseMetaData = ???
+
+    def setReadOnly(readOnly: Boolean): Unit = ???
+
+    def isReadOnly: Boolean = ???
+
+    def setCatalog(catalog: String): Unit = ???
+
+    def getCatalog: String = ???
+
+    def setTransactionIsolation(level: RuntimeFlags): Unit = ???
+
+    def getTransactionIsolation: RuntimeFlags = ???
+
+    def getWarnings: SQLWarning = ???
+
+    def clearWarnings(): Unit = ???
+
+    def createStatement(resultSetType: RuntimeFlags, resultSetConcurrency: RuntimeFlags): Statement = ???
+
     def prepareStatement(
-      sql: String,
-      resultSetType: RuntimeFlags,
-      resultSetConcurrency: RuntimeFlags
-    ): PreparedStatement = ???
+                          sql: String,
+                          resultSetType: RuntimeFlags,
+                          resultSetConcurrency: RuntimeFlags
+                        ): PreparedStatement = ???
+
     def prepareCall(sql: String, resultSetType: RuntimeFlags, resultSetConcurrency: RuntimeFlags): CallableStatement =
       ???
-    def getTypeMap: util.Map[String, Class[_]]                                                                       = ???
-    def setTypeMap(map: util.Map[String, Class[_]]): Unit                                                            = ???
-    def setHoldability(holdability: RuntimeFlags): Unit                                                              = ???
-    def getHoldability: RuntimeFlags                                                                                 = ???
-    def setSavepoint(): Savepoint                                                                                    = ???
-    def setSavepoint(name: String): Savepoint                                                                        = ???
-    def rollback(savepoint: Savepoint): Unit                                                                         = ???
-    def releaseSavepoint(savepoint: Savepoint): Unit                                                                 = ???
+
+    def getTypeMap: util.Map[String, Class[_]] = ???
+
+    def setTypeMap(map: util.Map[String, Class[_]]): Unit = ???
+
+    def setHoldability(holdability: RuntimeFlags): Unit = ???
+
+    def getHoldability: RuntimeFlags = ???
+
+    def setSavepoint(): Savepoint = ???
+
+    def setSavepoint(name: String): Savepoint = ???
+
+    def rollback(savepoint: Savepoint): Unit = ???
+
+    def releaseSavepoint(savepoint: Savepoint): Unit = ???
+
     def createStatement(
-      resultSetType: RuntimeFlags,
-      resultSetConcurrency: RuntimeFlags,
-      resultSetHoldability: RuntimeFlags
-    ): Statement = ???
+                         resultSetType: RuntimeFlags,
+                         resultSetConcurrency: RuntimeFlags,
+                         resultSetHoldability: RuntimeFlags
+                       ): Statement = ???
+
     def prepareStatement(
-      sql: String,
-      resultSetType: RuntimeFlags,
-      resultSetConcurrency: RuntimeFlags,
-      resultSetHoldability: RuntimeFlags
-    ): PreparedStatement = ???
+                          sql: String,
+                          resultSetType: RuntimeFlags,
+                          resultSetConcurrency: RuntimeFlags,
+                          resultSetHoldability: RuntimeFlags
+                        ): PreparedStatement = ???
+
     def prepareCall(
-      sql: String,
-      resultSetType: RuntimeFlags,
-      resultSetConcurrency: RuntimeFlags,
-      resultSetHoldability: RuntimeFlags
-    ): CallableStatement = ???
-    def prepareStatement(sql: String, autoGeneratedKeys: RuntimeFlags): PreparedStatement                            = ???
-    def prepareStatement(sql: String, columnIndexes: Array[RuntimeFlags]): PreparedStatement                         = ???
-    def prepareStatement(sql: String, columnNames: Array[String]): PreparedStatement                                 = ???
-    def createClob(): Clob                                                                                           = ???
-    def createBlob(): Blob                                                                                           = ???
-    def createNClob(): NClob                                                                                         = ???
-    def createSQLXML(): SQLXML                                                                                       = ???
-    def isValid(timeout: RuntimeFlags): Boolean                                                                      = ???
-    def setClientInfo(name: String, value: String): Unit                                                             = ???
-    def setClientInfo(properties: Properties): Unit                                                                  = ???
-    def getClientInfo(name: String): String                                                                          = ???
-    def getClientInfo: Properties                                                                                    = ???
-    def createArrayOf(typeName: String, elements: Array[AnyRef]): sql.Array                                          = ???
-    def createStruct(typeName: String, attributes: Array[AnyRef]): Struct                                            = ???
-    def setSchema(schema: String): Unit                                                                              = ???
-    def getSchema: String                                                                                            = ???
-    def abort(executor: concurrent.Executor): Unit                                                                   = ???
-    def setNetworkTimeout(executor: concurrent.Executor, milliseconds: RuntimeFlags): Unit                           = ???
-    def getNetworkTimeout: RuntimeFlags                                                                              = ???
-    def unwrap[T](iface: Class[T]): T                                                                                = ???
-    def isWrapperFor(iface: Class[_]): Boolean                                                                       = ???
+                     sql: String,
+                     resultSetType: RuntimeFlags,
+                     resultSetConcurrency: RuntimeFlags,
+                     resultSetHoldability: RuntimeFlags
+                   ): CallableStatement = ???
+
+    def prepareStatement(sql: String, autoGeneratedKeys: RuntimeFlags): PreparedStatement = ???
+
+    def prepareStatement(sql: String, columnIndexes: Array[RuntimeFlags]): PreparedStatement = ???
+
+    def prepareStatement(sql: String, columnNames: Array[String]): PreparedStatement = ???
+
+    def createClob(): Clob = ???
+
+    def createBlob(): Blob = ???
+
+    def createNClob(): NClob = ???
+
+    def createSQLXML(): SQLXML = ???
+
+    def isValid(timeout: RuntimeFlags): Boolean = ???
+
+    def setClientInfo(name: String, value: String): Unit = ???
+
+    def setClientInfo(properties: Properties): Unit = ???
+
+    def getClientInfo(name: String): String = ???
+
+    def getClientInfo: Properties = ???
+
+    def createArrayOf(typeName: String, elements: Array[AnyRef]): sql.Array = ???
+
+    def createStruct(typeName: String, attributes: Array[AnyRef]): Struct = ???
+
+    def setSchema(schema: String): Unit = ???
+
+    def getSchema: String = ???
+
+    def abort(executor: concurrent.Executor): Unit = ???
+
+    def setNetworkTimeout(executor: concurrent.Executor, milliseconds: RuntimeFlags): Unit = ???
+
+    def getNetworkTimeout: RuntimeFlags = ???
+
+    def unwrap[T](iface: Class[T]): T = ???
+
+    def isWrapperFor(iface: Class[_]): Boolean = ???
   }
 }
