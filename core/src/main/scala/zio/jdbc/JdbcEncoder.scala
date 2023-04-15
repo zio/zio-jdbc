@@ -37,7 +37,7 @@ object JdbcEncoder extends JdbcEncoderLowPriorityImplicits {
   implicit val charEncoder: JdbcEncoder[Char]                             = value => sql"$value"
   implicit val stringEncoder: JdbcEncoder[String]                         = value => sql"$value"
   implicit val booleanEncoder: JdbcEncoder[Boolean]                       = value => sql"$value"
-  implicit val bigIntDecoder: JdbcEncoder[java.math.BigInteger]           = value => sql"$value"
+  implicit val bigIntEncoder: JdbcEncoder[java.math.BigInteger]           = value => sql"$value"
   implicit val bigDecimalEncoder: JdbcEncoder[java.math.BigDecimal]       = value => sql"$value"
   implicit val bigDecimalEncoderScala: JdbcEncoder[scala.math.BigDecimal] = value => sql"$value"
   implicit val shortEncoder: JdbcEncoder[Short]                           = value => sql"$value"
@@ -638,7 +638,7 @@ trait JdbcEncoderLowPriorityImplicits { self =>
       case StandardType.FloatType      => JdbcEncoder.floatEncoder
       case StandardType.DoubleType     => JdbcEncoder.doubleEncoder
       case StandardType.CharType       => JdbcEncoder.charEncoder
-      case StandardType.BigIntegerType => JdbcEncoder.bigIntDecoder
+      case StandardType.BigIntegerType => JdbcEncoder.bigIntEncoder
       case StandardType.BinaryType     => JdbcEncoder.byteChunkEncoder
       case StandardType.BigDecimalType => JdbcEncoder.bigDecimalEncoder
       case StandardType.UUIDType       => JdbcEncoder.uuidEncoder
