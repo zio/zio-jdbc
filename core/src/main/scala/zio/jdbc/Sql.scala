@@ -122,6 +122,14 @@ final class Sql[+A](
         bs.map(b => Sql.lparen ++ encode.encode(b) ++ Sql.rparen)
       )
 
+  def valuesBatched[B](bs: Iterable[B], batchSize: Int = 2000, tableName: String)(
+    keys: String*
+  )(implicit encode: JdbcEncoder[B], ev: IsSqlFragment[A]): Seq[SqlFragment] = {
+    val batches          = bs.grouped(batchSize)
+    val insertStatements = batches.map(batch => Sql.insertInto(tableName)(keys.mkString(", ")).values(batch)).toSeq
+    insertStatements
+  }
+
   def values[B](b: B, bs: B*)(implicit encoder: JdbcEncoder[B], ev: IsSqlFragment[A]): SqlFragment = values(b +: bs)
 
   def where(predicate: SqlFragment)(implicit ev: IsSqlFragment[A]): SqlFragment =
@@ -237,9 +245,7 @@ object Sql {
     sep: SqlFragment,
     elements: Iterable[SqlFragment]
   ): SqlFragment = {
-
     var first = true
-
     elements.foldLeft(empty) { (acc, element) =>
       if (!first) acc ++ sep ++ element
       else {
