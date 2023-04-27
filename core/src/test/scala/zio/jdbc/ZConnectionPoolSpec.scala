@@ -234,6 +234,17 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
                            }
                 } yield assertTrue(value == Chunk(sherlockHolmes, johnWatson))
               } +
+              test("select all in") {
+                for {
+                  _     <- createUsers *> insertSherlock *> insertWatson
+                  value <- transaction {
+                             val names = Seq(sherlockHolmes.name, johnWatson.name)
+                             selectAll {
+                               sql"select name, age from users where name IN (${names})".as[User]
+                             }
+                           }
+                } yield assertTrue(value.contains(sherlockHolmes))
+              } +
               test("select stream") {
                 for {
                   _     <- createUsers *> insertSherlock *> insertWatson

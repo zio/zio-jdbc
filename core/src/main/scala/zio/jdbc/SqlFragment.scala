@@ -112,8 +112,19 @@ sealed trait SqlFragment { self =>
     foreachSegment { syntax =>
       sql.append(syntax.value)
     } { param =>
-      sql.append("?")
-      paramsBuilder += param.value.toString
+      param.value match {
+        case iterable: IterableOnce[Any] =>
+          iterable.iterator.foreach { item =>
+            paramsBuilder += item.toString
+          }
+          sql.append(
+            Seq.fill(iterable.iterator.size)("?").mkString(",")
+          )
+
+        case _ =>
+          sql.append("?")
+          paramsBuilder += param.value.toString
+      }
     }
 
     val params       = paramsBuilder.result()
@@ -286,6 +297,15 @@ object SqlFragment {
     implicit val blobSetter: Setter[java.sql.Blob]    = forSqlType((ps, i, value) => ps.setBlob(i, value), Types.BLOB)
     implicit val sqlDateSetter: Setter[java.sql.Date] = forSqlType((ps, i, value) => ps.setDate(i, value), Types.DATE)
     implicit val sqlTimeSetter: Setter[java.sql.Time] = forSqlType((ps, i, value) => ps.setTime(i, value), Types.TIME)
+
+    implicit def sqlIterableSetter[A](implicit setter: Setter[A]): Setter[Seq[A]] =
+      forSqlType(
+        (ps, i, iterable) =>
+          iterable.zipWithIndex.foreach { case (value, valueIdx) =>
+            setter.setValue(ps, i + valueIdx, value)
+          },
+        Types.OTHER
+      )
 
     implicit val bigDecimalSetter: Setter[java.math.BigDecimal] =
       forSqlType((ps, i, value) => ps.setBigDecimal(i, value), Types.NUMERIC)

@@ -124,13 +124,29 @@ object SqlFragmentSpec extends ZIOSpecDefault {
                   s"Sql(select name, age from users WHERE id = ?, $id)"
               )
             } +
-            test("in") {
-              assertTrue(
-                sql"select name, age from users where id"
-                  .in(1, 2, 3)
-                  .toString ==
-                  s"Sql(select name, age from users where id IN (?,?,?), 1, 2, 3)"
-              )
+            suite("in") {
+              test("fragment method") {
+                assertTrue(
+                  sql"select name, age from users where id"
+                    .in(1, 2, 3)
+                    .toString ==
+                    s"Sql(select name, age from users where id IN (?,?,?), 1, 2, 3)"
+                )
+              } + test("fragment method where param is iterable") {
+                val seq = Seq(1, 2, 3)
+                assertTrue(
+                  sql"select name, age from users where id"
+                    .in(seq)
+                    .toString ==
+                    s"Sql(select name, age from users where id IN (?,?,?), 1, 2, 3)"
+                )
+              } + test("interpolation param is iterable") {
+                val seq = Seq(1, 2, 3)
+                assertTrue(
+                  sql"select name, age from users where id in ($seq)".toString ==
+                    s"Sql(select name, age from users where id in (?,?,?), 1, 2, 3)"
+                )
+              }
             } +
             test("not in") {
               assertTrue(
