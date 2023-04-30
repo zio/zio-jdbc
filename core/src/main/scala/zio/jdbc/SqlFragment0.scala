@@ -111,6 +111,17 @@ final class SqlFragment0(private[jdbc] val build: ChunkBuilder[Segment] => Unit)
   def query[A](implicit decoder: JdbcDecoder[A]): Query[A] =
     new Query[A](self, zrs => decoder.unsafeDecode(zrs.resultSet))
 
+  /**
+   * Executes a SQL statement, such as one that creates a table.
+   */
+  def execute(sql: SqlFragment0): ZIO[ZConnection, Throwable, Unit] =
+    ZIO.scoped(for {
+      connection <- ZIO.service[ZConnection]
+      _          <- connection.executeSqlWith0(sql) { ps =>
+                      ZIO.attempt(ps.executeUpdate())
+                    }
+    } yield ())
+
 }
 
 object SqlFragment0 {
