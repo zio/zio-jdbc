@@ -14,7 +14,7 @@ final class Query[+A](val sql: SqlFragment, val decode: ZResultSet => A) {
   /**
    * Performs a SQL select query, returning all results in a chunk.
    */
-  def selectAll(implicit ev: IsSqlFragment[A]): ZIO[ZConnection, Throwable, Chunk[A]] =
+  def selectAll: ZIO[ZConnection, Throwable, Chunk[A]] =
     ZIO.scoped(for {
       zrs   <- executeQuery
       chunk <- ZIO.attempt {
@@ -28,7 +28,7 @@ final class Query[+A](val sql: SqlFragment, val decode: ZResultSet => A) {
   /**
    * Performs a SQL select query, returning the first result, if any.
    */
-  def selectOne(implicit ev: IsSqlFragment[A]): ZIO[ZConnection, Throwable, Option[A]] =
+  def selectOne: ZIO[ZConnection, Throwable, Option[A]] =
     ZIO.scoped(for {
       zrs    <- executeQuery
       option <- ZIO.attempt {
@@ -39,7 +39,7 @@ final class Query[+A](val sql: SqlFragment, val decode: ZResultSet => A) {
   /**
    * Performs a SQL select query, returning a stream of results.
    */
-  def selectStream(implicit ev: IsSqlFragment[A]): ZStream[ZConnection, Throwable, A] =
+  def selectStream: ZStream[ZConnection, Throwable, A] =
     ZStream.unwrapScoped {
       for {
         zrs   <- executeQuery
