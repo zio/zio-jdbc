@@ -27,18 +27,27 @@ final class SqlFragment0(private[jdbc] val build: ChunkBuilder[Segment] => Unit)
     self ++ SqlFragment0.from ++ table
 
   override def hashCode: Int = segments.hashCode
-//
-//  def in[B](b: B, bs: B*)(implicit encode: JdbcEncoder[B]): SqlFragment =
-//    in(b +: bs)
-//
-//  def in[B](bs: Iterable[B])(implicit encode: JdbcEncoder[B]): SqlFragment =
-//    in0(SqlFragment0.in, bs)
-//
-//  private def in0[B](op: SqlFragment0, bs: Iterable[B])(implicit encode: JdbcEncoder[B]): SqlFragment =
-//    self ++ op ++ SqlFragment0.lparen ++ SqlFragment0.intersperse(
-//      SqlFragment0.comma,
-//      bs.map(encode.encode)
-//    ) ++ SqlFragment0.rparen
+
+  def in[B](b: B, bs: B*)(implicit encoder: JdbcEncoder0[B]): SqlFragment0 =
+    in(b +: bs)
+
+  def in[B](bs: Iterable[B])(implicit encoder: JdbcEncoder0[B]): SqlFragment0 =
+    in0(SqlFragment0.in, bs)
+
+  def not(fragment: SqlFragment0): SqlFragment0 =
+    self ++ SqlFragment0.not ++ fragment
+
+  def notIn[B](b: B, bs: B*)(implicit encoder: JdbcEncoder0[B]): SqlFragment0 =
+    notIn(b +: bs)
+
+  def notIn[B](bs: Iterable[B])(implicit encoder: JdbcEncoder0[B]): SqlFragment0 =
+    in0(SqlFragment0.notIn, bs)
+
+  private def in0[B](op: SqlFragment0, bs: Iterable[B])(implicit encoder: JdbcEncoder0[B]): SqlFragment0 =
+    self ++ op ++ SqlFragment0.lparen ++ SqlFragment0.intersperse(
+      SqlFragment0.comma,
+      bs.map(encoder.encode)
+    ) ++ SqlFragment0.rparen
 
   def or(first: SqlFragment0, rest: SqlFragment0*): SqlFragment0 =
     or(first +: rest)
@@ -75,14 +84,26 @@ final class SqlFragment0(private[jdbc] val build: ChunkBuilder[Segment] => Unit)
 
     s"Sql(${sql.result()}$paramsString)"
   }
-//
-//  def values[B](bs: Iterable[B])(implicit encode: JdbcEncoder[B]): SqlFragment0 =
-//    this ++
-//      SqlFragment0.values ++
-//      SqlFragment0.intersperse(
-//        SqlFragment0.comma,
-//        bs.map(b => SqlFragment0.lparen ++ encode.encode(b) ++ SqlFragment0.rparen)
-//      )
+
+  def values[B](bs: Iterable[B])(implicit encoder: JdbcEncoder0[B]): SqlFragment0 =
+    this ++
+      SqlFragment0.values ++
+      SqlFragment0.intersperse(
+        SqlFragment0.comma,
+        bs.map(b => SqlFragment0.lparen ++ encoder.encode(b) ++ SqlFragment0.rparen)
+      )
+
+  def valuesBatched[B](bs: Iterable[B], batchSize: Int = 2000, tableName: String)(
+    keys: String*
+  )(implicit encoder: JdbcEncoder0[B]): Seq[SqlFragment0] = {
+    val batches          = bs.grouped(batchSize)
+    val insertStatements =
+      batches.map(batch => SqlFragment0.insertInto(tableName)(keys.mkString(", ")).values(batch)).toSeq
+    insertStatements
+  }
+
+  def values[B](b: B, bs: B*)(implicit encoder: JdbcEncoder0[B]): SqlFragment0 =
+    values(b +: bs)
 
   def where(predicate: SqlFragment0): SqlFragment0 =
     self ++ SqlFragment0.where ++ predicate

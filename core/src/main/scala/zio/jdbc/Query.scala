@@ -11,6 +11,9 @@ final class Query[+A](val sql: SqlFragment0, val decode: ZResultSet => A) {
   def withDecode[B](f: ZResultSet => B): Query[B] =
     new Query(sql, f)
 
+  def map[B](f: A => B): Query[B] =
+    new Query(sql, rs => f(decode(rs)))
+
   def selectAll(implicit ev: IsSqlFragment[A]): ZIO[ZConnection, Throwable, Chunk[A]] =
     ZIO.scoped(for {
       zrs   <- executeQuery
