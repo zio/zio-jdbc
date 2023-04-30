@@ -5,9 +5,6 @@ import zio.stream._
 
 final class Query[+A](val sql: SqlFragment, val decode: ZResultSet => A) {
 
-  def as[B](implicit decoder: JdbcDecoder[B]): Query[B] =
-    new Query(sql, (zrs: ZResultSet) => decoder.unsafeDecode(zrs.resultSet))
-
   def withDecode[B](f: ZResultSet => B): Query[B] =
     new Query(sql, f)
 

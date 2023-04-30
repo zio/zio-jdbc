@@ -26,22 +26,7 @@ package object jdbc {
   /**
    * Converts a String into a pure SQL expression
    */
-  implicit def stringToSql0(s: String): SqlFragment = SqlFragment(Chunk(SqlFragment.Segment.Syntax(s)))
-
-  /**
-   * Executes a SQL delete query.
-   */
-//  def delete(sql: SqlFragment): ZIO[ZConnection, Throwable, Long] =
-//    ZIO.scoped(executeLargeUpdate(sql))
-
-  /**
-   * Performs an SQL insert query, returning a count of rows inserted and a
-   * [[zio.Chunk]] of auto-generated keys. By default, auto-generated keys are
-   * parsed and returned as `Chunk[Long]`. If keys are non-numeric, a
-   * `Chunk.empty` is returned.
-   */
-//  def insert(sql: SqlFragment): ZIO[ZConnection, Throwable, UpdateResult] =
-//    ZIO.scoped(executeWithUpdateResult(sql))
+  implicit def stringToSql(s: String): SqlFragment = SqlFragment(Chunk(SqlFragment.Segment.Syntax(s)))
 
   /**
    * A new transaction, which may be applied to ZIO effects that require a
@@ -49,39 +34,5 @@ package object jdbc {
    */
   val transaction: ZLayer[ZConnectionPool, Throwable, ZConnection] =
     ZLayer(ZIO.serviceWith[ZConnectionPool](_.transaction)).flatten
-
-  /**
-   * Performs a SQL update query, returning a count of rows updated.
-   */
-//  def update(sql: SqlFragment): ZIO[ZConnection, Throwable, Long] =
-//    ZIO.scoped(executeLargeUpdate(sql))
-
-//  private def executeLargeUpdate[A](sql: Sql[A]) = for {
-//    connection <- ZIO.service[ZConnection]
-//    count      <- connection.executeSqlWith(sql) { ps =>
-//                    ZIO.attempt(ps.executeLargeUpdate())
-//                  }
-//  } yield count
-
-//  private def executeWithUpdateResult[A](sql: Sql[A]) = for {
-//    connection <- ZIO.service[ZConnection]
-//    result     <- connection.executeSqlWith(sql) { ps =>
-//                    for {
-//                      result     <- ZIO.acquireRelease(ZIO.attempt {
-//                                      val rowsUpdated = ps.executeLargeUpdate()
-//                                      val updatedKeys = ps.getGeneratedKeys
-//                                      (rowsUpdated, ZResultSet(updatedKeys))
-//                                    })(_._2.close)
-//                      (count, rs) = result
-//                      keys       <- ZIO.attempt {
-//                                      val builder = ChunkBuilder.make[Long]()
-//                                      while (rs.next())
-//                                        builder += rs.resultSet.getLong(1)
-//                                      builder.result()
-//                                    }.orElseSucceed(Chunk.empty)
-//
-//                    } yield UpdateResult(count, keys)
-//                  }
-//  } yield result
 
 }

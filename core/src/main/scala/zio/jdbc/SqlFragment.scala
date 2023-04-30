@@ -70,13 +70,6 @@ final class SqlFragment(private[jdbc] val build: ChunkBuilder[Segment] => Unit) 
     builder.result()
   }
 
-  private[jdbc] def foreachSegment(addSyntax: Segment.Syntax => Any)(addParam: Segment.Param => Any): Unit =
-    segments.foreach {
-      case syntax: Segment.Syntax => addSyntax(syntax)
-      case param: Segment.Param   => addParam(param)
-      case nested: Segment.Nested => nested.sql.foreachSegment(addSyntax)(addParam)
-    }
-
   override def toString: String = {
     val sql           = new StringBuilder()
     val paramsBuilder = ChunkBuilder.make[String]()
@@ -123,13 +116,70 @@ final class SqlFragment(private[jdbc] val build: ChunkBuilder[Segment] => Unit) 
   /**
    * Executes a SQL statement, such as one that creates a table.
    */
-  def execute(sql: SqlFragment): ZIO[ZConnection, Throwable, Unit] =
+  def execute: ZIO[ZConnection, Throwable, Unit] =
     ZIO.scoped(for {
       connection <- ZIO.service[ZConnection]
-      _          <- connection.executeSqlWith(sql) { ps =>
+      _          <- connection.executeSqlWith(self) { ps =>
                       ZIO.attempt(ps.executeUpdate())
                     }
     } yield ())
+
+  /**
+   * Executes a SQL delete query.
+   */
+  def delete: ZIO[ZConnection, Throwable, Long] =
+    ZIO.scoped(executeLargeUpdate(self))
+
+  /**
+   * Performs an SQL insert query, returning a count of rows inserted and a
+   * [[zio.Chunk]] of auto-generated keys. By default, auto-generated keys are
+   * parsed and returned as `Chunk[Long]`. If keys are non-numeric, a
+   * `Chunk.empty` is returned.
+   */
+  def insert: ZIO[ZConnection, Throwable, UpdateResult] =
+    ZIO.scoped(executeWithUpdateResult(self))
+
+  /**
+   * Performs a SQL update query, returning a count of rows updated.
+   */
+  def update: ZIO[ZConnection, Throwable, Long] =
+    ZIO.scoped(executeLargeUpdate(self))
+
+  private def executeLargeUpdate(sql: SqlFragment): ZIO[Scope with ZConnection, Throwable, Long] = for {
+    connection <- ZIO.service[ZConnection]
+    count      <- connection.executeSqlWith(sql) { ps =>
+                    ZIO.attempt(ps.executeLargeUpdate())
+                  }
+  } yield count
+
+  private def executeWithUpdateResult(sql: SqlFragment): ZIO[Scope with ZConnection, Throwable, UpdateResult] =
+    for {
+      connection <- ZIO.service[ZConnection]
+      result     <- connection.executeSqlWith(sql) { ps =>
+                      for {
+                        result     <- ZIO.acquireRelease(ZIO.attempt {
+                                        val rowsUpdated = ps.executeLargeUpdate()
+                                        val updatedKeys = ps.getGeneratedKeys
+                                        (rowsUpdated, ZResultSet(updatedKeys))
+                                      })(_._2.close)
+                        (count, rs) = result
+                        keys       <- ZIO.attempt {
+                                        val builder = ChunkBuilder.make[Long]()
+                                        while (rs.next())
+                                          builder += rs.resultSet.getLong(1)
+                                        builder.result()
+                                      }.orElseSucceed(Chunk.empty)
+
+                      } yield UpdateResult(count, keys)
+                    }
+    } yield result
+
+  private[jdbc] def foreachSegment(addSyntax: Segment.Syntax => Any)(addParam: Segment.Param => Any): Unit =
+    segments.foreach {
+      case syntax: Segment.Syntax => addSyntax(syntax)
+      case param: Segment.Param   => addParam(param)
+      case nested: Segment.Nested => nested.sql.foreachSegment(addSyntax)(addParam)
+    }
 
 }
 
