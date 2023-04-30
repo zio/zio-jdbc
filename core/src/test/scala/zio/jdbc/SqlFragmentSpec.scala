@@ -54,7 +54,7 @@ object SqlFragmentSpec extends ZIOSpecDefault {
           }.head eq fooParamSetter) &&
           assertTrue(testSql.toString == "Sql(?, Foo(test))")
         } +
-        suite("Sql.ParamSetter instances") { // TODO figure out how to test at PrepareStatement level
+        suite(" SqlFragment.ParamSetter instances") { // TODO figure out how to test at PrepareStatement level
           test("Option") {
             val none: Option[Int] = None
             assertTrue(sql"${none}".toString == "Sql(?, None)" && sql"${Option(123)}".toString == "Sql(?, Some(123))")
@@ -198,12 +198,12 @@ object SqlFragmentSpec extends ZIOSpecDefault {
             && assert(error.head.message())(containsString(sqlString)))
             .provideLayer(ZConnectionPool.h2test.orDie)
         } +
-        test("Sql.select") {
+        test(" SqlFragment.select") {
           val result   = SqlFragment.select("name", "age").from("persons")
           val expected = sql"SELECT name, age FROM persons"
           assertTrue(result.toString == expected.toString)
         } +
-        test("Sql.insertInto") {
+        test(" SqlFragment.insertInto") {
           val person = ("sholmes", 42)
           val result = SqlFragment.insertInto("persons")("name", "age").values(person)
           assertTrue(
@@ -211,13 +211,13 @@ object SqlFragmentSpec extends ZIOSpecDefault {
               s"Sql(INSERT INTO persons (name, age) VALUES (?,?), ${person._1}, ${person._2})"
           )
         } +
-        test("Sql.deleteFrom") {
+        test(" SqlFragment.deleteFrom") {
           val result = SqlFragment.deleteFrom("persons").where(sql"age < ${21}")
           assertTrue(
             result.toString == s"Sql(DELETE FROM persons WHERE age < ?, 21)"
           )
         } +
-        test("Sql.update") {
+        test(" SqlFragment.update") {
           val result = SqlFragment.update("persons")
           assertTrue(
             result.toString == "Sql(UPDATE persons)"
