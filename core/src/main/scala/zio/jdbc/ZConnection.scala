@@ -48,7 +48,6 @@ final class ZConnection(private[jdbc] val connection: Connection) extends AnyVal
                        sql.foreachSegment(_ => ()) { param =>
                          param.setter.setValue(statement, paramIndex, param.value)
                          paramIndex += 1
-
                        }
                      }
         result    <- f(statement)
