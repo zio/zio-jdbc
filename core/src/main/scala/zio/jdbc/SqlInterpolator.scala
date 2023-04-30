@@ -15,24 +15,22 @@
  */
 package zio.jdbc
 
-import zio.jdbc.Sql.Segment
-
 /**
- * An interpolator for SQL strings, which produces `Sql` values.
+ * An interpolator for SQL strings, which produces `SqlFragment` values.
  *
  * @param context The `StringContext` on which the string interpolator is added.
  */
 
 final class SqlInterpolator(val context: StringContext) extends AnyVal {
 
-  def sql0(params: SqlFragment0.Segment*): SqlFragment0 = new SqlFragment0(chunkBuilder => {
+  def sql0(params: SqlFragment.Segment*): SqlFragment = new SqlFragment(chunkBuilder => {
     val syntaxIterator = context.parts.iterator
     val paramsIterator = params.iterator
 
     while (syntaxIterator.hasNext) {
       val syntax = syntaxIterator.next()
       if (syntax.nonEmpty) {
-        chunkBuilder += SqlFragment0.Segment.Syntax(syntax)
+        chunkBuilder += SqlFragment.Segment.Syntax(syntax)
         if (paramsIterator.hasNext) chunkBuilder += paramsIterator.next()
       }
     }
@@ -40,21 +38,4 @@ final class SqlInterpolator(val context: StringContext) extends AnyVal {
       chunkBuilder += paramsIterator.next()
   })
 
-  def sql(params: Segment*): SqlFragment = new Sql(
-    chunkBuilder => {
-      val syntaxIterator = context.parts.iterator
-      val paramsIterator = params.iterator
-
-      while (syntaxIterator.hasNext) {
-        val syntax = syntaxIterator.next()
-        if (syntax.nonEmpty) {
-          chunkBuilder += Segment.Syntax(syntax)
-          if (paramsIterator.hasNext) chunkBuilder += paramsIterator.next()
-        }
-      }
-      while (paramsIterator.hasNext)
-        chunkBuilder += paramsIterator.next()
-    },
-    Sql.identityFn
-  )
 }

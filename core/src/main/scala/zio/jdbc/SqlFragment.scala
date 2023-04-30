@@ -1,59 +1,68 @@
 package zio.jdbc
 
 import zio._
-import zio.jdbc.SqlFragment0.Segment
+import zio.jdbc.SqlFragment.Segment
 
 import java.sql.{ PreparedStatement, Types }
 import scala.language.implicitConversions
 
-final class SqlFragment0(private[jdbc] val build: ChunkBuilder[Segment] => Unit) { self =>
+/**
+ * A `SqlFragment` represents part or all of a SQL query. The SQL
+ * is described by a sequence of segments, each segment being either a
+ * fragment of SQL, or a value to be inserted into the query in a way that
+ * is safe from SQL injection attacks.
+ *
+ * @param segments
+ * @param decode
+ */
+final class SqlFragment(private[jdbc] val build: ChunkBuilder[Segment] => Unit) { self =>
 
-  def ++(that: SqlFragment0): SqlFragment0 =
-    new SqlFragment0(builder => { self.build(builder); that.build(builder) })
+  def ++(that: SqlFragment): SqlFragment =
+    new SqlFragment(builder => { self.build(builder); that.build(builder) })
 
-  def and(first: SqlFragment0, rest: SqlFragment0*): SqlFragment0 =
+  def and(first: SqlFragment, rest: SqlFragment*): SqlFragment =
     and(first +: rest)
 
-  def and(elements: Iterable[SqlFragment0]): SqlFragment0 =
-    self ++ SqlFragment0.prependEach(SqlFragment0.and, elements)
+  def and(elements: Iterable[SqlFragment]): SqlFragment =
+    self ++ SqlFragment.prependEach(SqlFragment.and, elements)
 
   override def equals(that: Any): Boolean =
     that match {
-      case that: SqlFragment0 => self.segments == that.segments
-      case _                  => false
+      case that: SqlFragment => self.segments == that.segments
+      case _                 => false
     }
 
-  def from(table: SqlFragment0): SqlFragment0 =
-    self ++ SqlFragment0.from ++ table
+  def from(table: SqlFragment): SqlFragment =
+    self ++ SqlFragment.from ++ table
 
   override def hashCode: Int = segments.hashCode
 
-  def in[B](b: B, bs: B*)(implicit encoder: JdbcEncoder0[B]): SqlFragment0 =
+  def in[B](b: B, bs: B*)(implicit encoder: JdbcEncoder[B]): SqlFragment =
     in(b +: bs)
 
-  def in[B](bs: Iterable[B])(implicit encoder: JdbcEncoder0[B]): SqlFragment0 =
-    in0(SqlFragment0.in, bs)
+  def in[B](bs: Iterable[B])(implicit encoder: JdbcEncoder[B]): SqlFragment =
+    in0(SqlFragment.in, bs)
 
-  def not(fragment: SqlFragment0): SqlFragment0 =
-    self ++ SqlFragment0.not ++ fragment
+  def not(fragment: SqlFragment): SqlFragment =
+    self ++ SqlFragment.not ++ fragment
 
-  def notIn[B](b: B, bs: B*)(implicit encoder: JdbcEncoder0[B]): SqlFragment0 =
+  def notIn[B](b: B, bs: B*)(implicit encoder: JdbcEncoder[B]): SqlFragment =
     notIn(b +: bs)
 
-  def notIn[B](bs: Iterable[B])(implicit encoder: JdbcEncoder0[B]): SqlFragment0 =
-    in0(SqlFragment0.notIn, bs)
+  def notIn[B](bs: Iterable[B])(implicit encoder: JdbcEncoder[B]): SqlFragment =
+    in0(SqlFragment.notIn, bs)
 
-  private def in0[B](op: SqlFragment0, bs: Iterable[B])(implicit encoder: JdbcEncoder0[B]): SqlFragment0 =
-    self ++ op ++ SqlFragment0.lparen ++ SqlFragment0.intersperse(
-      SqlFragment0.comma,
+  private def in0[B](op: SqlFragment, bs: Iterable[B])(implicit encoder: JdbcEncoder[B]): SqlFragment =
+    self ++ op ++ SqlFragment.lparen ++ SqlFragment.intersperse(
+      SqlFragment.comma,
       bs.map(encoder.encode)
-    ) ++ SqlFragment0.rparen
+    ) ++ SqlFragment.rparen
 
-  def or(first: SqlFragment0, rest: SqlFragment0*): SqlFragment0 =
+  def or(first: SqlFragment, rest: SqlFragment*): SqlFragment =
     or(first +: rest)
 
-  def or(elements: Iterable[SqlFragment0]): SqlFragment0 =
-    self ++ SqlFragment0.prependEach(SqlFragment0.or, elements)
+  def or(elements: Iterable[SqlFragment]): SqlFragment =
+    self ++ SqlFragment.prependEach(SqlFragment.or, elements)
 
   def segments: Chunk[Segment] = {
     val builder = ChunkBuilder.make[Segment]()
@@ -85,28 +94,28 @@ final class SqlFragment0(private[jdbc] val build: ChunkBuilder[Segment] => Unit)
     s"Sql(${sql.result()}$paramsString)"
   }
 
-  def values[B](bs: Iterable[B])(implicit encoder: JdbcEncoder0[B]): SqlFragment0 =
+  def values[B](bs: Iterable[B])(implicit encoder: JdbcEncoder[B]): SqlFragment =
     this ++
-      SqlFragment0.values ++
-      SqlFragment0.intersperse(
-        SqlFragment0.comma,
-        bs.map(b => SqlFragment0.lparen ++ encoder.encode(b) ++ SqlFragment0.rparen)
+      SqlFragment.values ++
+      SqlFragment.intersperse(
+        SqlFragment.comma,
+        bs.map(b => SqlFragment.lparen ++ encoder.encode(b) ++ SqlFragment.rparen)
       )
 
   def valuesBatched[B](bs: Iterable[B], batchSize: Int = 2000, tableName: String)(
     keys: String*
-  )(implicit encoder: JdbcEncoder0[B]): Seq[SqlFragment0] = {
+  )(implicit encoder: JdbcEncoder[B]): Seq[SqlFragment] = {
     val batches          = bs.grouped(batchSize)
     val insertStatements =
-      batches.map(batch => SqlFragment0.insertInto(tableName)(keys.mkString(", ")).values(batch)).toSeq
+      batches.map(batch => SqlFragment.insertInto(tableName)(keys.mkString(", ")).values(batch)).toSeq
     insertStatements
   }
 
-  def values[B](b: B, bs: B*)(implicit encoder: JdbcEncoder0[B]): SqlFragment0 =
+  def values[B](b: B, bs: B*)(implicit encoder: JdbcEncoder[B]): SqlFragment =
     values(b +: bs)
 
-  def where(predicate: SqlFragment0): SqlFragment0 =
-    self ++ SqlFragment0.where ++ predicate
+  def where(predicate: SqlFragment): SqlFragment =
+    self ++ SqlFragment.where ++ predicate
 
   def query[A](implicit decoder: JdbcDecoder[A]): Query[A] =
     new Query[A](self, zrs => decoder.unsafeDecode(zrs.resultSet))
@@ -114,7 +123,7 @@ final class SqlFragment0(private[jdbc] val build: ChunkBuilder[Segment] => Unit)
   /**
    * Executes a SQL statement, such as one that creates a table.
    */
-  def execute(sql: SqlFragment0): ZIO[ZConnection, Throwable, Unit] =
+  def execute(sql: SqlFragment): ZIO[ZConnection, Throwable, Unit] =
     ZIO.scoped(for {
       connection <- ZIO.service[ZConnection]
       _          <- connection.executeSqlWith0(sql) { ps =>
@@ -124,20 +133,20 @@ final class SqlFragment0(private[jdbc] val build: ChunkBuilder[Segment] => Unit)
 
 }
 
-object SqlFragment0 {
+object SqlFragment {
 
-  val empty: SqlFragment0 = SqlFragment0(Chunk.empty[Segment])
+  val empty: SqlFragment = SqlFragment(Chunk.empty[Segment])
 
   sealed trait Segment
   object Segment {
     final case class Syntax(value: String)                  extends Segment
     final case class Param(value: Any, setter: Setter[Any]) extends Segment
-    final case class Nested(sql: SqlFragment0)              extends Segment
+    final case class Nested(sql: SqlFragment)               extends Segment
 
     implicit def paramSegment[A](a: A)(implicit setter: Setter[A]): Segment.Param =
       Segment.Param(a, setter.asInstanceOf[Setter[Any]])
 
-    implicit def nestedSqlSegment[A](sql: SqlFragment0): Segment.Nested = Segment.Nested(sql)
+    implicit def nestedSqlSegment[A](sql: SqlFragment): Segment.Nested = Segment.Nested(sql)
   }
 
   trait Setter[A] { self =>
@@ -204,27 +213,27 @@ object SqlFragment0 {
     implicit val instantSetter: Setter[java.time.Instant]             = sqlTimestampSetter.contramap(java.sql.Timestamp.from)
   }
 
-  def apply(sql: String): SqlFragment0 = sql
+  def apply(sql: String): SqlFragment = sql
 
-  def apply(segments: Chunk[Segment]): SqlFragment0 =
-    new SqlFragment0(builder => builder ++= segments)
+  def apply(segments: Chunk[Segment]): SqlFragment =
+    new SqlFragment(builder => builder ++= segments)
 
-  def deleteFrom(table: String): SqlFragment0 =
+  def deleteFrom(table: String): SqlFragment =
     s"DELETE FROM $table"
 
-  def insertInto(table: String)(keys: String*): SqlFragment0 =
+  def insertInto(table: String)(keys: String*): SqlFragment =
     s"INSERT INTO $table (${keys.mkString(", ")})"
 
-  def select(columns: String*): SqlFragment0 =
+  def select(columns: String*): SqlFragment =
     s"SELECT ${columns.mkString(", ")}"
 
-  def update(table: String): SqlFragment0 =
+  def update(table: String): SqlFragment =
     s"UPDATE $table"
 
   private[jdbc] def intersperse(
-    sep: SqlFragment0,
-    elements: Iterable[SqlFragment0]
-  ): SqlFragment0 = {
+    sep: SqlFragment,
+    elements: Iterable[SqlFragment]
+  ): SqlFragment = {
     var first = true
     elements.foldLeft(empty) { (acc, element) =>
       if (!first) acc ++ sep ++ element
@@ -235,7 +244,7 @@ object SqlFragment0 {
     }
   }
 
-  private[jdbc] def prependEach(sep: SqlFragment0, elements: Iterable[SqlFragment0]): SqlFragment0 =
+  private[jdbc] def prependEach(sep: SqlFragment, elements: Iterable[SqlFragment]): SqlFragment =
     elements.foldLeft(empty) { (acc, element) =>
       acc ++ sep ++ element
     }

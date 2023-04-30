@@ -3,7 +3,7 @@ package zio.jdbc
 import zio._
 import zio.stream._
 
-final class Query[+A](val sql: SqlFragment0, val decode: ZResultSet => A) {
+final class Query[+A](val sql: SqlFragment, val decode: ZResultSet => A) {
 
   def as[B](implicit decoder: JdbcDecoder[B]): Query[B] =
     new Query(sql, (zrs: ZResultSet) => decoder.unsafeDecode(zrs.resultSet))
@@ -14,6 +14,9 @@ final class Query[+A](val sql: SqlFragment0, val decode: ZResultSet => A) {
   def map[B](f: A => B): Query[B] =
     new Query(sql, zrs => f(decode(zrs)))
 
+  /**
+   * Performs a SQL select query, returning all results in a chunk.
+   */
   def selectAll(implicit ev: IsSqlFragment[A]): ZIO[ZConnection, Throwable, Chunk[A]] =
     ZIO.scoped(for {
       zrs   <- executeQuery
@@ -25,6 +28,9 @@ final class Query[+A](val sql: SqlFragment0, val decode: ZResultSet => A) {
                }
     } yield chunk)
 
+  /**
+   * Performs a SQL select query, returning the first result, if any.
+   */
   def selectOne(implicit ev: IsSqlFragment[A]): ZIO[ZConnection, Throwable, Option[A]] =
     ZIO.scoped(for {
       zrs    <- executeQuery
@@ -33,6 +39,9 @@ final class Query[+A](val sql: SqlFragment0, val decode: ZResultSet => A) {
                 }
     } yield option)
 
+  /**
+   * Performs a SQL select query, returning a stream of results.
+   */
   def selectStream(implicit ev: IsSqlFragment[A]): ZStream[ZConnection, Throwable, A] =
     ZStream.unwrapScoped {
       for {

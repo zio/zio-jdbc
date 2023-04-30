@@ -28,56 +28,58 @@ trait JdbcEncoder[-A] {
   final def contramap[B](f: B => A): JdbcEncoder[B] = value => encode(f(value))
 }
 
-object JdbcEncoder extends JdbcEncoderLowPriorityImplicits {
+object JdbcEncoder extends JdbcEncoder0LowPriorityImplicits {
   def apply[A]()(implicit encoder: JdbcEncoder[A]): JdbcEncoder[A] = encoder
 
-  implicit val intEncoder: JdbcEncoder[Int]                               = value => sql"$value"
-  implicit val longEncoder: JdbcEncoder[Long]                             = value => sql"$value"
-  implicit val doubleEncoder: JdbcEncoder[Double]                         = value => sql"$value"
-  implicit val charEncoder: JdbcEncoder[Char]                             = value => sql"$value"
-  implicit val stringEncoder: JdbcEncoder[String]                         = value => sql"$value"
-  implicit val booleanEncoder: JdbcEncoder[Boolean]                       = value => sql"$value"
-  implicit val bigIntEncoder: JdbcEncoder[java.math.BigInteger]           = value => sql"$value"
-  implicit val bigDecimalEncoder: JdbcEncoder[java.math.BigDecimal]       = value => sql"$value"
-  implicit val bigDecimalEncoderScala: JdbcEncoder[scala.math.BigDecimal] = value => sql"$value"
-  implicit val shortEncoder: JdbcEncoder[Short]                           = value => sql"$value"
-  implicit val floatEncoder: JdbcEncoder[Float]                           = value => sql"$value"
-  implicit val byteEncoder: JdbcEncoder[Byte]                             = value => sql"$value"
-  implicit val byteArrayEncoder: JdbcEncoder[Array[Byte]]                 = value => sql"$value"
-  implicit val byteChunkEncoder: JdbcEncoder[Chunk[Byte]]                 = value => sql"$value"
-  implicit val blobEncoder: JdbcEncoder[java.sql.Blob]                    = value => sql"$value"
-  implicit val uuidEncoder: JdbcEncoder[java.util.UUID]                   = value => sql"$value"
+  implicit val intEncoder: JdbcEncoder[Int]                               = value => sql0"$value"
+  implicit val longEncoder: JdbcEncoder[Long]                             = value => sql0"$value"
+  implicit val doubleEncoder: JdbcEncoder[Double]                         = value => sql0"$value"
+  implicit val charEncoder: JdbcEncoder[Char]                             = value => sql0"$value"
+  implicit val stringEncoder: JdbcEncoder[String]                         = value => sql0"$value"
+  implicit val booleanEncoder: JdbcEncoder[Boolean]                       = value => sql0"$value"
+  implicit val bigIntEncoder: JdbcEncoder[java.math.BigInteger]           = value => sql0"$value"
+  implicit val bigDecimalEncoder: JdbcEncoder[java.math.BigDecimal]       = value => sql0"$value"
+  implicit val bigDecimalEncoderScala: JdbcEncoder[scala.math.BigDecimal] = value => sql0"$value"
+  implicit val shortEncoder: JdbcEncoder[Short]                           = value => sql0"$value"
+  implicit val floatEncoder: JdbcEncoder[Float]                           = value => sql0"$value"
+  implicit val byteEncoder: JdbcEncoder[Byte]                             = value => sql0"$value"
+  implicit val byteArrayEncoder: JdbcEncoder[Array[Byte]]                 = value => sql0"$value"
+  implicit val byteChunkEncoder: JdbcEncoder[Chunk[Byte]]                 = value => sql0"$value"
+  implicit val blobEncoder: JdbcEncoder[java.sql.Blob]                    = value => sql0"$value"
+  implicit val uuidEncoder: JdbcEncoder[java.util.UUID]                   = value => sql0"$value"
 
-  implicit def singleParamEncoder[A: Sql.Setter]: JdbcEncoder[A] = value => sql"$value"
+  implicit def singleParamEncoder[A: SqlFragment.Setter]: JdbcEncoder[A] = value => sql0"$value"
 
   // TODO: review for cases like Option of a tuple
   def optionEncoder[A](implicit encoder: JdbcEncoder[A]): JdbcEncoder[Option[A]] =
-    value => value.fold(Sql.nullLiteral)(encoder.encode)
+    value => value.fold(SqlFragment.nullLiteral)(encoder.encode)
 
   implicit def tuple2Encoder[A: JdbcEncoder, B: JdbcEncoder]: JdbcEncoder[(A, B)] =
-    tuple => JdbcEncoder[A]().encode(tuple._1) ++ Sql.comma ++ JdbcEncoder[B]().encode(tuple._2)
+    tuple => JdbcEncoder[A]().encode(tuple._1) ++ SqlFragment.comma ++ JdbcEncoder[B]().encode(tuple._2)
 
   implicit def tuple3Encoder[A: JdbcEncoder, B: JdbcEncoder, C: JdbcEncoder]: JdbcEncoder[(A, B, C)] =
     tuple =>
-      JdbcEncoder[A]().encode(tuple._1) ++ Sql.comma ++ JdbcEncoder[B]().encode(
+      JdbcEncoder[A]().encode(tuple._1) ++ SqlFragment.comma ++ JdbcEncoder[B]().encode(
         tuple._2
-      ) ++ Sql.comma ++ JdbcEncoder[C]().encode(tuple._3)
+      ) ++ SqlFragment.comma ++ JdbcEncoder[C]().encode(tuple._3)
 
   implicit def tuple4Encoder[A: JdbcEncoder, B: JdbcEncoder, C: JdbcEncoder, D: JdbcEncoder]
     : JdbcEncoder[(A, B, C, D)] =
     tuple =>
-      JdbcEncoder[A]().encode(tuple._1) ++ Sql.comma ++ JdbcEncoder[B]().encode(
+      JdbcEncoder[A]().encode(tuple._1) ++ SqlFragment.comma ++ JdbcEncoder[B]().encode(
         tuple._2
-      ) ++ Sql.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ Sql.comma ++ JdbcEncoder[D]().encode(tuple._4)
+      ) ++ SqlFragment.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ SqlFragment.comma ++ JdbcEncoder[D]().encode(
+        tuple._4
+      )
 
   implicit def tuple5Encoder[A: JdbcEncoder, B: JdbcEncoder, C: JdbcEncoder, D: JdbcEncoder, E: JdbcEncoder]
     : JdbcEncoder[(A, B, C, D, E)] =
     tuple =>
-      JdbcEncoder[A]().encode(tuple._1) ++ Sql.comma ++ JdbcEncoder[B]().encode(
+      JdbcEncoder[A]().encode(tuple._1) ++ SqlFragment.comma ++ JdbcEncoder[B]().encode(
         tuple._2
-      ) ++ Sql.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ Sql.comma ++ JdbcEncoder[D]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ SqlFragment.comma ++ JdbcEncoder[D]().encode(
         tuple._4
-      ) ++ Sql.comma ++ JdbcEncoder[E]().encode(tuple._5)
+      ) ++ SqlFragment.comma ++ JdbcEncoder[E]().encode(tuple._5)
 
   implicit def tuple6Encoder[
     A: JdbcEncoder,
@@ -88,11 +90,13 @@ object JdbcEncoder extends JdbcEncoderLowPriorityImplicits {
     F: JdbcEncoder
   ]: JdbcEncoder[(A, B, C, D, E, F)] =
     tuple =>
-      JdbcEncoder[A]().encode(tuple._1) ++ Sql.comma ++ JdbcEncoder[B]().encode(
+      JdbcEncoder[A]().encode(tuple._1) ++ SqlFragment.comma ++ JdbcEncoder[B]().encode(
         tuple._2
-      ) ++ Sql.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ Sql.comma ++ JdbcEncoder[D]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ SqlFragment.comma ++ JdbcEncoder[D]().encode(
         tuple._4
-      ) ++ Sql.comma ++ JdbcEncoder[E]().encode(tuple._5) ++ Sql.comma ++ JdbcEncoder[F]().encode(tuple._6)
+      ) ++ SqlFragment.comma ++ JdbcEncoder[E]().encode(tuple._5) ++ SqlFragment.comma ++ JdbcEncoder[F]().encode(
+        tuple._6
+      )
 
   implicit def tuple7Encoder[
     A: JdbcEncoder,
@@ -104,13 +108,13 @@ object JdbcEncoder extends JdbcEncoderLowPriorityImplicits {
     G: JdbcEncoder
   ]: JdbcEncoder[(A, B, C, D, E, F, G)] =
     tuple =>
-      JdbcEncoder[A]().encode(tuple._1) ++ Sql.comma ++ JdbcEncoder[B]().encode(
+      JdbcEncoder[A]().encode(tuple._1) ++ SqlFragment.comma ++ JdbcEncoder[B]().encode(
         tuple._2
-      ) ++ Sql.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ Sql.comma ++ JdbcEncoder[D]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ SqlFragment.comma ++ JdbcEncoder[D]().encode(
         tuple._4
-      ) ++ Sql.comma ++ JdbcEncoder[E]().encode(tuple._5) ++ Sql.comma ++ JdbcEncoder[F]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[E]().encode(tuple._5) ++ SqlFragment.comma ++ JdbcEncoder[F]().encode(
         tuple._6
-      ) ++ Sql.comma ++ JdbcEncoder[G]().encode(tuple._7)
+      ) ++ SqlFragment.comma ++ JdbcEncoder[G]().encode(tuple._7)
 
   implicit def tuple8Encoder[
     A: JdbcEncoder,
@@ -123,13 +127,15 @@ object JdbcEncoder extends JdbcEncoderLowPriorityImplicits {
     H: JdbcEncoder
   ]: JdbcEncoder[(A, B, C, D, E, F, G, H)] =
     tuple =>
-      JdbcEncoder[A]().encode(tuple._1) ++ Sql.comma ++ JdbcEncoder[B]().encode(
+      JdbcEncoder[A]().encode(tuple._1) ++ SqlFragment.comma ++ JdbcEncoder[B]().encode(
         tuple._2
-      ) ++ Sql.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ Sql.comma ++ JdbcEncoder[D]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ SqlFragment.comma ++ JdbcEncoder[D]().encode(
         tuple._4
-      ) ++ Sql.comma ++ JdbcEncoder[E]().encode(tuple._5) ++ Sql.comma ++ JdbcEncoder[F]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[E]().encode(tuple._5) ++ SqlFragment.comma ++ JdbcEncoder[F]().encode(
         tuple._6
-      ) ++ Sql.comma ++ JdbcEncoder[G]().encode(tuple._7) ++ Sql.comma ++ JdbcEncoder[H]().encode(tuple._8)
+      ) ++ SqlFragment.comma ++ JdbcEncoder[G]().encode(tuple._7) ++ SqlFragment.comma ++ JdbcEncoder[H]().encode(
+        tuple._8
+      )
 
   implicit def tuple9Encoder[
     A: JdbcEncoder,
@@ -143,15 +149,15 @@ object JdbcEncoder extends JdbcEncoderLowPriorityImplicits {
     I: JdbcEncoder
   ]: JdbcEncoder[(A, B, C, D, E, F, G, H, I)] =
     tuple =>
-      JdbcEncoder[A]().encode(tuple._1) ++ Sql.comma ++ JdbcEncoder[B]().encode(
+      JdbcEncoder[A]().encode(tuple._1) ++ SqlFragment.comma ++ JdbcEncoder[B]().encode(
         tuple._2
-      ) ++ Sql.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ Sql.comma ++ JdbcEncoder[D]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ SqlFragment.comma ++ JdbcEncoder[D]().encode(
         tuple._4
-      ) ++ Sql.comma ++ JdbcEncoder[E]().encode(tuple._5) ++ Sql.comma ++ JdbcEncoder[F]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[E]().encode(tuple._5) ++ SqlFragment.comma ++ JdbcEncoder[F]().encode(
         tuple._6
-      ) ++ Sql.comma ++ JdbcEncoder[G]().encode(tuple._7) ++ Sql.comma ++ JdbcEncoder[H]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[G]().encode(tuple._7) ++ SqlFragment.comma ++ JdbcEncoder[H]().encode(
         tuple._8
-      ) ++ Sql.comma ++ JdbcEncoder[I]().encode(tuple._9)
+      ) ++ SqlFragment.comma ++ JdbcEncoder[I]().encode(tuple._9)
 
   implicit def tuple10Encoder[
     A: JdbcEncoder,
@@ -166,15 +172,17 @@ object JdbcEncoder extends JdbcEncoderLowPriorityImplicits {
     J: JdbcEncoder
   ]: JdbcEncoder[(A, B, C, D, E, F, G, H, I, J)] =
     tuple =>
-      JdbcEncoder[A]().encode(tuple._1) ++ Sql.comma ++ JdbcEncoder[B]().encode(
+      JdbcEncoder[A]().encode(tuple._1) ++ SqlFragment.comma ++ JdbcEncoder[B]().encode(
         tuple._2
-      ) ++ Sql.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ Sql.comma ++ JdbcEncoder[D]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ SqlFragment.comma ++ JdbcEncoder[D]().encode(
         tuple._4
-      ) ++ Sql.comma ++ JdbcEncoder[E]().encode(tuple._5) ++ Sql.comma ++ JdbcEncoder[F]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[E]().encode(tuple._5) ++ SqlFragment.comma ++ JdbcEncoder[F]().encode(
         tuple._6
-      ) ++ Sql.comma ++ JdbcEncoder[G]().encode(tuple._7) ++ Sql.comma ++ JdbcEncoder[H]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[G]().encode(tuple._7) ++ SqlFragment.comma ++ JdbcEncoder[H]().encode(
         tuple._8
-      ) ++ Sql.comma ++ JdbcEncoder[I]().encode(tuple._9) ++ Sql.comma ++ JdbcEncoder[J]().encode(tuple._10)
+      ) ++ SqlFragment.comma ++ JdbcEncoder[I]().encode(tuple._9) ++ SqlFragment.comma ++ JdbcEncoder[J]().encode(
+        tuple._10
+      )
 
   implicit def tuple11Encoder[
     A: JdbcEncoder,
@@ -190,17 +198,17 @@ object JdbcEncoder extends JdbcEncoderLowPriorityImplicits {
     K: JdbcEncoder
   ]: JdbcEncoder[(A, B, C, D, E, F, G, H, I, J, K)] =
     tuple =>
-      JdbcEncoder[A]().encode(tuple._1) ++ Sql.comma ++ JdbcEncoder[B]().encode(
+      JdbcEncoder[A]().encode(tuple._1) ++ SqlFragment.comma ++ JdbcEncoder[B]().encode(
         tuple._2
-      ) ++ Sql.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ Sql.comma ++ JdbcEncoder[D]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ SqlFragment.comma ++ JdbcEncoder[D]().encode(
         tuple._4
-      ) ++ Sql.comma ++ JdbcEncoder[E]().encode(tuple._5) ++ Sql.comma ++ JdbcEncoder[F]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[E]().encode(tuple._5) ++ SqlFragment.comma ++ JdbcEncoder[F]().encode(
         tuple._6
-      ) ++ Sql.comma ++ JdbcEncoder[G]().encode(tuple._7) ++ Sql.comma ++ JdbcEncoder[H]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[G]().encode(tuple._7) ++ SqlFragment.comma ++ JdbcEncoder[H]().encode(
         tuple._8
-      ) ++ Sql.comma ++ JdbcEncoder[I]().encode(tuple._9) ++ Sql.comma ++ JdbcEncoder[J]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[I]().encode(tuple._9) ++ SqlFragment.comma ++ JdbcEncoder[J]().encode(
         tuple._10
-      ) ++ Sql.comma ++ JdbcEncoder[K]().encode(tuple._11)
+      ) ++ SqlFragment.comma ++ JdbcEncoder[K]().encode(tuple._11)
 
   implicit def tuple12Encoder[
     A: JdbcEncoder,
@@ -217,17 +225,17 @@ object JdbcEncoder extends JdbcEncoderLowPriorityImplicits {
     L: JdbcEncoder
   ]: JdbcEncoder[(A, B, C, D, E, F, G, H, I, J, K, L)] =
     tuple =>
-      JdbcEncoder[A]().encode(tuple._1) ++ Sql.comma ++ JdbcEncoder[B]().encode(
+      JdbcEncoder[A]().encode(tuple._1) ++ SqlFragment.comma ++ JdbcEncoder[B]().encode(
         tuple._2
-      ) ++ Sql.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ Sql.comma ++ JdbcEncoder[D]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ SqlFragment.comma ++ JdbcEncoder[D]().encode(
         tuple._4
-      ) ++ Sql.comma ++ JdbcEncoder[E]().encode(tuple._5) ++ Sql.comma ++ JdbcEncoder[F]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[E]().encode(tuple._5) ++ SqlFragment.comma ++ JdbcEncoder[F]().encode(
         tuple._6
-      ) ++ Sql.comma ++ JdbcEncoder[G]().encode(tuple._7) ++ Sql.comma ++ JdbcEncoder[H]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[G]().encode(tuple._7) ++ SqlFragment.comma ++ JdbcEncoder[H]().encode(
         tuple._8
-      ) ++ Sql.comma ++ JdbcEncoder[I]().encode(tuple._9) ++ Sql.comma ++ JdbcEncoder[J]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[I]().encode(tuple._9) ++ SqlFragment.comma ++ JdbcEncoder[J]().encode(
         tuple._10
-      ) ++ Sql.comma ++ JdbcEncoder[K]().encode(tuple._11) ++ Sql.comma ++ JdbcEncoder[L]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[K]().encode(tuple._11) ++ SqlFragment.comma ++ JdbcEncoder[L]().encode(
         tuple._12
       )
 
@@ -247,19 +255,19 @@ object JdbcEncoder extends JdbcEncoderLowPriorityImplicits {
     M: JdbcEncoder
   ]: JdbcEncoder[(A, B, C, D, E, F, G, H, I, J, K, L, M)] =
     tuple =>
-      JdbcEncoder[A]().encode(tuple._1) ++ Sql.comma ++ JdbcEncoder[B]().encode(
+      JdbcEncoder[A]().encode(tuple._1) ++ SqlFragment.comma ++ JdbcEncoder[B]().encode(
         tuple._2
-      ) ++ Sql.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ Sql.comma ++ JdbcEncoder[D]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ SqlFragment.comma ++ JdbcEncoder[D]().encode(
         tuple._4
-      ) ++ Sql.comma ++ JdbcEncoder[E]().encode(tuple._5) ++ Sql.comma ++ JdbcEncoder[F]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[E]().encode(tuple._5) ++ SqlFragment.comma ++ JdbcEncoder[F]().encode(
         tuple._6
-      ) ++ Sql.comma ++ JdbcEncoder[G]().encode(tuple._7) ++ Sql.comma ++ JdbcEncoder[H]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[G]().encode(tuple._7) ++ SqlFragment.comma ++ JdbcEncoder[H]().encode(
         tuple._8
-      ) ++ Sql.comma ++ JdbcEncoder[I]().encode(tuple._9) ++ Sql.comma ++ JdbcEncoder[J]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[I]().encode(tuple._9) ++ SqlFragment.comma ++ JdbcEncoder[J]().encode(
         tuple._10
-      ) ++ Sql.comma ++ JdbcEncoder[K]().encode(tuple._11) ++ Sql.comma ++ JdbcEncoder[L]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[K]().encode(tuple._11) ++ SqlFragment.comma ++ JdbcEncoder[L]().encode(
         tuple._12
-      ) ++ Sql.comma ++ JdbcEncoder[M]().encode(tuple._13)
+      ) ++ SqlFragment.comma ++ JdbcEncoder[M]().encode(tuple._13)
 
   implicit def tuple14Encoder[
     A: JdbcEncoder,
@@ -278,19 +286,19 @@ object JdbcEncoder extends JdbcEncoderLowPriorityImplicits {
     N: JdbcEncoder
   ]: JdbcEncoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N)] =
     tuple =>
-      JdbcEncoder[A]().encode(tuple._1) ++ Sql.comma ++ JdbcEncoder[B]().encode(
+      JdbcEncoder[A]().encode(tuple._1) ++ SqlFragment.comma ++ JdbcEncoder[B]().encode(
         tuple._2
-      ) ++ Sql.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ Sql.comma ++ JdbcEncoder[D]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ SqlFragment.comma ++ JdbcEncoder[D]().encode(
         tuple._4
-      ) ++ Sql.comma ++ JdbcEncoder[E]().encode(tuple._5) ++ Sql.comma ++ JdbcEncoder[F]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[E]().encode(tuple._5) ++ SqlFragment.comma ++ JdbcEncoder[F]().encode(
         tuple._6
-      ) ++ Sql.comma ++ JdbcEncoder[G]().encode(tuple._7) ++ Sql.comma ++ JdbcEncoder[H]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[G]().encode(tuple._7) ++ SqlFragment.comma ++ JdbcEncoder[H]().encode(
         tuple._8
-      ) ++ Sql.comma ++ JdbcEncoder[I]().encode(tuple._9) ++ Sql.comma ++ JdbcEncoder[J]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[I]().encode(tuple._9) ++ SqlFragment.comma ++ JdbcEncoder[J]().encode(
         tuple._10
-      ) ++ Sql.comma ++ JdbcEncoder[K]().encode(tuple._11) ++ Sql.comma ++ JdbcEncoder[L]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[K]().encode(tuple._11) ++ SqlFragment.comma ++ JdbcEncoder[L]().encode(
         tuple._12
-      ) ++ Sql.comma ++ JdbcEncoder[M]().encode(tuple._13) ++ Sql.comma ++ JdbcEncoder[N]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[M]().encode(tuple._13) ++ SqlFragment.comma ++ JdbcEncoder[N]().encode(
         tuple._14
       )
 
@@ -312,21 +320,21 @@ object JdbcEncoder extends JdbcEncoderLowPriorityImplicits {
     O: JdbcEncoder
   ]: JdbcEncoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O)] =
     tuple =>
-      JdbcEncoder[A]().encode(tuple._1) ++ Sql.comma ++ JdbcEncoder[B]().encode(
+      JdbcEncoder[A]().encode(tuple._1) ++ SqlFragment.comma ++ JdbcEncoder[B]().encode(
         tuple._2
-      ) ++ Sql.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ Sql.comma ++ JdbcEncoder[D]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ SqlFragment.comma ++ JdbcEncoder[D]().encode(
         tuple._4
-      ) ++ Sql.comma ++ JdbcEncoder[E]().encode(tuple._5) ++ Sql.comma ++ JdbcEncoder[F]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[E]().encode(tuple._5) ++ SqlFragment.comma ++ JdbcEncoder[F]().encode(
         tuple._6
-      ) ++ Sql.comma ++ JdbcEncoder[G]().encode(tuple._7) ++ Sql.comma ++ JdbcEncoder[H]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[G]().encode(tuple._7) ++ SqlFragment.comma ++ JdbcEncoder[H]().encode(
         tuple._8
-      ) ++ Sql.comma ++ JdbcEncoder[I]().encode(tuple._9) ++ Sql.comma ++ JdbcEncoder[J]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[I]().encode(tuple._9) ++ SqlFragment.comma ++ JdbcEncoder[J]().encode(
         tuple._10
-      ) ++ Sql.comma ++ JdbcEncoder[K]().encode(tuple._11) ++ Sql.comma ++ JdbcEncoder[L]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[K]().encode(tuple._11) ++ SqlFragment.comma ++ JdbcEncoder[L]().encode(
         tuple._12
-      ) ++ Sql.comma ++ JdbcEncoder[M]().encode(tuple._13) ++ Sql.comma ++ JdbcEncoder[N]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[M]().encode(tuple._13) ++ SqlFragment.comma ++ JdbcEncoder[N]().encode(
         tuple._14
-      ) ++ Sql.comma ++ JdbcEncoder[O]().encode(tuple._15)
+      ) ++ SqlFragment.comma ++ JdbcEncoder[O]().encode(tuple._15)
 
   implicit def tuple16Encoder[
     A: JdbcEncoder,
@@ -347,21 +355,21 @@ object JdbcEncoder extends JdbcEncoderLowPriorityImplicits {
     P: JdbcEncoder
   ]: JdbcEncoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P)] =
     tuple =>
-      JdbcEncoder[A]().encode(tuple._1) ++ Sql.comma ++ JdbcEncoder[B]().encode(
+      JdbcEncoder[A]().encode(tuple._1) ++ SqlFragment.comma ++ JdbcEncoder[B]().encode(
         tuple._2
-      ) ++ Sql.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ Sql.comma ++ JdbcEncoder[D]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ SqlFragment.comma ++ JdbcEncoder[D]().encode(
         tuple._4
-      ) ++ Sql.comma ++ JdbcEncoder[E]().encode(tuple._5) ++ Sql.comma ++ JdbcEncoder[F]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[E]().encode(tuple._5) ++ SqlFragment.comma ++ JdbcEncoder[F]().encode(
         tuple._6
-      ) ++ Sql.comma ++ JdbcEncoder[G]().encode(tuple._7) ++ Sql.comma ++ JdbcEncoder[H]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[G]().encode(tuple._7) ++ SqlFragment.comma ++ JdbcEncoder[H]().encode(
         tuple._8
-      ) ++ Sql.comma ++ JdbcEncoder[I]().encode(tuple._9) ++ Sql.comma ++ JdbcEncoder[J]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[I]().encode(tuple._9) ++ SqlFragment.comma ++ JdbcEncoder[J]().encode(
         tuple._10
-      ) ++ Sql.comma ++ JdbcEncoder[K]().encode(tuple._11) ++ Sql.comma ++ JdbcEncoder[L]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[K]().encode(tuple._11) ++ SqlFragment.comma ++ JdbcEncoder[L]().encode(
         tuple._12
-      ) ++ Sql.comma ++ JdbcEncoder[M]().encode(tuple._13) ++ Sql.comma ++ JdbcEncoder[N]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[M]().encode(tuple._13) ++ SqlFragment.comma ++ JdbcEncoder[N]().encode(
         tuple._14
-      ) ++ Sql.comma ++ JdbcEncoder[O]().encode(tuple._15) ++ Sql.comma ++ JdbcEncoder[P]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[O]().encode(tuple._15) ++ SqlFragment.comma ++ JdbcEncoder[P]().encode(
         tuple._16
       )
 
@@ -385,23 +393,23 @@ object JdbcEncoder extends JdbcEncoderLowPriorityImplicits {
     Q: JdbcEncoder
   ]: JdbcEncoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q)] =
     tuple =>
-      JdbcEncoder[A]().encode(tuple._1) ++ Sql.comma ++ JdbcEncoder[B]().encode(
+      JdbcEncoder[A]().encode(tuple._1) ++ SqlFragment.comma ++ JdbcEncoder[B]().encode(
         tuple._2
-      ) ++ Sql.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ Sql.comma ++ JdbcEncoder[D]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ SqlFragment.comma ++ JdbcEncoder[D]().encode(
         tuple._4
-      ) ++ Sql.comma ++ JdbcEncoder[E]().encode(tuple._5) ++ Sql.comma ++ JdbcEncoder[F]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[E]().encode(tuple._5) ++ SqlFragment.comma ++ JdbcEncoder[F]().encode(
         tuple._6
-      ) ++ Sql.comma ++ JdbcEncoder[G]().encode(tuple._7) ++ Sql.comma ++ JdbcEncoder[H]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[G]().encode(tuple._7) ++ SqlFragment.comma ++ JdbcEncoder[H]().encode(
         tuple._8
-      ) ++ Sql.comma ++ JdbcEncoder[I]().encode(tuple._9) ++ Sql.comma ++ JdbcEncoder[J]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[I]().encode(tuple._9) ++ SqlFragment.comma ++ JdbcEncoder[J]().encode(
         tuple._10
-      ) ++ Sql.comma ++ JdbcEncoder[K]().encode(tuple._11) ++ Sql.comma ++ JdbcEncoder[L]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[K]().encode(tuple._11) ++ SqlFragment.comma ++ JdbcEncoder[L]().encode(
         tuple._12
-      ) ++ Sql.comma ++ JdbcEncoder[M]().encode(tuple._13) ++ Sql.comma ++ JdbcEncoder[N]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[M]().encode(tuple._13) ++ SqlFragment.comma ++ JdbcEncoder[N]().encode(
         tuple._14
-      ) ++ Sql.comma ++ JdbcEncoder[O]().encode(tuple._15) ++ Sql.comma ++ JdbcEncoder[P]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[O]().encode(tuple._15) ++ SqlFragment.comma ++ JdbcEncoder[P]().encode(
         tuple._16
-      ) ++ Sql.comma ++ JdbcEncoder[Q]().encode(tuple._17)
+      ) ++ SqlFragment.comma ++ JdbcEncoder[Q]().encode(tuple._17)
 
   implicit def tuple18Encoder[
     A: JdbcEncoder,
@@ -424,23 +432,23 @@ object JdbcEncoder extends JdbcEncoderLowPriorityImplicits {
     R: JdbcEncoder
   ]: JdbcEncoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R)] =
     tuple =>
-      JdbcEncoder[A]().encode(tuple._1) ++ Sql.comma ++ JdbcEncoder[B]().encode(
+      JdbcEncoder[A]().encode(tuple._1) ++ SqlFragment.comma ++ JdbcEncoder[B]().encode(
         tuple._2
-      ) ++ Sql.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ Sql.comma ++ JdbcEncoder[D]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ SqlFragment.comma ++ JdbcEncoder[D]().encode(
         tuple._4
-      ) ++ Sql.comma ++ JdbcEncoder[E]().encode(tuple._5) ++ Sql.comma ++ JdbcEncoder[F]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[E]().encode(tuple._5) ++ SqlFragment.comma ++ JdbcEncoder[F]().encode(
         tuple._6
-      ) ++ Sql.comma ++ JdbcEncoder[G]().encode(tuple._7) ++ Sql.comma ++ JdbcEncoder[H]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[G]().encode(tuple._7) ++ SqlFragment.comma ++ JdbcEncoder[H]().encode(
         tuple._8
-      ) ++ Sql.comma ++ JdbcEncoder[I]().encode(tuple._9) ++ Sql.comma ++ JdbcEncoder[J]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[I]().encode(tuple._9) ++ SqlFragment.comma ++ JdbcEncoder[J]().encode(
         tuple._10
-      ) ++ Sql.comma ++ JdbcEncoder[K]().encode(tuple._11) ++ Sql.comma ++ JdbcEncoder[L]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[K]().encode(tuple._11) ++ SqlFragment.comma ++ JdbcEncoder[L]().encode(
         tuple._12
-      ) ++ Sql.comma ++ JdbcEncoder[M]().encode(tuple._13) ++ Sql.comma ++ JdbcEncoder[N]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[M]().encode(tuple._13) ++ SqlFragment.comma ++ JdbcEncoder[N]().encode(
         tuple._14
-      ) ++ Sql.comma ++ JdbcEncoder[O]().encode(tuple._15) ++ Sql.comma ++ JdbcEncoder[P]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[O]().encode(tuple._15) ++ SqlFragment.comma ++ JdbcEncoder[P]().encode(
         tuple._16
-      ) ++ Sql.comma ++ JdbcEncoder[Q]().encode(tuple._17) ++ Sql.comma ++ JdbcEncoder[R]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[Q]().encode(tuple._17) ++ SqlFragment.comma ++ JdbcEncoder[R]().encode(
         tuple._18
       )
 
@@ -466,25 +474,25 @@ object JdbcEncoder extends JdbcEncoderLowPriorityImplicits {
     S: JdbcEncoder
   ]: JdbcEncoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S)] =
     tuple =>
-      JdbcEncoder[A]().encode(tuple._1) ++ Sql.comma ++ JdbcEncoder[B]().encode(
+      JdbcEncoder[A]().encode(tuple._1) ++ SqlFragment.comma ++ JdbcEncoder[B]().encode(
         tuple._2
-      ) ++ Sql.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ Sql.comma ++ JdbcEncoder[D]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ SqlFragment.comma ++ JdbcEncoder[D]().encode(
         tuple._4
-      ) ++ Sql.comma ++ JdbcEncoder[E]().encode(tuple._5) ++ Sql.comma ++ JdbcEncoder[F]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[E]().encode(tuple._5) ++ SqlFragment.comma ++ JdbcEncoder[F]().encode(
         tuple._6
-      ) ++ Sql.comma ++ JdbcEncoder[G]().encode(tuple._7) ++ Sql.comma ++ JdbcEncoder[H]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[G]().encode(tuple._7) ++ SqlFragment.comma ++ JdbcEncoder[H]().encode(
         tuple._8
-      ) ++ Sql.comma ++ JdbcEncoder[I]().encode(tuple._9) ++ Sql.comma ++ JdbcEncoder[J]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[I]().encode(tuple._9) ++ SqlFragment.comma ++ JdbcEncoder[J]().encode(
         tuple._10
-      ) ++ Sql.comma ++ JdbcEncoder[K]().encode(tuple._11) ++ Sql.comma ++ JdbcEncoder[L]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[K]().encode(tuple._11) ++ SqlFragment.comma ++ JdbcEncoder[L]().encode(
         tuple._12
-      ) ++ Sql.comma ++ JdbcEncoder[M]().encode(tuple._13) ++ Sql.comma ++ JdbcEncoder[N]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[M]().encode(tuple._13) ++ SqlFragment.comma ++ JdbcEncoder[N]().encode(
         tuple._14
-      ) ++ Sql.comma ++ JdbcEncoder[O]().encode(tuple._15) ++ Sql.comma ++ JdbcEncoder[P]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[O]().encode(tuple._15) ++ SqlFragment.comma ++ JdbcEncoder[P]().encode(
         tuple._16
-      ) ++ Sql.comma ++ JdbcEncoder[Q]().encode(tuple._17) ++ Sql.comma ++ JdbcEncoder[R]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[Q]().encode(tuple._17) ++ SqlFragment.comma ++ JdbcEncoder[R]().encode(
         tuple._18
-      ) ++ Sql.comma ++ JdbcEncoder[S]().encode(tuple._19)
+      ) ++ SqlFragment.comma ++ JdbcEncoder[S]().encode(tuple._19)
 
   implicit def tuple20Encoder[
     A: JdbcEncoder,
@@ -509,25 +517,25 @@ object JdbcEncoder extends JdbcEncoderLowPriorityImplicits {
     T: JdbcEncoder
   ]: JdbcEncoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T)] =
     tuple =>
-      JdbcEncoder[A]().encode(tuple._1) ++ Sql.comma ++ JdbcEncoder[B]().encode(
+      JdbcEncoder[A]().encode(tuple._1) ++ SqlFragment.comma ++ JdbcEncoder[B]().encode(
         tuple._2
-      ) ++ Sql.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ Sql.comma ++ JdbcEncoder[D]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ SqlFragment.comma ++ JdbcEncoder[D]().encode(
         tuple._4
-      ) ++ Sql.comma ++ JdbcEncoder[E]().encode(tuple._5) ++ Sql.comma ++ JdbcEncoder[F]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[E]().encode(tuple._5) ++ SqlFragment.comma ++ JdbcEncoder[F]().encode(
         tuple._6
-      ) ++ Sql.comma ++ JdbcEncoder[G]().encode(tuple._7) ++ Sql.comma ++ JdbcEncoder[H]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[G]().encode(tuple._7) ++ SqlFragment.comma ++ JdbcEncoder[H]().encode(
         tuple._8
-      ) ++ Sql.comma ++ JdbcEncoder[I]().encode(tuple._9) ++ Sql.comma ++ JdbcEncoder[J]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[I]().encode(tuple._9) ++ SqlFragment.comma ++ JdbcEncoder[J]().encode(
         tuple._10
-      ) ++ Sql.comma ++ JdbcEncoder[K]().encode(tuple._11) ++ Sql.comma ++ JdbcEncoder[L]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[K]().encode(tuple._11) ++ SqlFragment.comma ++ JdbcEncoder[L]().encode(
         tuple._12
-      ) ++ Sql.comma ++ JdbcEncoder[M]().encode(tuple._13) ++ Sql.comma ++ JdbcEncoder[N]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[M]().encode(tuple._13) ++ SqlFragment.comma ++ JdbcEncoder[N]().encode(
         tuple._14
-      ) ++ Sql.comma ++ JdbcEncoder[O]().encode(tuple._15) ++ Sql.comma ++ JdbcEncoder[P]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[O]().encode(tuple._15) ++ SqlFragment.comma ++ JdbcEncoder[P]().encode(
         tuple._16
-      ) ++ Sql.comma ++ JdbcEncoder[Q]().encode(tuple._17) ++ Sql.comma ++ JdbcEncoder[R]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[Q]().encode(tuple._17) ++ SqlFragment.comma ++ JdbcEncoder[R]().encode(
         tuple._18
-      ) ++ Sql.comma ++ JdbcEncoder[S]().encode(tuple._19) ++ Sql.comma ++ JdbcEncoder[T]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[S]().encode(tuple._19) ++ SqlFragment.comma ++ JdbcEncoder[T]().encode(
         tuple._20
       )
 
@@ -555,27 +563,27 @@ object JdbcEncoder extends JdbcEncoderLowPriorityImplicits {
     U: JdbcEncoder
   ]: JdbcEncoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U)] =
     tuple =>
-      JdbcEncoder[A]().encode(tuple._1) ++ Sql.comma ++ JdbcEncoder[B]().encode(
+      JdbcEncoder[A]().encode(tuple._1) ++ SqlFragment.comma ++ JdbcEncoder[B]().encode(
         tuple._2
-      ) ++ Sql.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ Sql.comma ++ JdbcEncoder[D]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ SqlFragment.comma ++ JdbcEncoder[D]().encode(
         tuple._4
-      ) ++ Sql.comma ++ JdbcEncoder[E]().encode(tuple._5) ++ Sql.comma ++ JdbcEncoder[F]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[E]().encode(tuple._5) ++ SqlFragment.comma ++ JdbcEncoder[F]().encode(
         tuple._6
-      ) ++ Sql.comma ++ JdbcEncoder[G]().encode(tuple._7) ++ Sql.comma ++ JdbcEncoder[H]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[G]().encode(tuple._7) ++ SqlFragment.comma ++ JdbcEncoder[H]().encode(
         tuple._8
-      ) ++ Sql.comma ++ JdbcEncoder[I]().encode(tuple._9) ++ Sql.comma ++ JdbcEncoder[J]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[I]().encode(tuple._9) ++ SqlFragment.comma ++ JdbcEncoder[J]().encode(
         tuple._10
-      ) ++ Sql.comma ++ JdbcEncoder[K]().encode(tuple._11) ++ Sql.comma ++ JdbcEncoder[L]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[K]().encode(tuple._11) ++ SqlFragment.comma ++ JdbcEncoder[L]().encode(
         tuple._12
-      ) ++ Sql.comma ++ JdbcEncoder[M]().encode(tuple._13) ++ Sql.comma ++ JdbcEncoder[N]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[M]().encode(tuple._13) ++ SqlFragment.comma ++ JdbcEncoder[N]().encode(
         tuple._14
-      ) ++ Sql.comma ++ JdbcEncoder[O]().encode(tuple._15) ++ Sql.comma ++ JdbcEncoder[P]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[O]().encode(tuple._15) ++ SqlFragment.comma ++ JdbcEncoder[P]().encode(
         tuple._16
-      ) ++ Sql.comma ++ JdbcEncoder[Q]().encode(tuple._17) ++ Sql.comma ++ JdbcEncoder[R]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[Q]().encode(tuple._17) ++ SqlFragment.comma ++ JdbcEncoder[R]().encode(
         tuple._18
-      ) ++ Sql.comma ++ JdbcEncoder[S]().encode(tuple._19) ++ Sql.comma ++ JdbcEncoder[T]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[S]().encode(tuple._19) ++ SqlFragment.comma ++ JdbcEncoder[T]().encode(
         tuple._20
-      ) ++ Sql.comma ++ JdbcEncoder[U]().encode(tuple._21)
+      ) ++ SqlFragment.comma ++ JdbcEncoder[U]().encode(tuple._21)
 
   implicit def tuple22Encoder[
     A: JdbcEncoder,
@@ -602,32 +610,32 @@ object JdbcEncoder extends JdbcEncoderLowPriorityImplicits {
     V: JdbcEncoder
   ]: JdbcEncoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V)] =
     tuple =>
-      JdbcEncoder[A]().encode(tuple._1) ++ Sql.comma ++ JdbcEncoder[B]().encode(
+      JdbcEncoder[A]().encode(tuple._1) ++ SqlFragment.comma ++ JdbcEncoder[B]().encode(
         tuple._2
-      ) ++ Sql.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ Sql.comma ++ JdbcEncoder[D]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[C]().encode(tuple._3) ++ SqlFragment.comma ++ JdbcEncoder[D]().encode(
         tuple._4
-      ) ++ Sql.comma ++ JdbcEncoder[E]().encode(tuple._5) ++ Sql.comma ++ JdbcEncoder[F]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[E]().encode(tuple._5) ++ SqlFragment.comma ++ JdbcEncoder[F]().encode(
         tuple._6
-      ) ++ Sql.comma ++ JdbcEncoder[G]().encode(tuple._7) ++ Sql.comma ++ JdbcEncoder[H]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[G]().encode(tuple._7) ++ SqlFragment.comma ++ JdbcEncoder[H]().encode(
         tuple._8
-      ) ++ Sql.comma ++ JdbcEncoder[I]().encode(tuple._9) ++ Sql.comma ++ JdbcEncoder[J]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[I]().encode(tuple._9) ++ SqlFragment.comma ++ JdbcEncoder[J]().encode(
         tuple._10
-      ) ++ Sql.comma ++ JdbcEncoder[K]().encode(tuple._11) ++ Sql.comma ++ JdbcEncoder[L]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[K]().encode(tuple._11) ++ SqlFragment.comma ++ JdbcEncoder[L]().encode(
         tuple._12
-      ) ++ Sql.comma ++ JdbcEncoder[M]().encode(tuple._13) ++ Sql.comma ++ JdbcEncoder[N]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[M]().encode(tuple._13) ++ SqlFragment.comma ++ JdbcEncoder[N]().encode(
         tuple._14
-      ) ++ Sql.comma ++ JdbcEncoder[O]().encode(tuple._15) ++ Sql.comma ++ JdbcEncoder[P]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[O]().encode(tuple._15) ++ SqlFragment.comma ++ JdbcEncoder[P]().encode(
         tuple._16
-      ) ++ Sql.comma ++ JdbcEncoder[Q]().encode(tuple._17) ++ Sql.comma ++ JdbcEncoder[R]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[Q]().encode(tuple._17) ++ SqlFragment.comma ++ JdbcEncoder[R]().encode(
         tuple._18
-      ) ++ Sql.comma ++ JdbcEncoder[S]().encode(tuple._19) ++ Sql.comma ++ JdbcEncoder[T]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[S]().encode(tuple._19) ++ SqlFragment.comma ++ JdbcEncoder[T]().encode(
         tuple._20
-      ) ++ Sql.comma ++ JdbcEncoder[U]().encode(tuple._21) ++ Sql.comma ++ JdbcEncoder[V]().encode(
+      ) ++ SqlFragment.comma ++ JdbcEncoder[U]().encode(tuple._21) ++ SqlFragment.comma ++ JdbcEncoder[V]().encode(
         tuple._22
       )
 }
 
-trait JdbcEncoderLowPriorityImplicits { self =>
+trait JdbcEncoder0LowPriorityImplicits { self =>
   private[jdbc] def primitiveCodec[A](standardType: StandardType[A]): JdbcEncoder[A] =
     standardType match {
       case StandardType.StringType     => JdbcEncoder.stringEncoder
@@ -690,6 +698,6 @@ trait JdbcEncoderLowPriorityImplicits { self =>
     fields.map { f =>
       val encoder = self.fromSchema(f.schema.asInstanceOf[Schema[Any]])
       encoder.encode(f.get(a))
-    }.reduce(_ ++ Sql.comma ++ _)
+    }.reduce(_ ++ SqlFragment.comma ++ _)
   }
 }
