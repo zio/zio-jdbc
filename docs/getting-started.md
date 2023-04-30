@@ -17,7 +17,7 @@ val ex0: SqlFragment = sql"create table if not exists users(name varchar(255), a
 val ex1: SqlFragment = sql"select * from users where age = $age"
 
 // Selecting into tuples:
-val ex2: Sql[(String, Int)] = sql"select name, age from users".as[(String, Int)]
+val ex2: Query[(String, Int)] = sql"select name, age from users".query[(String, Int)]
 
 // Inserting from tuples:
 val ex3: SqlFragment = sql"insert into users (name, age)".values(("John", 42))
@@ -32,7 +32,7 @@ val ex4: SqlFragment = sql"drop table if exists users"
 ```scala
 val res1: ZIO[ZConnectionPool, Throwable, Option[(String, Int)]] = 
   transaction {
-    selectOne(sql"select name, age from users where name = 'Sherlock Holmes'".as[(String, Int)])
+    sql"select name, age from users where name = 'Sherlock Holmes'".query[(String, Int)].selectOne
   }
 ```
 
@@ -93,19 +93,19 @@ object App extends ZIOAppDefault {
   }
   
   val create: ZIO[ZConnectionPool, Throwable, Unit] = transaction {
-    execute(Basic.ex0)
+    Basic.ex0.execute
   }
   
   val insertRow: ZIO[ZConnectionPool, Throwable, Long] = transaction {
-    insert(Basic.ex3)
+    Basic.ex3.insert
   }
   
   val select: ZIO[ZConnectionPool, Throwable, Chunk[User]] = transaction {
-    selectAll(Basic.ex2.as[User])
+    Basic.ex2.as[User].selectAll
   }
   
   val drop: ZIO[ZConnectionPool, Throwable, Unit] = transaction {
-    execute(Basic.ex4)
+    Basic.ex4.execute
   }
   
   val createZIOPoolConfig: ULayer[ZConnectionPoolConfig] =

@@ -15,8 +15,6 @@
  */
 package zio
 
-import zio.stream._
-
 import scala.language.implicitConversions
 
 package object jdbc {
