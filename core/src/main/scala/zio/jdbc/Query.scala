@@ -60,7 +60,7 @@ final class Query[+A](val sql: SqlFragment, val decode: ZResultSet => A) {
 
   private def executeQuery: ZIO[Scope with ZConnection, Throwable, ZResultSet] = for {
     connection <- ZIO.service[ZConnection]
-    zrs        <- connection.executeSqlWith0(sql) { ps =>
+    zrs        <- connection.executeSqlWith(sql) { ps =>
                     ZIO.acquireRelease {
                       ZIO.attempt(ZResultSet(ps.executeQuery()))
                     }(_.close)

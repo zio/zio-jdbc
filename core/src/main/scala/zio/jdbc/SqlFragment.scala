@@ -126,7 +126,7 @@ final class SqlFragment(private[jdbc] val build: ChunkBuilder[Segment] => Unit) 
   def execute(sql: SqlFragment): ZIO[ZConnection, Throwable, Unit] =
     ZIO.scoped(for {
       connection <- ZIO.service[ZConnection]
-      _          <- connection.executeSqlWith0(sql) { ps =>
+      _          <- connection.executeSqlWith(sql) { ps =>
                       ZIO.attempt(ps.executeUpdate())
                     }
     } yield ())
@@ -249,17 +249,17 @@ object SqlFragment {
       acc ++ sep ++ element
     }
 
-  private[jdbc] val and         = sql0" AND "
-  private[jdbc] val comma       = sql0","
-  private[jdbc] val from        = sql0" FROM "
-  private[jdbc] val in          = sql0" IN "
-  private[jdbc] val lparen      = sql0"("
-  private[jdbc] val not         = sql0" NOT "
-  private[jdbc] val notIn       = sql0" NOT IN "
-  private[jdbc] val nullLiteral = sql0"NULL"
-  private[jdbc] val or          = sql0" OR "
-  private[jdbc] val rparen      = sql0")"
-  private[jdbc] val values      = sql0" VALUES "
-  private[jdbc] val where       = sql0" WHERE "
+  private[jdbc] val and         = sql" AND "
+  private[jdbc] val comma       = sql","
+  private[jdbc] val from        = sql" FROM "
+  private[jdbc] val in          = sql" IN "
+  private[jdbc] val lparen      = sql"("
+  private[jdbc] val not         = sql" NOT "
+  private[jdbc] val notIn       = sql" NOT IN "
+  private[jdbc] val nullLiteral = sql"NULL"
+  private[jdbc] val or          = sql" OR "
+  private[jdbc] val rparen      = sql")"
+  private[jdbc] val values      = sql" VALUES "
+  private[jdbc] val where       = sql" WHERE "
 
 }

@@ -33,7 +33,7 @@ final class ZConnection(private[jdbc] val connection: Connection) extends AnyVal
   def close: Task[Any]    = access(_.close())
   def rollback: Task[Any] = access(_.rollback())
 
-  private[jdbc] def executeSqlWith0[A](
+  private[jdbc] def executeSqlWith[A](
     sql: SqlFragment
   )(f: PreparedStatement => ZIO[Scope, Throwable, A]): ZIO[Scope, Throwable, A] =
     accessZIO { connection =>

@@ -23,7 +23,7 @@ package zio.jdbc
 
 final class SqlInterpolator(val context: StringContext) extends AnyVal {
 
-  def sql0(params: SqlFragment.Segment*): SqlFragment = new SqlFragment(chunkBuilder => {
+  def sql(params: SqlFragment.Segment*): SqlFragment = new SqlFragment(chunkBuilder => {
     val syntaxIterator = context.parts.iterator
     val paramsIterator = params.iterator
 

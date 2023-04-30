@@ -31,24 +31,24 @@ trait JdbcEncoder[-A] {
 object JdbcEncoder extends JdbcEncoder0LowPriorityImplicits {
   def apply[A]()(implicit encoder: JdbcEncoder[A]): JdbcEncoder[A] = encoder
 
-  implicit val intEncoder: JdbcEncoder[Int]                               = value => sql0"$value"
-  implicit val longEncoder: JdbcEncoder[Long]                             = value => sql0"$value"
-  implicit val doubleEncoder: JdbcEncoder[Double]                         = value => sql0"$value"
-  implicit val charEncoder: JdbcEncoder[Char]                             = value => sql0"$value"
-  implicit val stringEncoder: JdbcEncoder[String]                         = value => sql0"$value"
-  implicit val booleanEncoder: JdbcEncoder[Boolean]                       = value => sql0"$value"
-  implicit val bigIntEncoder: JdbcEncoder[java.math.BigInteger]           = value => sql0"$value"
-  implicit val bigDecimalEncoder: JdbcEncoder[java.math.BigDecimal]       = value => sql0"$value"
-  implicit val bigDecimalEncoderScala: JdbcEncoder[scala.math.BigDecimal] = value => sql0"$value"
-  implicit val shortEncoder: JdbcEncoder[Short]                           = value => sql0"$value"
-  implicit val floatEncoder: JdbcEncoder[Float]                           = value => sql0"$value"
-  implicit val byteEncoder: JdbcEncoder[Byte]                             = value => sql0"$value"
-  implicit val byteArrayEncoder: JdbcEncoder[Array[Byte]]                 = value => sql0"$value"
-  implicit val byteChunkEncoder: JdbcEncoder[Chunk[Byte]]                 = value => sql0"$value"
-  implicit val blobEncoder: JdbcEncoder[java.sql.Blob]                    = value => sql0"$value"
-  implicit val uuidEncoder: JdbcEncoder[java.util.UUID]                   = value => sql0"$value"
+  implicit val intEncoder: JdbcEncoder[Int]                               = value => sql"$value"
+  implicit val longEncoder: JdbcEncoder[Long]                             = value => sql"$value"
+  implicit val doubleEncoder: JdbcEncoder[Double]                         = value => sql"$value"
+  implicit val charEncoder: JdbcEncoder[Char]                             = value => sql"$value"
+  implicit val stringEncoder: JdbcEncoder[String]                         = value => sql"$value"
+  implicit val booleanEncoder: JdbcEncoder[Boolean]                       = value => sql"$value"
+  implicit val bigIntEncoder: JdbcEncoder[java.math.BigInteger]           = value => sql"$value"
+  implicit val bigDecimalEncoder: JdbcEncoder[java.math.BigDecimal]       = value => sql"$value"
+  implicit val bigDecimalEncoderScala: JdbcEncoder[scala.math.BigDecimal] = value => sql"$value"
+  implicit val shortEncoder: JdbcEncoder[Short]                           = value => sql"$value"
+  implicit val floatEncoder: JdbcEncoder[Float]                           = value => sql"$value"
+  implicit val byteEncoder: JdbcEncoder[Byte]                             = value => sql"$value"
+  implicit val byteArrayEncoder: JdbcEncoder[Array[Byte]]                 = value => sql"$value"
+  implicit val byteChunkEncoder: JdbcEncoder[Chunk[Byte]]                 = value => sql"$value"
+  implicit val blobEncoder: JdbcEncoder[java.sql.Blob]                    = value => sql"$value"
+  implicit val uuidEncoder: JdbcEncoder[java.util.UUID]                   = value => sql"$value"
 
-  implicit def singleParamEncoder[A: SqlFragment.Setter]: JdbcEncoder[A] = value => sql0"$value"
+  implicit def singleParamEncoder[A: SqlFragment.Setter]: JdbcEncoder[A] = value => sql"$value"
 
   // TODO: review for cases like Option of a tuple
   def optionEncoder[A](implicit encoder: JdbcEncoder[A]): JdbcEncoder[Option[A]] =
