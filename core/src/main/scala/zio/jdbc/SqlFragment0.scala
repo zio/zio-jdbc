@@ -108,8 +108,8 @@ final class SqlFragment0(private[jdbc] val build: ChunkBuilder[Segment] => Unit)
   def where(predicate: SqlFragment0): SqlFragment0 =
     self ++ SqlFragment0.where ++ predicate
 
-  def query[A]: Query[A] = ???
-//    new Query[A](self, identity)
+  def query[A](implicit decoder: JdbcDecoder[A]): Query[A] =
+    new Query[A](self, zrs => decoder.unsafeDecode(zrs.resultSet))
 
 }
 
