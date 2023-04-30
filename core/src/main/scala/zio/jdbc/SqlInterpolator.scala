@@ -24,13 +24,29 @@ import zio.jdbc.Sql.Segment
  */
 
 final class SqlInterpolator(val context: StringContext) extends AnyVal {
+
+  def sql0(params: SqlFragment0.Segment*): SqlFragment0 = new SqlFragment0(chunkBuilder => {
+    val syntaxIterator = context.parts.iterator
+    val paramsIterator = params.iterator
+
+    while (syntaxIterator.hasNext) {
+      val syntax = syntaxIterator.next()
+      if (syntax.nonEmpty) {
+        chunkBuilder += SqlFragment0.Segment.Syntax(syntax)
+        if (paramsIterator.hasNext) chunkBuilder += paramsIterator.next()
+      }
+    }
+    while (paramsIterator.hasNext)
+      chunkBuilder += paramsIterator.next()
+  })
+
   def sql(params: Segment*): SqlFragment = new Sql(
     chunkBuilder => {
-      val syntaxInterator = context.parts.iterator
-      val paramsIterator  = params.iterator
+      val syntaxIterator = context.parts.iterator
+      val paramsIterator = params.iterator
 
-      while (syntaxInterator.hasNext) {
-        val syntax = syntaxInterator.next()
+      while (syntaxIterator.hasNext) {
+        val syntax = syntaxIterator.next()
         if (syntax.nonEmpty) {
           chunkBuilder += Segment.Syntax(syntax)
           if (paramsIterator.hasNext) chunkBuilder += paramsIterator.next()

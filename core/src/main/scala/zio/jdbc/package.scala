@@ -33,6 +33,8 @@ package object jdbc {
    */
   implicit def stringToSql(s: String): SqlFragment = Sql(Chunk(Sql.Segment.Syntax(s)), identity)
 
+  implicit def stringToSql0(s: String): SqlFragment0 = SqlFragment0(Chunk(SqlFragment0.Segment.Syntax(s)))
+
   /**
    * Executes a SQL delete query.
    */
