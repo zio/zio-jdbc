@@ -113,7 +113,7 @@ sealed trait SqlFragment { self =>
       sql.append(syntax.value)
     } { param =>
       param.value match {
-        case iterable: IterableOnce[Any] =>
+        case iterable: Iterable[Any] =>
           iterable.iterator.foreach { item =>
             paramsBuilder += item.toString
           }
