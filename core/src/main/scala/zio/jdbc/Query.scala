@@ -34,7 +34,7 @@ final class Query[+A](val sql: SqlFragment, val decode: ZResultSet => A) {
    */
   def selectAll: ZIO[ZConnection, Throwable, Chunk[A]] =
     ZIO.scoped(for {
-      zrs   <- executeQuery
+      zrs   <- executeQuery(sql)
       chunk <- ZIO.attempt {
                  val builder = ChunkBuilder.make[A]()
                  while (zrs.next())
@@ -48,7 +48,7 @@ final class Query[+A](val sql: SqlFragment, val decode: ZResultSet => A) {
    */
   def selectOne: ZIO[ZConnection, Throwable, Option[A]] =
     ZIO.scoped(for {
-      zrs    <- executeQuery
+      zrs    <- executeQuery(sql)
       option <- ZIO.attempt {
                   if (zrs.next()) Some(decode(zrs)) else None
                 }
@@ -60,7 +60,7 @@ final class Query[+A](val sql: SqlFragment, val decode: ZResultSet => A) {
   def selectStream: ZStream[ZConnection, Throwable, A] =
     ZStream.unwrapScoped {
       for {
-        zrs   <- executeQuery
+        zrs   <- executeQuery(sql)
         stream = ZStream.repeatZIOOption {
                    ZIO
                      .suspend(if (zrs.next()) ZIO.attempt(Some(decode(zrs))) else ZIO.none)
@@ -73,7 +73,7 @@ final class Query[+A](val sql: SqlFragment, val decode: ZResultSet => A) {
       } yield stream
     }
 
-  private def executeQuery: ZIO[Scope with ZConnection, Throwable, ZResultSet] = for {
+  private def executeQuery(sql: SqlFragment): ZIO[Scope with ZConnection, Throwable, ZResultSet] = for {
     connection <- ZIO.service[ZConnection]
     zrs        <- connection.executeSqlWith(sql) { ps =>
                     ZIO.acquireRelease {
