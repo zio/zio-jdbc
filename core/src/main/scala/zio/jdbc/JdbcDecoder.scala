@@ -38,7 +38,7 @@ trait JdbcDecoder[+A] { self =>
     (oldState, f(a))
   }
 
-  def zipWith[B](f: A => JdbcDecoder[B]): JdbcDecoder[B] =
+  def flatMap[B](f: A => JdbcDecoder[B]): JdbcDecoder[B] =
     (rs: RowState) => {
       val (oldState, a) = self.unsafeDecode(rs)
 
@@ -95,14 +95,14 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     a: JdbcDecoder[A],
     b: JdbcDecoder[B]
   ): JdbcDecoder[(A, B)] =
-    a.zipWith(a => b.map(b => (a, b)))
+    a.flatMap(a => b.map(b => (a, b)))
 
   implicit def tuple3Decoder[A, B, C](implicit
     a: JdbcDecoder[A],
     b: JdbcDecoder[B],
     c: JdbcDecoder[C]
   ): JdbcDecoder[(A, B, C)] =
-    a.zipWith(a => b.zipWith(b => c.map(c => (a, b, c))))
+    a.flatMap(a => b.flatMap(b => c.map(c => (a, b, c))))
 
   // Use Zipper typeclass to form the rest
   implicit def tuple4Decoder[A, B, C, D](implicit
