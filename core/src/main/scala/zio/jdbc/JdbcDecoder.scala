@@ -16,6 +16,7 @@
 package zio.jdbc
 
 import zio._
+import zio.jdbc.JdbcDecoder.RowState
 
 import java.io._
 import java.sql.{ Array => _, _ }
@@ -25,73 +26,99 @@ import scala.collection.immutable.ListMap
  * A type class that describes the ability to decode  a value of type `A` from
  * a `ResultSet`.
  */
-trait JdbcDecoder[+A] {
-  def unsafeDecode(rs: ResultSet): A
+trait JdbcDecoder[+A] { self =>
+  def unsafeDecode(rs: RowState): (RowState, A)
 
-  final def decode(rs: ResultSet): Either[Throwable, A] =
+  final def decode(rs: RowState): Either[Throwable, (RowState, A)] =
     try Right(unsafeDecode(rs))
     catch { case e: JdbcDecoderError => Left(e) }
 
-  final def map[B](f: A => B): JdbcDecoder[B] = rs => f(unsafeDecode(rs))
+  final def map[B](f: A => B): JdbcDecoder[B] = rs => {
+    val (oldState, a) = unsafeDecode(rs)
+    (oldState, f(a))
+  }
+
+  def zipWith[B](f: A => JdbcDecoder[B]): JdbcDecoder[B] =
+    (rs: RowState) => {
+      val (oldState, a) = self.unsafeDecode(rs)
+
+      val newDecoder: JdbcDecoder[B] = f(a)
+      val newState                   = RowState(oldState.rs, oldState.columnIndex + 1)
+
+      newDecoder.unsafeDecode(newState)
+    }
 }
 
 object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
+  final case class RowState(rs: ResultSet, columnIndex: Int)
+
+  def readPrimitive[A](n: Int)(implicit A: JdbcDecoder[A]): ResultSet => A = { (rs: ResultSet) =>
+    A.unsafeDecode(RowState(rs, n))._2
+  }
+
   def apply[A]()(implicit decoder: JdbcDecoder[A]): JdbcDecoder[A] = decoder
 
-  def apply[A](f: ResultSet => A, expected: String = "value"): JdbcDecoder[A] = new JdbcDecoder[A] {
-    def unsafeDecode(rs: ResultSet): A =
-      try f(rs)
+  def apply[A](f: ResultSet => (Int => A), expected: String = "value"): JdbcDecoder[A] = new JdbcDecoder[A] {
+    def unsafeDecode(rs: RowState) =
+      try (rs, f(rs.rs)(rs.columnIndex))
       catch {
         case t: Throwable if !t.isInstanceOf[VirtualMachineError] =>
-          throw JdbcDecoderError(s"Error decoding $expected from ResultSet", t, rs.getMetaData, rs.getRow)
+          throw JdbcDecoderError(s"Error decoding $expected from ResultSet", t, rs.rs.getMetaData, rs.rs.getRow)
       }
   }
 
-  implicit val intDecoder: JdbcDecoder[Int]                         = JdbcDecoder(_.getInt(1))
-  implicit val longDecoder: JdbcDecoder[Long]                       = JdbcDecoder(_.getLong(1))
-  implicit val doubleDecoder: JdbcDecoder[Double]                   = JdbcDecoder(_.getDouble(1))
-  implicit val stringDecoder: JdbcDecoder[String]                   = JdbcDecoder(_.getString(1))
-  implicit val booleanDecoder: JdbcDecoder[Boolean]                 = JdbcDecoder(_.getBoolean(1))
-  implicit val bigDecimalDecoder: JdbcDecoder[java.math.BigDecimal] = JdbcDecoder(_.getBigDecimal(1))
-  implicit val shortDecoder: JdbcDecoder[Short]                     = JdbcDecoder(_.getShort(1))
-  implicit val floatDecoder: JdbcDecoder[Float]                     = JdbcDecoder(_.getFloat(1))
-  implicit val byteDecoder: JdbcDecoder[Byte]                       = JdbcDecoder(_.getByte(1))
-  implicit val byteArrayDecoder: JdbcDecoder[Array[Byte]]           = JdbcDecoder(_.getBytes(1))
-  implicit val blobDecoder: JdbcDecoder[Blob]                       = JdbcDecoder(_.getBlob(1))
-  implicit val dateDecoder: JdbcDecoder[java.sql.Date]              = JdbcDecoder(_.getDate(1))
-  implicit val timeDecoder: JdbcDecoder[java.sql.Time]              = JdbcDecoder(_.getTime(1))
-  implicit val timestampDecoder: JdbcDecoder[java.sql.Timestamp]    = JdbcDecoder(_.getTimestamp(1))
+  implicit val intDecoder: JdbcDecoder[Int]                         = JdbcDecoder(_.getInt)
+  implicit val longDecoder: JdbcDecoder[Long]                       = JdbcDecoder(_.getLong)
+  implicit val doubleDecoder: JdbcDecoder[Double]                   = JdbcDecoder(_.getDouble)
+  implicit val stringDecoder: JdbcDecoder[String]                   = JdbcDecoder(_.getString)
+  implicit val booleanDecoder: JdbcDecoder[Boolean]                 = JdbcDecoder(_.getBoolean)
+  implicit val bigDecimalDecoder: JdbcDecoder[java.math.BigDecimal] = JdbcDecoder(_.getBigDecimal)
+  implicit val shortDecoder: JdbcDecoder[Short]                     = JdbcDecoder(_.getShort)
+  implicit val floatDecoder: JdbcDecoder[Float]                     = JdbcDecoder(_.getFloat)
+  implicit val byteDecoder: JdbcDecoder[Byte]                       = JdbcDecoder(_.getByte)
+  implicit val byteArrayDecoder: JdbcDecoder[Array[Byte]]           = JdbcDecoder(_.getBytes)
+  implicit val blobDecoder: JdbcDecoder[Blob]                       = JdbcDecoder(_.getBlob)
+  implicit val dateDecoder: JdbcDecoder[java.sql.Date]              = JdbcDecoder(_.getDate)
+  implicit val timeDecoder: JdbcDecoder[java.sql.Time]              = JdbcDecoder(_.getTime)
+  implicit val timestampDecoder: JdbcDecoder[java.sql.Timestamp]    = JdbcDecoder(_.getTimestamp)
 
-  implicit def optionDecoder[A](implicit decoder: JdbcColumnDecoder[A]): JdbcDecoder[Option[A]] =
-    JdbcDecoder(rs => Option(decoder.unsafeDecode(1, rs)))
+  implicit def optionDecoder[A](implicit decoder: JdbcDecoder[A]): JdbcDecoder[Option[A]] =
+    JdbcDecoder(rs =>
+      int =>
+        decoder.decode(RowState(rs, int)) match {
+          case Left(_)      => None
+          case Right(value) => Some(value._2)
+        }
+    )
 
   implicit def tuple2Decoder[A, B](implicit
-    a: JdbcColumnDecoder[A],
-    b: JdbcColumnDecoder[B]
+    a: JdbcDecoder[A],
+    b: JdbcDecoder[B]
   ): JdbcDecoder[(A, B)] =
-    JdbcDecoder(rs => (a.unsafeDecode(1, rs), b.unsafeDecode(2, rs)))
+    a.zipWith(a => b.map(b => (a, b)))
 
   implicit def tuple3Decoder[A, B, C](implicit
-    a: JdbcColumnDecoder[A],
-    b: JdbcColumnDecoder[B],
-    c: JdbcColumnDecoder[C]
+    a: JdbcDecoder[A],
+    b: JdbcDecoder[B],
+    c: JdbcDecoder[C]
   ): JdbcDecoder[(A, B, C)] =
-    JdbcDecoder(rs => (a.unsafeDecode(1, rs), b.unsafeDecode(2, rs), c.unsafeDecode(3, rs)))
+    a.zipWith(a => b.zipWith(b => c.map(c => (a, b, c))))
 
+  // Use Zipper typeclass to form the rest
   implicit def tuple4Decoder[A, B, C, D](implicit
-    a: JdbcColumnDecoder[A],
-    b: JdbcColumnDecoder[B],
-    c: JdbcColumnDecoder[C],
-    d: JdbcColumnDecoder[D]
+    a: JdbcDecoder[A],
+    b: JdbcDecoder[B],
+    c: JdbcDecoder[C],
+    d: JdbcDecoder[D]
   ): JdbcDecoder[(A, B, C, D)] =
     JdbcDecoder(rs => (a.unsafeDecode(1, rs), b.unsafeDecode(2, rs), c.unsafeDecode(3, rs), d.unsafeDecode(4, rs)))
 
   implicit def tuple5Decoder[A, B, C, D, E](implicit
-    a: JdbcColumnDecoder[A],
-    b: JdbcColumnDecoder[B],
-    c: JdbcColumnDecoder[C],
-    d: JdbcColumnDecoder[D],
-    e: JdbcColumnDecoder[E]
+    a: JdbcDecoder[A],
+    b: JdbcDecoder[B],
+    c: JdbcDecoder[C],
+    d: JdbcDecoder[D],
+    e: JdbcDecoder[E]
   ): JdbcDecoder[(A, B, C, D, E)] =
     JdbcDecoder(rs =>
       (
@@ -104,12 +131,12 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     )
 
   implicit def tuple6Decoder[A, B, C, D, E, F](implicit
-    a: JdbcColumnDecoder[A],
-    b: JdbcColumnDecoder[B],
-    c: JdbcColumnDecoder[C],
-    d: JdbcColumnDecoder[D],
-    e: JdbcColumnDecoder[E],
-    f: JdbcColumnDecoder[F]
+    a: JdbcDecoder[A],
+    b: JdbcDecoder[B],
+    c: JdbcDecoder[C],
+    d: JdbcDecoder[D],
+    e: JdbcDecoder[E],
+    f: JdbcDecoder[F]
   ): JdbcDecoder[(A, B, C, D, E, F)] =
     JdbcDecoder(rs =>
       (
@@ -123,13 +150,13 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     )
 
   implicit def tuple7Decoder[A, B, C, D, E, F, G](implicit
-    a: JdbcColumnDecoder[A],
-    b: JdbcColumnDecoder[B],
-    c: JdbcColumnDecoder[C],
-    d: JdbcColumnDecoder[D],
-    e: JdbcColumnDecoder[E],
-    f: JdbcColumnDecoder[F],
-    g: JdbcColumnDecoder[G]
+    a: JdbcDecoder[A],
+    b: JdbcDecoder[B],
+    c: JdbcDecoder[C],
+    d: JdbcDecoder[D],
+    e: JdbcDecoder[E],
+    f: JdbcDecoder[F],
+    g: JdbcDecoder[G]
   ): JdbcDecoder[(A, B, C, D, E, F, G)] =
     JdbcDecoder(rs =>
       (
@@ -144,14 +171,14 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     )
 
   implicit def tuple8Decoder[A, B, C, D, E, F, G, H](implicit
-    a: JdbcColumnDecoder[A],
-    b: JdbcColumnDecoder[B],
-    c: JdbcColumnDecoder[C],
-    d: JdbcColumnDecoder[D],
-    e: JdbcColumnDecoder[E],
-    f: JdbcColumnDecoder[F],
-    g: JdbcColumnDecoder[G],
-    h: JdbcColumnDecoder[H]
+    a: JdbcDecoder[A],
+    b: JdbcDecoder[B],
+    c: JdbcDecoder[C],
+    d: JdbcDecoder[D],
+    e: JdbcDecoder[E],
+    f: JdbcDecoder[F],
+    g: JdbcDecoder[G],
+    h: JdbcDecoder[H]
   ): JdbcDecoder[(A, B, C, D, E, F, G, H)] =
     JdbcDecoder(rs =>
       (
@@ -167,15 +194,15 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     )
 
   implicit def tuple9Decoder[A, B, C, D, E, F, G, H, I](implicit
-    a: JdbcColumnDecoder[A],
-    b: JdbcColumnDecoder[B],
-    c: JdbcColumnDecoder[C],
-    d: JdbcColumnDecoder[D],
-    e: JdbcColumnDecoder[E],
-    f: JdbcColumnDecoder[F],
-    g: JdbcColumnDecoder[G],
-    h: JdbcColumnDecoder[H],
-    i: JdbcColumnDecoder[I]
+    a: JdbcDecoder[A],
+    b: JdbcDecoder[B],
+    c: JdbcDecoder[C],
+    d: JdbcDecoder[D],
+    e: JdbcDecoder[E],
+    f: JdbcDecoder[F],
+    g: JdbcDecoder[G],
+    h: JdbcDecoder[H],
+    i: JdbcDecoder[I]
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I)] =
     JdbcDecoder(rs =>
       (
@@ -192,16 +219,16 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     )
 
   implicit def tuple10Decoder[A, B, C, D, E, F, G, H, I, J](implicit
-    a: JdbcColumnDecoder[A],
-    b: JdbcColumnDecoder[B],
-    c: JdbcColumnDecoder[C],
-    d: JdbcColumnDecoder[D],
-    e: JdbcColumnDecoder[E],
-    f: JdbcColumnDecoder[F],
-    g: JdbcColumnDecoder[G],
-    h: JdbcColumnDecoder[H],
-    i: JdbcColumnDecoder[I],
-    j: JdbcColumnDecoder[J]
+    a: JdbcDecoder[A],
+    b: JdbcDecoder[B],
+    c: JdbcDecoder[C],
+    d: JdbcDecoder[D],
+    e: JdbcDecoder[E],
+    f: JdbcDecoder[F],
+    g: JdbcDecoder[G],
+    h: JdbcDecoder[H],
+    i: JdbcDecoder[I],
+    j: JdbcDecoder[J]
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J)] =
     JdbcDecoder(rs =>
       (
@@ -219,17 +246,17 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     )
 
   implicit def tuple11Decoder[A, B, C, D, E, F, G, H, I, J, K](implicit
-    a: JdbcColumnDecoder[A],
-    b: JdbcColumnDecoder[B],
-    c: JdbcColumnDecoder[C],
-    d: JdbcColumnDecoder[D],
-    e: JdbcColumnDecoder[E],
-    f: JdbcColumnDecoder[F],
-    g: JdbcColumnDecoder[G],
-    h: JdbcColumnDecoder[H],
-    i: JdbcColumnDecoder[I],
-    j: JdbcColumnDecoder[J],
-    k: JdbcColumnDecoder[K]
+    a: JdbcDecoder[A],
+    b: JdbcDecoder[B],
+    c: JdbcDecoder[C],
+    d: JdbcDecoder[D],
+    e: JdbcDecoder[E],
+    f: JdbcDecoder[F],
+    g: JdbcDecoder[G],
+    h: JdbcDecoder[H],
+    i: JdbcDecoder[I],
+    j: JdbcDecoder[J],
+    k: JdbcDecoder[K]
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J, K)] =
     JdbcDecoder(rs =>
       (
@@ -248,18 +275,18 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     )
 
   implicit def tuple12Decoder[A, B, C, D, E, F, G, H, I, J, K, L](implicit
-    a: JdbcColumnDecoder[A],
-    b: JdbcColumnDecoder[B],
-    c: JdbcColumnDecoder[C],
-    d: JdbcColumnDecoder[D],
-    e: JdbcColumnDecoder[E],
-    f: JdbcColumnDecoder[F],
-    g: JdbcColumnDecoder[G],
-    h: JdbcColumnDecoder[H],
-    i: JdbcColumnDecoder[I],
-    j: JdbcColumnDecoder[J],
-    k: JdbcColumnDecoder[K],
-    l: JdbcColumnDecoder[L]
+    a: JdbcDecoder[A],
+    b: JdbcDecoder[B],
+    c: JdbcDecoder[C],
+    d: JdbcDecoder[D],
+    e: JdbcDecoder[E],
+    f: JdbcDecoder[F],
+    g: JdbcDecoder[G],
+    h: JdbcDecoder[H],
+    i: JdbcDecoder[I],
+    j: JdbcDecoder[J],
+    k: JdbcDecoder[K],
+    l: JdbcDecoder[L]
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J, K, L)] =
     JdbcDecoder(rs =>
       (
@@ -279,19 +306,19 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     )
 
   implicit def tuple13Decoder[A, B, C, D, E, F, G, H, I, J, K, L, M](implicit
-    a: JdbcColumnDecoder[A],
-    b: JdbcColumnDecoder[B],
-    c: JdbcColumnDecoder[C],
-    d: JdbcColumnDecoder[D],
-    e: JdbcColumnDecoder[E],
-    f: JdbcColumnDecoder[F],
-    g: JdbcColumnDecoder[G],
-    h: JdbcColumnDecoder[H],
-    i: JdbcColumnDecoder[I],
-    j: JdbcColumnDecoder[J],
-    k: JdbcColumnDecoder[K],
-    l: JdbcColumnDecoder[L],
-    m: JdbcColumnDecoder[M]
+    a: JdbcDecoder[A],
+    b: JdbcDecoder[B],
+    c: JdbcDecoder[C],
+    d: JdbcDecoder[D],
+    e: JdbcDecoder[E],
+    f: JdbcDecoder[F],
+    g: JdbcDecoder[G],
+    h: JdbcDecoder[H],
+    i: JdbcDecoder[I],
+    j: JdbcDecoder[J],
+    k: JdbcDecoder[K],
+    l: JdbcDecoder[L],
+    m: JdbcDecoder[M]
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J, K, L, M)] =
     JdbcDecoder(rs =>
       (
@@ -312,20 +339,20 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     )
 
   implicit def tuple14Decoder[A, B, C, D, E, F, G, H, I, J, K, L, M, N](implicit
-    a: JdbcColumnDecoder[A],
-    b: JdbcColumnDecoder[B],
-    c: JdbcColumnDecoder[C],
-    d: JdbcColumnDecoder[D],
-    e: JdbcColumnDecoder[E],
-    f: JdbcColumnDecoder[F],
-    g: JdbcColumnDecoder[G],
-    h: JdbcColumnDecoder[H],
-    i: JdbcColumnDecoder[I],
-    j: JdbcColumnDecoder[J],
-    k: JdbcColumnDecoder[K],
-    l: JdbcColumnDecoder[L],
-    m: JdbcColumnDecoder[M],
-    n: JdbcColumnDecoder[N]
+    a: JdbcDecoder[A],
+    b: JdbcDecoder[B],
+    c: JdbcDecoder[C],
+    d: JdbcDecoder[D],
+    e: JdbcDecoder[E],
+    f: JdbcDecoder[F],
+    g: JdbcDecoder[G],
+    h: JdbcDecoder[H],
+    i: JdbcDecoder[I],
+    j: JdbcDecoder[J],
+    k: JdbcDecoder[K],
+    l: JdbcDecoder[L],
+    m: JdbcDecoder[M],
+    n: JdbcDecoder[N]
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N)] =
     JdbcDecoder(rs =>
       (
@@ -347,21 +374,21 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     )
 
   implicit def tuple15Decoder[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O](implicit
-    a: JdbcColumnDecoder[A],
-    b: JdbcColumnDecoder[B],
-    c: JdbcColumnDecoder[C],
-    d: JdbcColumnDecoder[D],
-    e: JdbcColumnDecoder[E],
-    f: JdbcColumnDecoder[F],
-    g: JdbcColumnDecoder[G],
-    h: JdbcColumnDecoder[H],
-    i: JdbcColumnDecoder[I],
-    j: JdbcColumnDecoder[J],
-    k: JdbcColumnDecoder[K],
-    l: JdbcColumnDecoder[L],
-    m: JdbcColumnDecoder[M],
-    n: JdbcColumnDecoder[N],
-    o: JdbcColumnDecoder[O]
+    a: JdbcDecoder[A],
+    b: JdbcDecoder[B],
+    c: JdbcDecoder[C],
+    d: JdbcDecoder[D],
+    e: JdbcDecoder[E],
+    f: JdbcDecoder[F],
+    g: JdbcDecoder[G],
+    h: JdbcDecoder[H],
+    i: JdbcDecoder[I],
+    j: JdbcDecoder[J],
+    k: JdbcDecoder[K],
+    l: JdbcDecoder[L],
+    m: JdbcDecoder[M],
+    n: JdbcDecoder[N],
+    o: JdbcDecoder[O]
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O)] =
     JdbcDecoder(rs =>
       (
@@ -384,22 +411,22 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     )
 
   implicit def tuple16Decoder[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P](implicit
-    a: JdbcColumnDecoder[A],
-    b: JdbcColumnDecoder[B],
-    c: JdbcColumnDecoder[C],
-    d: JdbcColumnDecoder[D],
-    e: JdbcColumnDecoder[E],
-    f: JdbcColumnDecoder[F],
-    g: JdbcColumnDecoder[G],
-    h: JdbcColumnDecoder[H],
-    i: JdbcColumnDecoder[I],
-    j: JdbcColumnDecoder[J],
-    k: JdbcColumnDecoder[K],
-    l: JdbcColumnDecoder[L],
-    m: JdbcColumnDecoder[M],
-    n: JdbcColumnDecoder[N],
-    o: JdbcColumnDecoder[O],
-    p: JdbcColumnDecoder[P]
+    a: JdbcDecoder[A],
+    b: JdbcDecoder[B],
+    c: JdbcDecoder[C],
+    d: JdbcDecoder[D],
+    e: JdbcDecoder[E],
+    f: JdbcDecoder[F],
+    g: JdbcDecoder[G],
+    h: JdbcDecoder[H],
+    i: JdbcDecoder[I],
+    j: JdbcDecoder[J],
+    k: JdbcDecoder[K],
+    l: JdbcDecoder[L],
+    m: JdbcDecoder[M],
+    n: JdbcDecoder[N],
+    o: JdbcDecoder[O],
+    p: JdbcDecoder[P]
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P)] =
     JdbcDecoder(rs =>
       (
@@ -423,23 +450,23 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     )
 
   implicit def tuple17Decoder[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q](implicit
-    a: JdbcColumnDecoder[A],
-    b: JdbcColumnDecoder[B],
-    c: JdbcColumnDecoder[C],
-    d: JdbcColumnDecoder[D],
-    e: JdbcColumnDecoder[E],
-    f: JdbcColumnDecoder[F],
-    g: JdbcColumnDecoder[G],
-    h: JdbcColumnDecoder[H],
-    i: JdbcColumnDecoder[I],
-    j: JdbcColumnDecoder[J],
-    k: JdbcColumnDecoder[K],
-    l: JdbcColumnDecoder[L],
-    m: JdbcColumnDecoder[M],
-    n: JdbcColumnDecoder[N],
-    o: JdbcColumnDecoder[O],
-    p: JdbcColumnDecoder[P],
-    q: JdbcColumnDecoder[Q]
+    a: JdbcDecoder[A],
+    b: JdbcDecoder[B],
+    c: JdbcDecoder[C],
+    d: JdbcDecoder[D],
+    e: JdbcDecoder[E],
+    f: JdbcDecoder[F],
+    g: JdbcDecoder[G],
+    h: JdbcDecoder[H],
+    i: JdbcDecoder[I],
+    j: JdbcDecoder[J],
+    k: JdbcDecoder[K],
+    l: JdbcDecoder[L],
+    m: JdbcDecoder[M],
+    n: JdbcDecoder[N],
+    o: JdbcDecoder[O],
+    p: JdbcDecoder[P],
+    q: JdbcDecoder[Q]
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q)] =
     JdbcDecoder(rs =>
       (
@@ -464,24 +491,24 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     )
 
   implicit def tuple18Decoder[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R](implicit
-    a: JdbcColumnDecoder[A],
-    b: JdbcColumnDecoder[B],
-    c: JdbcColumnDecoder[C],
-    d: JdbcColumnDecoder[D],
-    e: JdbcColumnDecoder[E],
-    f: JdbcColumnDecoder[F],
-    g: JdbcColumnDecoder[G],
-    h: JdbcColumnDecoder[H],
-    i: JdbcColumnDecoder[I],
-    j: JdbcColumnDecoder[J],
-    k: JdbcColumnDecoder[K],
-    l: JdbcColumnDecoder[L],
-    m: JdbcColumnDecoder[M],
-    n: JdbcColumnDecoder[N],
-    o: JdbcColumnDecoder[O],
-    p: JdbcColumnDecoder[P],
-    q: JdbcColumnDecoder[Q],
-    r: JdbcColumnDecoder[R]
+    a: JdbcDecoder[A],
+    b: JdbcDecoder[B],
+    c: JdbcDecoder[C],
+    d: JdbcDecoder[D],
+    e: JdbcDecoder[E],
+    f: JdbcDecoder[F],
+    g: JdbcDecoder[G],
+    h: JdbcDecoder[H],
+    i: JdbcDecoder[I],
+    j: JdbcDecoder[J],
+    k: JdbcDecoder[K],
+    l: JdbcDecoder[L],
+    m: JdbcDecoder[M],
+    n: JdbcDecoder[N],
+    o: JdbcDecoder[O],
+    p: JdbcDecoder[P],
+    q: JdbcDecoder[Q],
+    r: JdbcDecoder[R]
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R)] =
     JdbcDecoder(rs =>
       (
@@ -507,25 +534,25 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     )
 
   implicit def tuple19Decoder[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S](implicit
-    a: JdbcColumnDecoder[A],
-    b: JdbcColumnDecoder[B],
-    c: JdbcColumnDecoder[C],
-    d: JdbcColumnDecoder[D],
-    e: JdbcColumnDecoder[E],
-    f: JdbcColumnDecoder[F],
-    g: JdbcColumnDecoder[G],
-    h: JdbcColumnDecoder[H],
-    i: JdbcColumnDecoder[I],
-    j: JdbcColumnDecoder[J],
-    k: JdbcColumnDecoder[K],
-    l: JdbcColumnDecoder[L],
-    m: JdbcColumnDecoder[M],
-    n: JdbcColumnDecoder[N],
-    o: JdbcColumnDecoder[O],
-    p: JdbcColumnDecoder[P],
-    q: JdbcColumnDecoder[Q],
-    r: JdbcColumnDecoder[R],
-    s: JdbcColumnDecoder[S]
+    a: JdbcDecoder[A],
+    b: JdbcDecoder[B],
+    c: JdbcDecoder[C],
+    d: JdbcDecoder[D],
+    e: JdbcDecoder[E],
+    f: JdbcDecoder[F],
+    g: JdbcDecoder[G],
+    h: JdbcDecoder[H],
+    i: JdbcDecoder[I],
+    j: JdbcDecoder[J],
+    k: JdbcDecoder[K],
+    l: JdbcDecoder[L],
+    m: JdbcDecoder[M],
+    n: JdbcDecoder[N],
+    o: JdbcDecoder[O],
+    p: JdbcDecoder[P],
+    q: JdbcDecoder[Q],
+    r: JdbcDecoder[R],
+    s: JdbcDecoder[S]
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S)] =
     JdbcDecoder(rs =>
       (
@@ -552,26 +579,26 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     )
 
   implicit def tuple20Decoder[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T](implicit
-    a: JdbcColumnDecoder[A],
-    b: JdbcColumnDecoder[B],
-    c: JdbcColumnDecoder[C],
-    d: JdbcColumnDecoder[D],
-    e: JdbcColumnDecoder[E],
-    f: JdbcColumnDecoder[F],
-    g: JdbcColumnDecoder[G],
-    h: JdbcColumnDecoder[H],
-    i: JdbcColumnDecoder[I],
-    j: JdbcColumnDecoder[J],
-    k: JdbcColumnDecoder[K],
-    l: JdbcColumnDecoder[L],
-    m: JdbcColumnDecoder[M],
-    n: JdbcColumnDecoder[N],
-    o: JdbcColumnDecoder[O],
-    p: JdbcColumnDecoder[P],
-    q: JdbcColumnDecoder[Q],
-    r: JdbcColumnDecoder[R],
-    s: JdbcColumnDecoder[S],
-    t: JdbcColumnDecoder[T]
+    a: JdbcDecoder[A],
+    b: JdbcDecoder[B],
+    c: JdbcDecoder[C],
+    d: JdbcDecoder[D],
+    e: JdbcDecoder[E],
+    f: JdbcDecoder[F],
+    g: JdbcDecoder[G],
+    h: JdbcDecoder[H],
+    i: JdbcDecoder[I],
+    j: JdbcDecoder[J],
+    k: JdbcDecoder[K],
+    l: JdbcDecoder[L],
+    m: JdbcDecoder[M],
+    n: JdbcDecoder[N],
+    o: JdbcDecoder[O],
+    p: JdbcDecoder[P],
+    q: JdbcDecoder[Q],
+    r: JdbcDecoder[R],
+    s: JdbcDecoder[S],
+    t: JdbcDecoder[T]
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T)] =
     JdbcDecoder(rs =>
       (
@@ -599,27 +626,27 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     )
 
   implicit def tuple21Decoder[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U](implicit
-    a: JdbcColumnDecoder[A],
-    b: JdbcColumnDecoder[B],
-    c: JdbcColumnDecoder[C],
-    d: JdbcColumnDecoder[D],
-    e: JdbcColumnDecoder[E],
-    f: JdbcColumnDecoder[F],
-    g: JdbcColumnDecoder[G],
-    h: JdbcColumnDecoder[H],
-    i: JdbcColumnDecoder[I],
-    j: JdbcColumnDecoder[J],
-    k: JdbcColumnDecoder[K],
-    l: JdbcColumnDecoder[L],
-    m: JdbcColumnDecoder[M],
-    n: JdbcColumnDecoder[N],
-    o: JdbcColumnDecoder[O],
-    p: JdbcColumnDecoder[P],
-    q: JdbcColumnDecoder[Q],
-    r: JdbcColumnDecoder[R],
-    s: JdbcColumnDecoder[S],
-    t: JdbcColumnDecoder[T],
-    u: JdbcColumnDecoder[U]
+    a: JdbcDecoder[A],
+    b: JdbcDecoder[B],
+    c: JdbcDecoder[C],
+    d: JdbcDecoder[D],
+    e: JdbcDecoder[E],
+    f: JdbcDecoder[F],
+    g: JdbcDecoder[G],
+    h: JdbcDecoder[H],
+    i: JdbcDecoder[I],
+    j: JdbcDecoder[J],
+    k: JdbcDecoder[K],
+    l: JdbcDecoder[L],
+    m: JdbcDecoder[M],
+    n: JdbcDecoder[N],
+    o: JdbcDecoder[O],
+    p: JdbcDecoder[P],
+    q: JdbcDecoder[Q],
+    r: JdbcDecoder[R],
+    s: JdbcDecoder[S],
+    t: JdbcDecoder[T],
+    u: JdbcDecoder[U]
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U)] =
     JdbcDecoder(rs =>
       (
@@ -648,28 +675,28 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     )
 
   implicit def tuple22Decoder[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V](implicit
-    a: JdbcColumnDecoder[A],
-    b: JdbcColumnDecoder[B],
-    c: JdbcColumnDecoder[C],
-    d: JdbcColumnDecoder[D],
-    e: JdbcColumnDecoder[E],
-    f: JdbcColumnDecoder[F],
-    g: JdbcColumnDecoder[G],
-    h: JdbcColumnDecoder[H],
-    i: JdbcColumnDecoder[I],
-    j: JdbcColumnDecoder[J],
-    k: JdbcColumnDecoder[K],
-    l: JdbcColumnDecoder[L],
-    m: JdbcColumnDecoder[M],
-    n: JdbcColumnDecoder[N],
-    o: JdbcColumnDecoder[O],
-    p: JdbcColumnDecoder[P],
-    q: JdbcColumnDecoder[Q],
-    r: JdbcColumnDecoder[R],
-    s: JdbcColumnDecoder[S],
-    t: JdbcColumnDecoder[T],
-    u: JdbcColumnDecoder[U],
-    v: JdbcColumnDecoder[V]
+    a: JdbcDecoder[A],
+    b: JdbcDecoder[B],
+    c: JdbcDecoder[C],
+    d: JdbcDecoder[D],
+    e: JdbcDecoder[E],
+    f: JdbcDecoder[F],
+    g: JdbcDecoder[G],
+    h: JdbcDecoder[H],
+    i: JdbcDecoder[I],
+    j: JdbcDecoder[J],
+    k: JdbcDecoder[K],
+    l: JdbcDecoder[L],
+    m: JdbcDecoder[M],
+    n: JdbcDecoder[N],
+    o: JdbcDecoder[O],
+    p: JdbcDecoder[P],
+    q: JdbcDecoder[Q],
+    r: JdbcDecoder[R],
+    s: JdbcDecoder[S],
+    t: JdbcDecoder[T],
+    u: JdbcDecoder[U],
+    v: JdbcDecoder[V]
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V)] =
     JdbcDecoder(rs =>
       (
@@ -915,14 +942,14 @@ trait JdbcDecoderLowPriorityImplicits {
     }
 
   def fromSchema[A](implicit schema: Schema[A]): JdbcDecoder[A] =
-    (rs: ResultSet) => {
-      val dynamicDecoder = createDynamicDecoder(schema, rs.getMetaData())
-      val dynamicValue   = dynamicDecoder(rs)
+    (rs: RowState) => {
+      val dynamicDecoder = createDynamicDecoder(schema, rs.rs.getMetaData())
+      val dynamicValue   = dynamicDecoder(rs.rs)
 
       dynamicValue.toTypedValue(schema) match {
-        case Left(error) => throw JdbcDecoderError(error, null, rs.getMetaData(), rs.getRow())
+        case Left(error) => throw JdbcDecoderError(error, null, rs.rs.getMetaData(), rs.rs.getRow())
 
-        case Right(value) => value
+        case Right(value) => (rs, value)
       }
     }
 }
