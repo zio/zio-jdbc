@@ -1,6 +1,7 @@
 package zio.jdbc
 
 import zio._
+import zio.jdbc.Sql.Setter
 import zio.schema._
 import zio.test.Assertion._
 import zio.test.TestAspect._
@@ -235,15 +236,25 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
                 } yield assertTrue(value == Chunk(sherlockHolmes, johnWatson))
               } +
               test("select all in") {
-                for {
-                  _     <- createUsers *> insertSherlock *> insertWatson
-                  value <- transaction {
-                             val names = List(sherlockHolmes.name, johnWatson.name)
-                             selectAll {
-                               sql"select name, age from users where name IN (${names})".as[User]
+                def assertUsersFound[A: Setter](collection: A) =
+                  for {
+                    users <- transaction {
+                               selectAll {
+                                 sql"select name, age from users where name IN ($collection)".as[User]
+                               }
                              }
-                           }
-                } yield assertTrue(value.contains(sherlockHolmes))
+                  } yield assertTrue(users.contains(sherlockHolmes))
+
+                def asserttions =
+                  assertUsersFound(Chunk(sherlockHolmes.name))
+                assertUsersFound(List(sherlockHolmes.name)) &&
+                assertUsersFound(Vector(sherlockHolmes.name)) &&
+                assertUsersFound(Set(sherlockHolmes.name))
+
+                for {
+                  _          <- createUsers *> insertSherlock *> insertWatson
+                  testResult <- asserttions
+                } yield testResult
               } +
               test("select stream") {
                 for {

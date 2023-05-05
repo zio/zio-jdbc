@@ -1,8 +1,9 @@
 package zio.jdbc
 
 import zio.Chunk
-import zio.jdbc.{transaction => transact}
-import zio.schema.{Schema, TypeId}
+import zio.jdbc.Sql.Setter
+import zio.jdbc.{ transaction => transact }
+import zio.schema.{ Schema, TypeId }
 import zio.test.Assertion._
 import zio.test._
 
@@ -141,30 +142,17 @@ object SqlFragmentSpec extends ZIOSpecDefault {
                     .toString ==
                     "Sql(select name, age from users where id IN (?,?,?), 1, 2, 3)"
                 )
-              } + test("interpolation param is Chunk") {
-                val collection = Chunk(1, 2, 3)
-                assertTrue(
-                  sql"select name, age from users where id in ($collection)".toString ==
-                    "Sql(select name, age from users where id in (?,?,?), 1, 2, 3)"
-                )
-              } + test("interpolation param is List") {
-                val collection = List(1, 2, 3)
-                assertTrue(
-                  sql"select name, age from users where id in ($collection)".toString ==
-                    "Sql(select name, age from users where id in (?,?,?), 1, 2, 3)"
-                )
-              } + test("interpolation param is Vector") {
-                val collection = Vector(1, 2, 3)
-                assertTrue(
-                  sql"select name, age from users where id in ($collection)".toString ==
-                    "Sql(select name, age from users where id in (?,?,?), 1, 2, 3)"
-                )
-              } + test("interpolation param is Set") {
-                val collection = Set(1, 2, 3)
-                assertTrue(
-                  sql"select name, age from users where id in ($collection)".toString ==
-                    "Sql(select name, age from users where id in (?,?,?), 1, 2, 3)"
-                )
+              } + test("interpolation param is supported collection") {
+                def assertIn[A: Setter](collection: A) =
+                  assertTrue(
+                    sql"select name, age from users where id in ($collection)".toString ==
+                      "Sql(select name, age from users where id in (?,?,?), 1, 2, 3)"
+                  )
+
+                assertIn(Chunk(1, 2, 3)) &&
+                assertIn(List(1, 2, 3)) &&
+                assertIn(Vector(1, 2, 3)) &&
+                assertIn(Set(1, 2, 3))
               }
             } +
             test("not in") {
