@@ -77,8 +77,10 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
         inputColumnIndex: RuntimeFlags,
         inputResultSet: ResultSet
       ): (RuntimeFlags, ResultSet, A) =
-        try (inputColumnIndex, inputResultSet, f(inputResultSet)(inputColumnIndex))
-        catch {
+        try {
+          val newValue = f(inputResultSet)(inputColumnIndex)
+          (inputColumnIndex, inputResultSet, newValue)
+        } catch {
           case t: Throwable if !t.isInstanceOf[VirtualMachineError] =>
             throw JdbcDecoderError(
               s"Error decoding $expected from ResultSet",

@@ -15,8 +15,8 @@
  */
 package zio.jdbc
 
+import zio._
 import zio.jdbc.SqlFragment.Segment
-import zio.{ Chunk, ChunkBuilder, _ }
 
 import java.sql.{ PreparedStatement, Types }
 import scala.language.implicitConversions
