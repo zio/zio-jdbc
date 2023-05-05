@@ -32,15 +32,26 @@ trait JdbcDecoder[+A] { self =>
     try Right(unsafeDecode(columnIndex, rs))
     catch { case e: JdbcDecoderError => Left(e) }
 
-  final def map[B](f: A => B): JdbcDecoder[B] = (inputColumnIndex, inputResultSet) => {
-    val (columnIndex, resultSet, a) = unsafeDecode(inputColumnIndex, inputResultSet)
-    (columnIndex, resultSet, f(a))
-  }
+  final def map[B](f: A => B): JdbcDecoder[B] =
+    new JdbcDecoder[B] {
+      override def unsafeDecode(
+        inputColumnIndex: RuntimeFlags,
+        inputResultSet: ResultSet
+      ): (RuntimeFlags, ResultSet, B) = {
+        val (columnIndex, resultSet, a) = self.unsafeDecode(inputColumnIndex, inputResultSet)
+        (columnIndex, resultSet, f(a))
+      }
+    }
 
   final def flatMap[B](f: A => JdbcDecoder[B]): JdbcDecoder[B] =
-    (inputColumnIndex: Int, inputResultSet: ResultSet) => {
-      val (columnIndex, resultSet, a) = self.unsafeDecode(inputColumnIndex, inputResultSet)
-      f(a).unsafeDecode(columnIndex + 1, resultSet)
+    new JdbcDecoder[B] {
+      override def unsafeDecode(
+        inputColumnIndex: RuntimeFlags,
+        inputResultSet: ResultSet
+      ): (RuntimeFlags, ResultSet, B) = {
+        val (columnIndex, resultSet, a) = self.unsafeDecode(inputColumnIndex, inputResultSet)
+        f(a).unsafeDecode(columnIndex + 1, resultSet)
+      }
     }
 
   final def zip[A1 >: A, B, C](
@@ -61,17 +72,22 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
   def apply[A]()(implicit decoder: JdbcDecoder[A]): JdbcDecoder[A] = decoder
 
   def apply[A](f: ResultSet => (Int => A), expected: String = "value"): JdbcDecoder[A] =
-    (inputColumnIndex, inputResultSet) =>
-      try (inputColumnIndex, inputResultSet, f(inputResultSet)(inputColumnIndex))
-      catch {
-        case t: Throwable if !t.isInstanceOf[VirtualMachineError] =>
-          throw JdbcDecoderError(
-            s"Error decoding $expected from ResultSet",
-            t,
-            inputResultSet.getMetaData,
-            inputResultSet.getRow
-          )
-      }
+    new JdbcDecoder[A] {
+      override def unsafeDecode(
+        inputColumnIndex: RuntimeFlags,
+        inputResultSet: ResultSet
+      ): (RuntimeFlags, ResultSet, A) =
+        try (inputColumnIndex, inputResultSet, f(inputResultSet)(inputColumnIndex))
+        catch {
+          case t: Throwable if !t.isInstanceOf[VirtualMachineError] =>
+            throw JdbcDecoderError(
+              s"Error decoding $expected from ResultSet",
+              t,
+              inputResultSet.getMetaData,
+              inputResultSet.getRow
+            )
+        }
+    }
 
   implicit val intDecoder: JdbcDecoder[Int]                         = JdbcDecoder(_.getInt)
   implicit val longDecoder: JdbcDecoder[Long]                       = JdbcDecoder(_.getLong)
