@@ -246,11 +246,11 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
                   } yield assertTrue(users == Chunk(sherlockHolmes))
 
                 def asserttions =
-                  assertUsersFound(Chunk(sherlockHolmes.name))
-                assertUsersFound(List(sherlockHolmes.name)) &&
-                assertUsersFound(Vector(sherlockHolmes.name)) &&
-                assertUsersFound(Set(sherlockHolmes.name)) &&
-                assertUsersFound(Array(sherlockHolmes.name))
+                  assertUsersFound(Chunk(sherlockHolmes.name)) &&
+                    assertUsersFound(List(sherlockHolmes.name)) &&
+                    assertUsersFound(Vector(sherlockHolmes.name)) &&
+                    assertUsersFound(Set(sherlockHolmes.name)) &&
+                    assertUsersFound(Array(sherlockHolmes.name))
 
                 for {
                   _          <- createUsers *> insertSherlock *> insertWatson
