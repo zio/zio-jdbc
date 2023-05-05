@@ -243,7 +243,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
                                  sql"select name, age from users where name IN ($collection)".as[User]
                                }
                              }
-                  } yield assertTrue(users.contains(sherlockHolmes))
+                  } yield assertTrue(users == Chunk(sherlockHolmes))
 
                 def asserttions =
                   assertUsersFound(Chunk(sherlockHolmes.name))
