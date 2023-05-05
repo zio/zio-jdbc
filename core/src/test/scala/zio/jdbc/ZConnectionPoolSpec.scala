@@ -249,7 +249,8 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
                   assertUsersFound(Chunk(sherlockHolmes.name))
                 assertUsersFound(List(sherlockHolmes.name)) &&
                 assertUsersFound(Vector(sherlockHolmes.name)) &&
-                assertUsersFound(Set(sherlockHolmes.name))
+                assertUsersFound(Set(sherlockHolmes.name)) &&
+                assertUsersFound(Array(sherlockHolmes.name))
 
                 for {
                   _          <- createUsers *> insertSherlock *> insertWatson

@@ -121,6 +121,14 @@ sealed trait SqlFragment { self =>
             Seq.fill(iterable.iterator.size)("?").mkString(",")
           )
 
+        case array: Array[_] =>
+          array.iterator.foreach { item =>
+            paramsBuilder += item.toString
+          }
+          sql.append(
+            Seq.fill(array.iterator.size)("?").mkString(",")
+          )
+
         case _ =>
           sql.append("?")
           paramsBuilder += param.value.toString
@@ -302,6 +310,15 @@ object SqlFragment {
     implicit def listSetter[A](implicit setter: Setter[A]): Setter[List[A]]     = iterableSetter[A, List[A]]
     implicit def vectorSetter[A](implicit setter: Setter[A]): Setter[Vector[A]] = iterableSetter[A, Vector[A]]
     implicit def setSetter[A](implicit setter: Setter[A]): Setter[Set[A]]       = iterableSetter[A, Set[A]]
+
+    implicit def arraySetter[A](implicit setter: Setter[A]): Setter[Array[A]] =
+      forSqlType(
+        (ps, i, iterable) =>
+          iterable.zipWithIndex.foreach { case (value, valueIdx) =>
+            setter.setValue(ps, i + valueIdx, value)
+          },
+        Types.OTHER
+      )
 
     private def iterableSetter[A, I <: Iterable[A]](implicit setter: Setter[A]): Setter[I] =
       forSqlType(
