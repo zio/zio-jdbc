@@ -93,7 +93,7 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
       int =>
         decoder.decode(RowState(rs, int)) match {
           case Left(_)      => None
-          case Right(value) => Some(value._2)
+          case Right(value) => Option(value._2)
         }
     )
 
