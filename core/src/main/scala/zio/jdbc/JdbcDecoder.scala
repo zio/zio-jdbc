@@ -38,7 +38,7 @@ trait JdbcDecoder[+A] { self =>
     (oldState, f(a))
   }
 
-  def flatMap[B](f: A => JdbcDecoder[B]): JdbcDecoder[B] =
+  final def flatMap[B](f: A => JdbcDecoder[B]): JdbcDecoder[B] =
     (rs: RowState) => {
       val (oldState, a) = self.unsafeDecode(rs)
 
@@ -47,9 +47,16 @@ trait JdbcDecoder[+A] { self =>
 
       newDecoder.unsafeDecode(newState)
     }
+
+  final def zip[A1 >: A, B, C](
+    that: => JdbcDecoder[B]
+  )(implicit Z: InvariantZip.WithOut[A1, B, C]): JdbcDecoder[C] =
+    self.flatMap(a => that.map(b => Z.combine(a, b)))
+
 }
 
 object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
+
   final case class RowState(rs: ResultSet, columnIndex: Int)
 
   def readPrimitive[A](n: Int)(implicit A: JdbcDecoder[A]): ResultSet => A = { (rs: ResultSet) =>
@@ -58,14 +65,13 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
 
   def apply[A]()(implicit decoder: JdbcDecoder[A]): JdbcDecoder[A] = decoder
 
-  def apply[A](f: ResultSet => (Int => A), expected: String = "value"): JdbcDecoder[A] = new JdbcDecoder[A] {
-    def unsafeDecode(rs: RowState) =
+  def apply[A](f: ResultSet => (Int => A), expected: String = "value"): JdbcDecoder[A] =
+    (rs: RowState) =>
       try (rs, f(rs.rs)(rs.columnIndex))
       catch {
         case t: Throwable if !t.isInstanceOf[VirtualMachineError] =>
           throw JdbcDecoderError(s"Error decoding $expected from ResultSet", t, rs.rs.getMetaData, rs.rs.getRow)
       }
-  }
 
   implicit val intDecoder: JdbcDecoder[Int]                         = JdbcDecoder(_.getInt)
   implicit val longDecoder: JdbcDecoder[Long]                       = JdbcDecoder(_.getLong)
@@ -95,14 +101,14 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     a: JdbcDecoder[A],
     b: JdbcDecoder[B]
   ): JdbcDecoder[(A, B)] =
-    a.flatMap(a => b.map(b => (a, b)))
+    a.zip(b)
 
   implicit def tuple3Decoder[A, B, C](implicit
     a: JdbcDecoder[A],
     b: JdbcDecoder[B],
     c: JdbcDecoder[C]
   ): JdbcDecoder[(A, B, C)] =
-    a.flatMap(a => b.flatMap(b => c.map(c => (a, b, c))))
+    a.zip(b).zip(c)
 
   // Use Zipper typeclass to form the rest
   implicit def tuple4Decoder[A, B, C, D](implicit
@@ -111,7 +117,7 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     c: JdbcDecoder[C],
     d: JdbcDecoder[D]
   ): JdbcDecoder[(A, B, C, D)] =
-    JdbcDecoder(rs => (a.unsafeDecode(1, rs), b.unsafeDecode(2, rs), c.unsafeDecode(3, rs), d.unsafeDecode(4, rs)))
+    a.zip(b).zip(c).zip(d)
 
   implicit def tuple5Decoder[A, B, C, D, E](implicit
     a: JdbcDecoder[A],
@@ -120,15 +126,7 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     d: JdbcDecoder[D],
     e: JdbcDecoder[E]
   ): JdbcDecoder[(A, B, C, D, E)] =
-    JdbcDecoder(rs =>
-      (
-        a.unsafeDecode(1, rs),
-        b.unsafeDecode(2, rs),
-        c.unsafeDecode(3, rs),
-        d.unsafeDecode(4, rs),
-        e.unsafeDecode(5, rs)
-      )
-    )
+    a.zip(b).zip(c).zip(d).zip(e)
 
   implicit def tuple6Decoder[A, B, C, D, E, F](implicit
     a: JdbcDecoder[A],
@@ -138,16 +136,7 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     e: JdbcDecoder[E],
     f: JdbcDecoder[F]
   ): JdbcDecoder[(A, B, C, D, E, F)] =
-    JdbcDecoder(rs =>
-      (
-        a.unsafeDecode(1, rs),
-        b.unsafeDecode(2, rs),
-        c.unsafeDecode(3, rs),
-        d.unsafeDecode(4, rs),
-        e.unsafeDecode(5, rs),
-        f.unsafeDecode(6, rs)
-      )
-    )
+    a.zip(b).zip(c).zip(d).zip(e).zip(f)
 
   implicit def tuple7Decoder[A, B, C, D, E, F, G](implicit
     a: JdbcDecoder[A],
@@ -158,17 +147,7 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     f: JdbcDecoder[F],
     g: JdbcDecoder[G]
   ): JdbcDecoder[(A, B, C, D, E, F, G)] =
-    JdbcDecoder(rs =>
-      (
-        a.unsafeDecode(1, rs),
-        b.unsafeDecode(2, rs),
-        c.unsafeDecode(3, rs),
-        d.unsafeDecode(4, rs),
-        e.unsafeDecode(5, rs),
-        f.unsafeDecode(6, rs),
-        g.unsafeDecode(7, rs)
-      )
-    )
+    a.zip(b).zip(c).zip(d).zip(e).zip(f).zip(g)
 
   implicit def tuple8Decoder[A, B, C, D, E, F, G, H](implicit
     a: JdbcDecoder[A],
@@ -180,18 +159,7 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     g: JdbcDecoder[G],
     h: JdbcDecoder[H]
   ): JdbcDecoder[(A, B, C, D, E, F, G, H)] =
-    JdbcDecoder(rs =>
-      (
-        a.unsafeDecode(1, rs),
-        b.unsafeDecode(2, rs),
-        c.unsafeDecode(3, rs),
-        d.unsafeDecode(4, rs),
-        e.unsafeDecode(5, rs),
-        f.unsafeDecode(6, rs),
-        g.unsafeDecode(7, rs),
-        h.unsafeDecode(8, rs)
-      )
-    )
+    a.zip(b).zip(c).zip(d).zip(e).zip(f).zip(g).zip(h)
 
   implicit def tuple9Decoder[A, B, C, D, E, F, G, H, I](implicit
     a: JdbcDecoder[A],
@@ -204,19 +172,7 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     h: JdbcDecoder[H],
     i: JdbcDecoder[I]
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I)] =
-    JdbcDecoder(rs =>
-      (
-        a.unsafeDecode(1, rs),
-        b.unsafeDecode(2, rs),
-        c.unsafeDecode(3, rs),
-        d.unsafeDecode(4, rs),
-        e.unsafeDecode(5, rs),
-        f.unsafeDecode(6, rs),
-        g.unsafeDecode(7, rs),
-        h.unsafeDecode(8, rs),
-        i.unsafeDecode(9, rs)
-      )
-    )
+    a.zip(b).zip(c).zip(d).zip(e).zip(f).zip(g).zip(h).zip(i)
 
   implicit def tuple10Decoder[A, B, C, D, E, F, G, H, I, J](implicit
     a: JdbcDecoder[A],
@@ -230,20 +186,7 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     i: JdbcDecoder[I],
     j: JdbcDecoder[J]
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J)] =
-    JdbcDecoder(rs =>
-      (
-        a.unsafeDecode(1, rs),
-        b.unsafeDecode(2, rs),
-        c.unsafeDecode(3, rs),
-        d.unsafeDecode(4, rs),
-        e.unsafeDecode(5, rs),
-        f.unsafeDecode(6, rs),
-        g.unsafeDecode(7, rs),
-        h.unsafeDecode(8, rs),
-        i.unsafeDecode(9, rs),
-        j.unsafeDecode(10, rs)
-      )
-    )
+    a.zip(b).zip(c).zip(d).zip(e).zip(f).zip(g).zip(h).zip(i).zip(j)
 
   implicit def tuple11Decoder[A, B, C, D, E, F, G, H, I, J, K](implicit
     a: JdbcDecoder[A],
@@ -258,21 +201,7 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     j: JdbcDecoder[J],
     k: JdbcDecoder[K]
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J, K)] =
-    JdbcDecoder(rs =>
-      (
-        a.unsafeDecode(1, rs),
-        b.unsafeDecode(2, rs),
-        c.unsafeDecode(3, rs),
-        d.unsafeDecode(4, rs),
-        e.unsafeDecode(5, rs),
-        f.unsafeDecode(6, rs),
-        g.unsafeDecode(7, rs),
-        h.unsafeDecode(8, rs),
-        i.unsafeDecode(9, rs),
-        j.unsafeDecode(10, rs),
-        k.unsafeDecode(11, rs)
-      )
-    )
+    a.zip(b).zip(c).zip(d).zip(e).zip(f).zip(g).zip(h).zip(i).zip(j).zip(k)
 
   implicit def tuple12Decoder[A, B, C, D, E, F, G, H, I, J, K, L](implicit
     a: JdbcDecoder[A],
@@ -288,22 +217,7 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     k: JdbcDecoder[K],
     l: JdbcDecoder[L]
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J, K, L)] =
-    JdbcDecoder(rs =>
-      (
-        a.unsafeDecode(1, rs),
-        b.unsafeDecode(2, rs),
-        c.unsafeDecode(3, rs),
-        d.unsafeDecode(4, rs),
-        e.unsafeDecode(5, rs),
-        f.unsafeDecode(6, rs),
-        g.unsafeDecode(7, rs),
-        h.unsafeDecode(8, rs),
-        i.unsafeDecode(9, rs),
-        j.unsafeDecode(10, rs),
-        k.unsafeDecode(11, rs),
-        l.unsafeDecode(12, rs)
-      )
-    )
+    a.zip(b).zip(c).zip(d).zip(e).zip(f).zip(g).zip(h).zip(i).zip(j).zip(k).zip(l)
 
   implicit def tuple13Decoder[A, B, C, D, E, F, G, H, I, J, K, L, M](implicit
     a: JdbcDecoder[A],
@@ -320,23 +234,7 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     l: JdbcDecoder[L],
     m: JdbcDecoder[M]
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J, K, L, M)] =
-    JdbcDecoder(rs =>
-      (
-        a.unsafeDecode(1, rs),
-        b.unsafeDecode(2, rs),
-        c.unsafeDecode(3, rs),
-        d.unsafeDecode(4, rs),
-        e.unsafeDecode(5, rs),
-        f.unsafeDecode(6, rs),
-        g.unsafeDecode(7, rs),
-        h.unsafeDecode(8, rs),
-        i.unsafeDecode(9, rs),
-        j.unsafeDecode(10, rs),
-        k.unsafeDecode(11, rs),
-        l.unsafeDecode(12, rs),
-        m.unsafeDecode(13, rs)
-      )
-    )
+    a.zip(b).zip(c).zip(d).zip(e).zip(f).zip(g).zip(h).zip(i).zip(j).zip(k).zip(l).zip(m)
 
   implicit def tuple14Decoder[A, B, C, D, E, F, G, H, I, J, K, L, M, N](implicit
     a: JdbcDecoder[A],
@@ -354,24 +252,7 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     m: JdbcDecoder[M],
     n: JdbcDecoder[N]
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N)] =
-    JdbcDecoder(rs =>
-      (
-        a.unsafeDecode(1, rs),
-        b.unsafeDecode(2, rs),
-        c.unsafeDecode(3, rs),
-        d.unsafeDecode(4, rs),
-        e.unsafeDecode(5, rs),
-        f.unsafeDecode(6, rs),
-        g.unsafeDecode(7, rs),
-        h.unsafeDecode(8, rs),
-        i.unsafeDecode(9, rs),
-        j.unsafeDecode(10, rs),
-        k.unsafeDecode(11, rs),
-        l.unsafeDecode(12, rs),
-        m.unsafeDecode(13, rs),
-        n.unsafeDecode(14, rs)
-      )
-    )
+    a.zip(b).zip(c).zip(d).zip(e).zip(f).zip(g).zip(h).zip(i).zip(j).zip(k).zip(l).zip(m).zip(n)
 
   implicit def tuple15Decoder[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O](implicit
     a: JdbcDecoder[A],
@@ -390,25 +271,7 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     n: JdbcDecoder[N],
     o: JdbcDecoder[O]
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O)] =
-    JdbcDecoder(rs =>
-      (
-        a.unsafeDecode(1, rs),
-        b.unsafeDecode(2, rs),
-        c.unsafeDecode(3, rs),
-        d.unsafeDecode(4, rs),
-        e.unsafeDecode(5, rs),
-        f.unsafeDecode(6, rs),
-        g.unsafeDecode(7, rs),
-        h.unsafeDecode(8, rs),
-        i.unsafeDecode(9, rs),
-        j.unsafeDecode(10, rs),
-        k.unsafeDecode(11, rs),
-        l.unsafeDecode(12, rs),
-        m.unsafeDecode(13, rs),
-        n.unsafeDecode(14, rs),
-        o.unsafeDecode(15, rs)
-      )
-    )
+    a.zip(b).zip(c).zip(d).zip(e).zip(f).zip(g).zip(h).zip(i).zip(j).zip(k).zip(l).zip(m).zip(n).zip(o)
 
   implicit def tuple16Decoder[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P](implicit
     a: JdbcDecoder[A],
@@ -428,26 +291,7 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     o: JdbcDecoder[O],
     p: JdbcDecoder[P]
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P)] =
-    JdbcDecoder(rs =>
-      (
-        a.unsafeDecode(1, rs),
-        b.unsafeDecode(2, rs),
-        c.unsafeDecode(3, rs),
-        d.unsafeDecode(4, rs),
-        e.unsafeDecode(5, rs),
-        f.unsafeDecode(6, rs),
-        g.unsafeDecode(7, rs),
-        h.unsafeDecode(8, rs),
-        i.unsafeDecode(9, rs),
-        j.unsafeDecode(10, rs),
-        k.unsafeDecode(11, rs),
-        l.unsafeDecode(12, rs),
-        m.unsafeDecode(13, rs),
-        n.unsafeDecode(14, rs),
-        o.unsafeDecode(15, rs),
-        p.unsafeDecode(16, rs)
-      )
-    )
+    a.zip(b).zip(c).zip(d).zip(e).zip(f).zip(g).zip(h).zip(i).zip(j).zip(k).zip(l).zip(m).zip(n).zip(o).zip(p)
 
   implicit def tuple17Decoder[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q](implicit
     a: JdbcDecoder[A],
@@ -468,27 +312,7 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     p: JdbcDecoder[P],
     q: JdbcDecoder[Q]
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q)] =
-    JdbcDecoder(rs =>
-      (
-        a.unsafeDecode(1, rs),
-        b.unsafeDecode(2, rs),
-        c.unsafeDecode(3, rs),
-        d.unsafeDecode(4, rs),
-        e.unsafeDecode(5, rs),
-        f.unsafeDecode(6, rs),
-        g.unsafeDecode(7, rs),
-        h.unsafeDecode(8, rs),
-        i.unsafeDecode(9, rs),
-        j.unsafeDecode(10, rs),
-        k.unsafeDecode(11, rs),
-        l.unsafeDecode(12, rs),
-        m.unsafeDecode(13, rs),
-        n.unsafeDecode(14, rs),
-        o.unsafeDecode(15, rs),
-        p.unsafeDecode(16, rs),
-        q.unsafeDecode(17, rs)
-      )
-    )
+    a.zip(b).zip(c).zip(d).zip(e).zip(f).zip(g).zip(h).zip(i).zip(j).zip(k).zip(l).zip(m).zip(n).zip(o).zip(p).zip(q)
 
   implicit def tuple18Decoder[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R](implicit
     a: JdbcDecoder[A],
@@ -510,28 +334,23 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     q: JdbcDecoder[Q],
     r: JdbcDecoder[R]
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R)] =
-    JdbcDecoder(rs =>
-      (
-        a.unsafeDecode(1, rs),
-        b.unsafeDecode(2, rs),
-        c.unsafeDecode(3, rs),
-        d.unsafeDecode(4, rs),
-        e.unsafeDecode(5, rs),
-        f.unsafeDecode(6, rs),
-        g.unsafeDecode(7, rs),
-        h.unsafeDecode(8, rs),
-        i.unsafeDecode(9, rs),
-        j.unsafeDecode(10, rs),
-        k.unsafeDecode(11, rs),
-        l.unsafeDecode(12, rs),
-        m.unsafeDecode(13, rs),
-        n.unsafeDecode(14, rs),
-        o.unsafeDecode(15, rs),
-        p.unsafeDecode(16, rs),
-        q.unsafeDecode(17, rs),
-        r.unsafeDecode(18, rs)
-      )
-    )
+    a.zip(b)
+      .zip(c)
+      .zip(d)
+      .zip(e)
+      .zip(f)
+      .zip(g)
+      .zip(h)
+      .zip(i)
+      .zip(j)
+      .zip(k)
+      .zip(l)
+      .zip(m)
+      .zip(n)
+      .zip(o)
+      .zip(p)
+      .zip(q)
+      .zip(r)
 
   implicit def tuple19Decoder[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S](implicit
     a: JdbcDecoder[A],
@@ -554,29 +373,24 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     r: JdbcDecoder[R],
     s: JdbcDecoder[S]
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S)] =
-    JdbcDecoder(rs =>
-      (
-        a.unsafeDecode(1, rs),
-        b.unsafeDecode(2, rs),
-        c.unsafeDecode(3, rs),
-        d.unsafeDecode(4, rs),
-        e.unsafeDecode(5, rs),
-        f.unsafeDecode(6, rs),
-        g.unsafeDecode(7, rs),
-        h.unsafeDecode(8, rs),
-        i.unsafeDecode(9, rs),
-        j.unsafeDecode(10, rs),
-        k.unsafeDecode(11, rs),
-        l.unsafeDecode(12, rs),
-        m.unsafeDecode(13, rs),
-        n.unsafeDecode(14, rs),
-        o.unsafeDecode(15, rs),
-        p.unsafeDecode(16, rs),
-        q.unsafeDecode(17, rs),
-        r.unsafeDecode(18, rs),
-        s.unsafeDecode(19, rs)
-      )
-    )
+    a.zip(b)
+      .zip(c)
+      .zip(d)
+      .zip(e)
+      .zip(f)
+      .zip(g)
+      .zip(h)
+      .zip(i)
+      .zip(j)
+      .zip(k)
+      .zip(l)
+      .zip(m)
+      .zip(n)
+      .zip(o)
+      .zip(p)
+      .zip(q)
+      .zip(r)
+      .zip(s)
 
   implicit def tuple20Decoder[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T](implicit
     a: JdbcDecoder[A],
@@ -600,30 +414,25 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     s: JdbcDecoder[S],
     t: JdbcDecoder[T]
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T)] =
-    JdbcDecoder(rs =>
-      (
-        a.unsafeDecode(1, rs),
-        b.unsafeDecode(2, rs),
-        c.unsafeDecode(3, rs),
-        d.unsafeDecode(4, rs),
-        e.unsafeDecode(5, rs),
-        f.unsafeDecode(6, rs),
-        g.unsafeDecode(7, rs),
-        h.unsafeDecode(8, rs),
-        i.unsafeDecode(9, rs),
-        j.unsafeDecode(10, rs),
-        k.unsafeDecode(11, rs),
-        l.unsafeDecode(12, rs),
-        m.unsafeDecode(13, rs),
-        n.unsafeDecode(14, rs),
-        o.unsafeDecode(15, rs),
-        p.unsafeDecode(16, rs),
-        q.unsafeDecode(17, rs),
-        r.unsafeDecode(18, rs),
-        s.unsafeDecode(19, rs),
-        t.unsafeDecode(20, rs)
-      )
-    )
+    a.zip(b)
+      .zip(c)
+      .zip(d)
+      .zip(e)
+      .zip(f)
+      .zip(g)
+      .zip(h)
+      .zip(i)
+      .zip(j)
+      .zip(k)
+      .zip(l)
+      .zip(m)
+      .zip(n)
+      .zip(o)
+      .zip(p)
+      .zip(q)
+      .zip(r)
+      .zip(s)
+      .zip(t)
 
   implicit def tuple21Decoder[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U](implicit
     a: JdbcDecoder[A],
@@ -648,31 +457,26 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     t: JdbcDecoder[T],
     u: JdbcDecoder[U]
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U)] =
-    JdbcDecoder(rs =>
-      (
-        a.unsafeDecode(1, rs),
-        b.unsafeDecode(2, rs),
-        c.unsafeDecode(3, rs),
-        d.unsafeDecode(4, rs),
-        e.unsafeDecode(5, rs),
-        f.unsafeDecode(6, rs),
-        g.unsafeDecode(7, rs),
-        h.unsafeDecode(8, rs),
-        i.unsafeDecode(9, rs),
-        j.unsafeDecode(10, rs),
-        k.unsafeDecode(11, rs),
-        l.unsafeDecode(12, rs),
-        m.unsafeDecode(13, rs),
-        n.unsafeDecode(14, rs),
-        o.unsafeDecode(15, rs),
-        p.unsafeDecode(16, rs),
-        q.unsafeDecode(17, rs),
-        r.unsafeDecode(18, rs),
-        s.unsafeDecode(19, rs),
-        t.unsafeDecode(20, rs),
-        u.unsafeDecode(21, rs)
-      )
-    )
+    a.zip(b)
+      .zip(c)
+      .zip(d)
+      .zip(e)
+      .zip(f)
+      .zip(g)
+      .zip(h)
+      .zip(i)
+      .zip(j)
+      .zip(k)
+      .zip(l)
+      .zip(m)
+      .zip(n)
+      .zip(o)
+      .zip(p)
+      .zip(q)
+      .zip(r)
+      .zip(s)
+      .zip(t)
+      .zip(u)
 
   implicit def tuple22Decoder[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V](implicit
     a: JdbcDecoder[A],
@@ -698,32 +502,28 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     u: JdbcDecoder[U],
     v: JdbcDecoder[V]
   ): JdbcDecoder[(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V)] =
-    JdbcDecoder(rs =>
-      (
-        a.unsafeDecode(1, rs),
-        b.unsafeDecode(2, rs),
-        c.unsafeDecode(3, rs),
-        d.unsafeDecode(4, rs),
-        e.unsafeDecode(5, rs),
-        f.unsafeDecode(6, rs),
-        g.unsafeDecode(7, rs),
-        h.unsafeDecode(8, rs),
-        i.unsafeDecode(9, rs),
-        j.unsafeDecode(10, rs),
-        k.unsafeDecode(11, rs),
-        l.unsafeDecode(12, rs),
-        m.unsafeDecode(13, rs),
-        n.unsafeDecode(14, rs),
-        o.unsafeDecode(15, rs),
-        p.unsafeDecode(16, rs),
-        q.unsafeDecode(17, rs),
-        r.unsafeDecode(18, rs),
-        s.unsafeDecode(19, rs),
-        t.unsafeDecode(20, rs),
-        u.unsafeDecode(21, rs),
-        v.unsafeDecode(22, rs)
-      )
-    )
+    a.zip(b)
+      .zip(c)
+      .zip(d)
+      .zip(e)
+      .zip(f)
+      .zip(g)
+      .zip(h)
+      .zip(i)
+      .zip(j)
+      .zip(k)
+      .zip(l)
+      .zip(m)
+      .zip(n)
+      .zip(o)
+      .zip(p)
+      .zip(q)
+      .zip(r)
+      .zip(s)
+      .zip(t)
+      .zip(u)
+      .zip(v)
+
 }
 
 trait JdbcDecoderLowPriorityImplicits {
@@ -942,14 +742,14 @@ trait JdbcDecoderLowPriorityImplicits {
     }
 
   def fromSchema[A](implicit schema: Schema[A]): JdbcDecoder[A] =
-    (rs: RowState) => {
-      val dynamicDecoder = createDynamicDecoder(schema, rs.rs.getMetaData())
-      val dynamicValue   = dynamicDecoder(rs.rs)
+    (rowState: RowState) => {
+      val dynamicDecoder = createDynamicDecoder(schema, rowState.rs.getMetaData())
+      val dynamicValue   = dynamicDecoder(rowState.rs)
 
       dynamicValue.toTypedValue(schema) match {
-        case Left(error) => throw JdbcDecoderError(error, null, rs.rs.getMetaData(), rs.rs.getRow())
+        case Left(error) => throw JdbcDecoderError(error, null, rowState.rs.getMetaData(), rowState.rs.getRow())
 
-        case Right(value) => (rs, value)
+        case Right(value) => (rowState, value)
       }
     }
 }

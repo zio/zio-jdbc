@@ -15,10 +15,11 @@
  */
 package zio.jdbc
 
+import zio.jdbc.JdbcDecoder.RowState
 import zio.jdbc.Sql.Segment
-import zio.{ Chunk, ChunkBuilder }
+import zio.{Chunk, ChunkBuilder}
 
-import java.sql.{ PreparedStatement, Types }
+import java.sql.{PreparedStatement, Types}
 import scala.language.implicitConversions
 
 /**
@@ -46,7 +47,7 @@ final class Sql[+A](
     self ++ Sql.prependEach(Sql.and, elements)
 
   def as[B](implicit decode: JdbcDecoder[B]): Sql[B] =
-    new Sql(build, (rs: ZResultSet) => decode.unsafeDecode(rs.resultSet))
+    new Sql(build, (rs: ZResultSet) => decode.unsafeDecode(RowState(rs.resultSet, 1))._2)
 
   override def equals(that: Any): Boolean =
     that match {
