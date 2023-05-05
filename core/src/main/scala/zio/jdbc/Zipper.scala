@@ -11,7 +11,7 @@ object Zipper extends InvariantZipLowPriority0 {
   def instance[A, B, C](f: (A, B) => C): Zipper.WithOut[A, B, C] =
     new Zipper[A, B] {
       type Out = C
-      def combine(a: A, b: B): C  = f(a, b)
+      def combine(a: A, b: B): C = f(a, b)
     }
 
   implicit def invariantZipTuple2Unit[A, B]: Zipper.WithOut[(A, B), Unit, (A, B)] =

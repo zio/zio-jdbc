@@ -17,9 +17,9 @@ package zio.jdbc
 
 import zio.jdbc.JdbcDecoder.RowState
 import zio.jdbc.Sql.Segment
-import zio.{Chunk, ChunkBuilder}
+import zio.{ Chunk, ChunkBuilder }
 
-import java.sql.{PreparedStatement, Types}
+import java.sql.{ PreparedStatement, Types }
 import scala.language.implicitConversions
 
 /**
