@@ -297,12 +297,12 @@ object SqlFragment {
     implicit val blobSetter: Setter[java.sql.Blob]    = forSqlType((ps, i, value) => ps.setBlob(i, value), Types.BLOB)
     implicit val sqlDateSetter: Setter[java.sql.Date] = forSqlType((ps, i, value) => ps.setDate(i, value), Types.DATE)
     implicit val sqlTimeSetter: Setter[java.sql.Time] = forSqlType((ps, i, value) => ps.setTime(i, value), Types.TIME)
-    
-    implicit def chunkSetter[A](implicit setter: Setter[A]): Setter[Chunk[A]] = iterableSetter[A, Chunk[A]]
-    implicit def listSetter[A](implicit setter: Setter[A]): Setter[List[A]] = iterableSetter[A, List[A]]
+
+    implicit def chunkSetter[A](implicit setter: Setter[A]): Setter[Chunk[A]]   = iterableSetter[A, Chunk[A]]
+    implicit def listSetter[A](implicit setter: Setter[A]): Setter[List[A]]     = iterableSetter[A, List[A]]
     implicit def vectorSetter[A](implicit setter: Setter[A]): Setter[Vector[A]] = iterableSetter[A, Vector[A]]
-    implicit def setSetter[A](implicit setter: Setter[A]): Setter[Set[A]] = iterableSetter[A, Set[A]]
-      
+    implicit def setSetter[A](implicit setter: Setter[A]): Setter[Set[A]]       = iterableSetter[A, Set[A]]
+
     private def iterableSetter[A, I <: Iterable[A]](implicit setter: Setter[A]): Setter[I] =
       forSqlType(
         (ps, i, iterable) =>
