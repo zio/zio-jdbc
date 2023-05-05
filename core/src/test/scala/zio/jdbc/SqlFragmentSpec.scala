@@ -1,7 +1,8 @@
 package zio.jdbc
 
-import zio.jdbc.{ transaction => transact }
-import zio.schema.{ Schema, TypeId }
+import zio.Chunk
+import zio.jdbc.{transaction => transact}
+import zio.schema.{Schema, TypeId}
 import zio.test.Assertion._
 import zio.test._
 
@@ -130,7 +131,7 @@ object SqlFragmentSpec extends ZIOSpecDefault {
                   sql"select name, age from users where id"
                     .in(1, 2, 3)
                     .toString ==
-                    s"Sql(select name, age from users where id IN (?,?,?), 1, 2, 3)"
+                    "Sql(select name, age from users where id IN (?,?,?), 1, 2, 3)"
                 )
               } + test("fragment method where param is iterable") {
                 val seq = Seq(1, 2, 3)
@@ -138,13 +139,31 @@ object SqlFragmentSpec extends ZIOSpecDefault {
                   sql"select name, age from users where id"
                     .in(seq)
                     .toString ==
-                    s"Sql(select name, age from users where id IN (?,?,?), 1, 2, 3)"
+                    "Sql(select name, age from users where id IN (?,?,?), 1, 2, 3)"
                 )
-              } + test("interpolation param is iterable") {
-                val seq = Seq(1, 2, 3)
+              } + test("interpolation param is Chunk") {
+                val collection = Chunk(1, 2, 3)
                 assertTrue(
-                  sql"select name, age from users where id in ($seq)".toString ==
-                    s"Sql(select name, age from users where id in (?,?,?), 1, 2, 3)"
+                  sql"select name, age from users where id in ($collection)".toString ==
+                    "Sql(select name, age from users where id in (?,?,?), 1, 2, 3)"
+                )
+              } + test("interpolation param is List") {
+                val collection = List(1, 2, 3)
+                assertTrue(
+                  sql"select name, age from users where id in ($collection)".toString ==
+                    "Sql(select name, age from users where id in (?,?,?), 1, 2, 3)"
+                )
+              } + test("interpolation param is Vector") {
+                val collection = Vector(1, 2, 3)
+                assertTrue(
+                  sql"select name, age from users where id in ($collection)".toString ==
+                    "Sql(select name, age from users where id in (?,?,?), 1, 2, 3)"
+                )
+              } + test("interpolation param is Set") {
+                val collection = Set(1, 2, 3)
+                assertTrue(
+                  sql"select name, age from users where id in ($collection)".toString ==
+                    "Sql(select name, age from users where id in (?,?,?), 1, 2, 3)"
                 )
               }
             } +

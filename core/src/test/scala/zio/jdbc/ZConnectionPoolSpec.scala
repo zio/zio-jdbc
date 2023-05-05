@@ -238,7 +238,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
                 for {
                   _     <- createUsers *> insertSherlock *> insertWatson
                   value <- transaction {
-                             val names = Seq(sherlockHolmes.name, johnWatson.name)
+                             val names = List(sherlockHolmes.name, johnWatson.name)
                              selectAll {
                                sql"select name, age from users where name IN (${names})".as[User]
                              }
