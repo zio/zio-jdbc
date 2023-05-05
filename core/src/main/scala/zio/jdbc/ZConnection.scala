@@ -34,7 +34,7 @@ final class ZConnection(private[jdbc] val connection: Connection) extends AnyVal
   def rollback: Task[Any] = access(_.rollback())
 
   private[jdbc] def executeSqlWith[A](
-    sql: Sql[_]
+    sql: SqlFragment
   )(f: PreparedStatement => ZIO[Scope, Throwable, A]): ZIO[Scope, Throwable, A] =
     accessZIO { connection =>
       for {
@@ -48,7 +48,6 @@ final class ZConnection(private[jdbc] val connection: Connection) extends AnyVal
                        sql.foreachSegment(_ => ()) { param =>
                          param.setter.setValue(statement, paramIndex, param.value)
                          paramIndex += 1
-
                        }
                      }
         result    <- f(statement)
