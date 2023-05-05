@@ -122,11 +122,11 @@ sealed trait SqlFragment { self =>
           )
 
         case array: Array[_] =>
-          array.iterator.foreach { item =>
+          array.foreach { item =>
             paramsBuilder += item.toString
           }
           sql.append(
-            Seq.fill(array.iterator.size)("?").mkString(",")
+            Seq.fill(array.length)("?").mkString(",")
           )
 
         case _ =>

@@ -143,11 +143,13 @@ object SqlFragmentSpec extends ZIOSpecDefault {
                     "Sql(select name, age from users where id IN (?,?,?), 1, 2, 3)"
                 )
               } + test("interpolation param is supported collection") {
-                def assertIn[A: Setter](collection: A) =
+                def assertIn[A: Setter](collection: A) = {
+                  println(sql"select name, age from users where id in ($collection)".toString)
                   assertTrue(
                     sql"select name, age from users where id in ($collection)".toString ==
                       "Sql(select name, age from users where id in (?,?,?), 1, 2, 3)"
                   )
+                }
 
                 assertIn(Chunk(1, 2, 3)) &&
                 assertIn(List(1, 2, 3)) &&
