@@ -16,7 +16,6 @@
 package zio.jdbc
 
 import zio._
-import zio.jdbc.JdbcDecoder.RowState
 import zio.stream._
 
 final case class Query[+A](sql: SqlFragment, decode: ZResultSet => A) {
