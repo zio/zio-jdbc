@@ -18,16 +18,13 @@ package zio.jdbc
 import zio._
 import zio.stream._
 
-final class Query[+A](val sql: SqlFragment, val decode: ZResultSet => A) {
+final case class Query[+A](sql: SqlFragment, decode: ZResultSet => A) {
 
   def as[B](implicit decoder: JdbcDecoder[B]): Query[B] =
-    new Query(sql, zrs => decoder.unsafeDecode(zrs.resultSet))
-
-  def withDecode[B](f: ZResultSet => B): Query[B] =
-    new Query(sql, f)
+    Query(sql, zrs => decoder.unsafeDecode(zrs.resultSet))
 
   def map[B](f: A => B): Query[B] =
-    new Query(sql, zrs => f(decode(zrs)))
+    Query(sql, zrs => f(decode(zrs)))
 
   /**
    * Performs a SQL select query, returning all results in a chunk.
@@ -73,6 +70,9 @@ final class Query[+A](val sql: SqlFragment, val decode: ZResultSet => A) {
       } yield stream
     }
 
+  def withDecode[B](f: ZResultSet => B): Query[B] =
+    Query(sql, f)
+
   private def executeQuery(sql: SqlFragment): ZIO[Scope with ZConnection, Throwable, ZResultSet] = for {
     connection <- ZIO.service[ZConnection]
     zrs        <- connection.executeSqlWith(sql) { ps =>
@@ -81,5 +81,12 @@ final class Query[+A](val sql: SqlFragment, val decode: ZResultSet => A) {
                     }(_.close)
                   }
   } yield zrs
+
+}
+
+object Query {
+
+  def fromSqlFragment[A: JdbcDecoder](sql: SqlFragment): Query[A] =
+    sql.query
 
 }
