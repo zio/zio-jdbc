@@ -86,7 +86,7 @@ final case class Query[+A](sql: SqlFragment, decode: ZResultSet => A) {
 
 object Query {
 
-  def fromSqlFragment[A: JdbcDecoder](sql: SqlFragment): Query[A] =
-    sql.query
+  def fromSqlFragment[A](sql: SqlFragment)(implicit decoder: JdbcDecoder[A]): Query[A] =
+    Query[A](sql, zrs => decoder.unsafeDecode(zrs.resultSet))
 
 }

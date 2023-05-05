@@ -125,8 +125,8 @@ final class SqlFragment(private[jdbc] val build: ChunkBuilder[Segment] => Unit) 
   def where(predicate: SqlFragment): SqlFragment =
     self ++ SqlFragment.where ++ predicate
 
-  def query[A](implicit decoder: JdbcDecoder[A]): Query[A] =
-    Query[A](self, zrs => decoder.unsafeDecode(zrs.resultSet))
+  def query[A: JdbcDecoder]: Query[A] =
+    Query.fromSqlFragment(self)
 
   /**
    * Executes a SQL statement, such as one that creates a table.
