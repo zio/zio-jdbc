@@ -15,8 +15,6 @@
  */
 package zio.jdbc
 
-import zio.jdbc.JdbcDecoder.RowState
-import zio.jdbc.Sql.Segment
 import zio.{ Chunk, ChunkBuilder }
 import zio._
 import zio.jdbc.SqlFragment.Segment
