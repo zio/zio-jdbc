@@ -22,7 +22,7 @@ import zio.stream._
 final case class Query[+A](sql: SqlFragment, decode: ZResultSet => A) {
 
   def as[B](implicit decoder: JdbcDecoder[B]): Query[B] =
-    Query(sql, zrs => decoder.unsafeDecode(RowState(zrs.resultSet, 1))._2)
+    Query(sql, zrs => decoder.unsafeDecode(1, zrs.resultSet)._3)
 
   def map[B](f: A => B): Query[B] =
     Query(sql, zrs => f(decode(zrs)))
@@ -88,6 +88,6 @@ final case class Query[+A](sql: SqlFragment, decode: ZResultSet => A) {
 object Query {
 
   def fromSqlFragment[A](sql: SqlFragment)(implicit decoder: JdbcDecoder[A]): Query[A] =
-    Query[A](sql, zrs => decoder.unsafeDecode(RowState(zrs.resultSet, 1))._2)
+    Query[A](sql, zrs => decoder.unsafeDecode(1, zrs.resultSet)._3)
 
 }

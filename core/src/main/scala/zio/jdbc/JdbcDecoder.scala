@@ -16,7 +16,6 @@
 package zio.jdbc
 
 import zio._
-import zio.jdbc.JdbcDecoder.RowState
 
 import java.io._
 import java.sql.{ Array => _, _ }
@@ -27,25 +26,21 @@ import scala.collection.immutable.ListMap
  * a `ResultSet`.
  */
 trait JdbcDecoder[+A] { self =>
-  def unsafeDecode(rs: RowState): (RowState, A)
+  def unsafeDecode(columIndex: Int, rs: ResultSet): (Int, ResultSet, A)
 
-  final def decode(rs: RowState): Either[Throwable, (RowState, A)] =
-    try Right(unsafeDecode(rs))
+  final def decode(columnIndex: Int, rs: ResultSet): Either[Throwable, (Int, ResultSet, A)] =
+    try Right(unsafeDecode(columnIndex, rs))
     catch { case e: JdbcDecoderError => Left(e) }
 
-  final def map[B](f: A => B): JdbcDecoder[B] = rs => {
-    val (oldState, a) = unsafeDecode(rs)
-    (oldState, f(a))
+  final def map[B](f: A => B): JdbcDecoder[B] = (inputColumnIndex, inputResultSet) => {
+    val (columnIndex, resultSet, a) = unsafeDecode(inputColumnIndex, inputResultSet)
+    (columnIndex, resultSet, f(a))
   }
 
   final def flatMap[B](f: A => JdbcDecoder[B]): JdbcDecoder[B] =
-    (rs: RowState) => {
-      val (oldState, a) = self.unsafeDecode(rs)
-
-      val newDecoder: JdbcDecoder[B] = f(a)
-      val newState                   = RowState(oldState.rs, oldState.columnIndex + 1)
-
-      newDecoder.unsafeDecode(newState)
+    (inputColumnIndex: Int, inputResultSet: ResultSet) => {
+      val (columnIndex, resultSet, a) = self.unsafeDecode(inputColumnIndex, inputResultSet)
+      f(a).unsafeDecode(columnIndex + 1, resultSet)
     }
 
   final def zip[A1 >: A, B, C](
@@ -60,17 +55,22 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
   final case class RowState(rs: ResultSet, columnIndex: Int)
 
   def readPrimitive[A](n: Int)(implicit A: JdbcDecoder[A]): ResultSet => A = { (rs: ResultSet) =>
-    A.unsafeDecode(RowState(rs, n))._2
+    A.unsafeDecode(n, rs)._3
   }
 
   def apply[A]()(implicit decoder: JdbcDecoder[A]): JdbcDecoder[A] = decoder
 
   def apply[A](f: ResultSet => (Int => A), expected: String = "value"): JdbcDecoder[A] =
-    (rs: RowState) =>
-      try (rs, f(rs.rs)(rs.columnIndex))
+    (inputColumnIndex, inputResultSet) =>
+      try (inputColumnIndex, inputResultSet, f(inputResultSet)(inputColumnIndex))
       catch {
         case t: Throwable if !t.isInstanceOf[VirtualMachineError] =>
-          throw JdbcDecoderError(s"Error decoding $expected from ResultSet", t, rs.rs.getMetaData, rs.rs.getRow)
+          throw JdbcDecoderError(
+            s"Error decoding $expected from ResultSet",
+            t,
+            inputResultSet.getMetaData,
+            inputResultSet.getRow
+          )
       }
 
   implicit val intDecoder: JdbcDecoder[Int]                         = JdbcDecoder(_.getInt)
@@ -91,9 +91,9 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
   implicit def optionDecoder[A](implicit decoder: JdbcDecoder[A]): JdbcDecoder[Option[A]] =
     JdbcDecoder(rs =>
       int =>
-        decoder.decode(RowState(rs, int)) match {
+        decoder.decode(int, rs) match {
           case Left(_)      => None
-          case Right(value) => Option(value._2)
+          case Right(value) => Option(value._3)
         }
     )
 
@@ -742,14 +742,14 @@ trait JdbcDecoderLowPriorityImplicits {
     }
 
   def fromSchema[A](implicit schema: Schema[A]): JdbcDecoder[A] =
-    (rowState: RowState) => {
-      val dynamicDecoder = createDynamicDecoder(schema, rowState.rs.getMetaData())
-      val dynamicValue   = dynamicDecoder(rowState.rs)
+    (columnIndex: Int, resultSet: ResultSet) => {
+      val dynamicDecoder = createDynamicDecoder(schema, resultSet.getMetaData())
+      val dynamicValue   = dynamicDecoder(resultSet)
 
       dynamicValue.toTypedValue(schema) match {
-        case Left(error) => throw JdbcDecoderError(error, null, rowState.rs.getMetaData(), rowState.rs.getRow())
+        case Left(error) => throw JdbcDecoderError(error, null, resultSet.getMetaData(), resultSet.getRow())
 
-        case Right(value) => (rowState, value)
+        case Right(value) => (columnIndex, resultSet, value)
       }
     }
 }
