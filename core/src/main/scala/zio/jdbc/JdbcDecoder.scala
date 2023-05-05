@@ -50,8 +50,8 @@ trait JdbcDecoder[+A] { self =>
 
   final def zip[A1 >: A, B, C](
     that: => JdbcDecoder[B]
-  )(implicit Z: Zipper.WithOut[A1, B, C]): JdbcDecoder[C] =
-    self.flatMap(a => that.map(b => Z.combine(a, b)))
+  )(implicit Z: Zippable.Out[A1, B, C]): JdbcDecoder[C] =
+    self.flatMap(a => that.map(b => Z.zip(a, b)))
 
 }
 
