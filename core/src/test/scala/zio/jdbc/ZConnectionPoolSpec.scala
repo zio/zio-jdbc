@@ -59,59 +59,55 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
 
   val createUsers: ZIO[ZConnectionPool with Any, Throwable, Unit] =
     transaction {
-      execute(sql"""
+      sql"""
       create table users (
         id identity primary key,
         name varchar not null,
         age int not null
       )
-      """)
+      """.execute
     }
 
   val createUsersNoId: ZIO[ZConnectionPool with Any, Throwable, Unit] = transaction {
-    execute(sql"""
+    sql"""
     create table users_no_id (
         name varchar not null,
         age int not null
     )
-     """)
+     """.execute
   }
 
   val insertSherlock: ZIO[ZConnectionPool with Any, Throwable, UpdateResult] =
     transaction {
-      insert {
-        sql"insert into users values (default, ${sherlockHolmes.name}, ${sherlockHolmes.age})"
-      }
+      sql"insert into users values (default, ${sherlockHolmes.name}, ${sherlockHolmes.age})".insert
     }
 
   val insertWatson: ZIO[ZConnectionPool with Any, Throwable, UpdateResult] =
     transaction {
-      insert {
-        sql"insert into users values (default, ${johnWatson.name}, ${johnWatson.age})"
-      }
+      sql"insert into users values (default, ${johnWatson.name}, ${johnWatson.age})".insert
     }
 
   val insertBatches: ZIO[ZConnectionPool, Throwable, Long] = transaction {
     val users  = genUsers(10000).toSeq
-    val mapped = users.map(Sql.insertInto("users_no_id")("name", "age").values(_))
+    val mapped = users.map(SqlFragment.insertInto("users_no_id")("name", "age").values(_))
     for {
-      inserted <- ZIO.foreach(mapped)(zio.jdbc.insert(_))
+      inserted <- ZIO.foreach(mapped)(_.insert)
     } yield inserted.map(_.rowsUpdated).sum
   }
 
   val insertFive: ZIO[ZConnectionPool, Throwable, Long] = transaction {
     val users           = Seq(user1, user2, user3, user4, user5)
-    val insertStatement = Sql.insertInto("users_no_id")("name", "age").values(users)
+    val insertStatement = SqlFragment.insertInto("users_no_id")("name", "age").values(users)
     for {
-      inserted <- zio.jdbc.insert(insertStatement)
+      inserted <- insertStatement.insert
     } yield inserted.rowsUpdated
   }
 
   val insertEverything: ZIO[ZConnectionPool, Throwable, Long] = transaction {
     val users           = genUsers(3000)
-    val insertStatement = Sql.insertInto("users_no_id")("name", "age").values(users)
+    val insertStatement = SqlFragment.insertInto("users_no_id")("name", "age").values(users)
     for {
-      inserted <- zio.jdbc.insert(insertStatement)
+      inserted <- insertStatement.insert
     } yield inserted.rowsUpdated
   }
 
@@ -224,9 +220,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
                 for {
                   _     <- createUsers *> insertSherlock
                   value <- transaction {
-                             selectOne {
-                               sql"select name, age from users where name = ${sherlockHolmes.name}".as[User]
-                             }
+                             sql"select name, age from users where name = ${sherlockHolmes.name}".query[User].selectOne
                            }
                 } yield assertTrue(value.contains(sherlockHolmes))
               } +
@@ -234,9 +228,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
                 for {
                   _     <- createUsers *> insertSherlock *> insertWatson
                   value <- transaction {
-                             selectAll {
-                               sql"select name, age from users".as[User]
-                             }
+                             sql"select name, age from users".query[User].selectAll
                            }
                 } yield assertTrue(value == Chunk(sherlockHolmes, johnWatson))
               } +
@@ -244,22 +236,20 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
                 for {
                   _     <- createUsers *> insertSherlock *> insertWatson
                   value <- transaction {
-                             selectStream {
-                               sql"select name, age from users".as[User]
-                             }.runCollect
+                             sql"select name, age from users".query[User].selectStream.runCollect
                            }
                 } yield assertTrue(value == Chunk(sherlockHolmes, johnWatson))
               } +
               test("delete") {
                 for {
                   _   <- createUsers *> insertSherlock
-                  num <- transaction(delete(sql"delete from users where name = ${sherlockHolmes.name}"))
+                  num <- transaction(sql"delete from users where name = ${sherlockHolmes.name}".delete)
                 } yield assertTrue(num == 1L)
               } +
               test("update") {
                 for {
                   _   <- createUsers *> insertSherlock
-                  num <- transaction(update(sql"update users set age = 43 where name = ${sherlockHolmes.name}"))
+                  num <- transaction(sql"update users set age = 43 where name = ${sherlockHolmes.name}".update)
                 } yield assertTrue(num == 1L)
               }
           } +
@@ -268,11 +258,11 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
               for {
                 _     <- createUsers *> insertSherlock
                 value <- transaction {
-                           selectOne {
-                             sql"select name, age from users where name = ${sherlockHolmes.name}".as[Person](
+                           sql"select name, age from users where name = ${sherlockHolmes.name}"
+                             .query[Person](
                                JdbcDecoder.fromSchema(Person.schema)
                              )
-                           }
+                             .selectOne
                          }
               } yield assertTrue(value.contains(Person(sherlockHolmes.name, sherlockHolmes.age)))
             }

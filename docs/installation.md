@@ -17,8 +17,6 @@ libraryDependencies += "dev.zio" %% "zio-jdbc" % "@VERSION@"
 import zio.jdbc._
 
 transaction {
-  selectOne {
-    sql"select name, age where name = 'Sherlock Holmes'".as[(String, Int)]
-  }
+  sql"select name, age where name = 'Sherlock Holmes'".query[(String, Int)].selectOne
 }
 ```

@@ -12,7 +12,7 @@ final case class UserLogin(username: String, password: String)
 final case class ActiveUser(person: Person, login: UserLogin, isActive: Boolean = true)
 final case class Transfer(id: Long, amount: Double, location: Option[String])
 
-object SqlSpec extends ZIOSpecDefault {
+object SqlFragmentSpec extends ZIOSpecDefault {
   import Models._
 
   def spec: Spec[Environment with TestEnvironment, Any] =
@@ -37,7 +37,7 @@ object SqlSpec extends ZIOSpecDefault {
           val tableName    = sql"table1"
           val (a, b, c, d) = (1, 3, "foo", "bar")
           val filter       = sql"a between $a and $b"
-          val fields       = Sql("a, b")
+          val fields       = SqlFragment("a, b")
           val testSql      = sql"select $fields from $tableName where c = $c and $filter and d = $d"
           assertTrue(
             testSql.toString == "Sql(select a, b from table1 where c = ? and a between ? and ? and d = ?, foo, 1, 3, bar)"
@@ -45,14 +45,16 @@ object SqlSpec extends ZIOSpecDefault {
         } +
         test("type safe interpolation") {
           final case class Foo(value: String)
-          implicit val fooParamSetter: Sql.Setter[Foo] = Sql.Setter[String]().contramap(_.toString)
+          implicit val fooParamSetter: SqlFragment.Setter[Foo] = SqlFragment.Setter[String]().contramap(_.toString)
 
           val testSql = sql"${Foo("test")}"
 
-          assertTrue(testSql.segments.collect { case Sql.Segment.Param(_, setter) => setter }.head eq fooParamSetter) &&
+          assertTrue(testSql.segments.collect { case SqlFragment.Segment.Param(_, setter) =>
+            setter
+          }.head eq fooParamSetter) &&
           assertTrue(testSql.toString == "Sql(?, Foo(test))")
         } +
-        suite("Sql.ParamSetter instances") { // TODO figure out how to test at PrepareStatement level
+        suite(" SqlFragment.ParamSetter instances") { // TODO figure out how to test at PrepareStatement level
           test("Option") {
             val none: Option[Int] = None
             assertTrue(sql"${none}".toString == "Sql(?, None)" && sql"${Option(123)}".toString == "Sql(?, Some(123))")
@@ -188,7 +190,7 @@ object SqlSpec extends ZIOSpecDefault {
           val defectiveSql: SqlFragment = stringToSql(sqlString)
 
           (for {
-            res   <- transact(execute(defectiveSql)).exit
+            res   <- transact(defectiveSql.execute).exit
             error <- ZTestLogger.logOutput.map(_.filter(log => log.logLevel == zio.LogLevel.Debug))
           } yield assert(res)(
             fails(isSubtype[SQLException](anything))
@@ -196,27 +198,27 @@ object SqlSpec extends ZIOSpecDefault {
             && assert(error.head.message())(containsString(sqlString)))
             .provideLayer(ZConnectionPool.h2test.orDie)
         } +
-        test("Sql.select") {
-          val result   = Sql.select("name", "age").from("persons")
+        test(" SqlFragment.select") {
+          val result   = SqlFragment.select("name", "age").from("persons")
           val expected = sql"SELECT name, age FROM persons"
           assertTrue(result.toString == expected.toString)
         } +
-        test("Sql.insertInto") {
+        test(" SqlFragment.insertInto") {
           val person = ("sholmes", 42)
-          val result = Sql.insertInto("persons")("name", "age").values(person)
+          val result = SqlFragment.insertInto("persons")("name", "age").values(person)
           assertTrue(
             result.toString ==
               s"Sql(INSERT INTO persons (name, age) VALUES (?,?), ${person._1}, ${person._2})"
           )
         } +
-        test("Sql.deleteFrom") {
-          val result = Sql.deleteFrom("persons").where(sql"age < ${21}")
+        test(" SqlFragment.deleteFrom") {
+          val result = SqlFragment.deleteFrom("persons").where(sql"age < ${21}")
           assertTrue(
             result.toString == s"Sql(DELETE FROM persons WHERE age < ?, 21)"
           )
         } +
-        test("Sql.update") {
-          val result = Sql.update("persons")
+        test(" SqlFragment.update") {
+          val result = SqlFragment.update("persons")
           assertTrue(
             result.toString == "Sql(UPDATE persons)"
           )

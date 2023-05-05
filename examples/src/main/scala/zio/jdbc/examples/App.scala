@@ -11,19 +11,19 @@ object App extends ZIOAppDefault {
   import zio.jdbc.examples.User._
 
   val create: ZIO[ZConnectionPool, Throwable, Unit] = transaction {
-    execute(Basic.ex0)
+    Basic.ex0.execute
   }
 
   val insertRow: ZIO[ZConnectionPool, Throwable, UpdateResult] = transaction {
-    insert(sql"insert into users (name, age)".values(sampleUser1, sampleUser2))
+    sql"insert into users (name, age)".values(sampleUser1, sampleUser2).insert
   }
 
   val select: ZIO[ZConnectionPool, Throwable, Chunk[User]] = transaction {
-    selectAll(Basic.ex2.as[User])
+    Basic.ex2.as[User].selectAll
   }
 
   val drop: ZIO[ZConnectionPool, Throwable, Unit] = transaction {
-    execute(Basic.ex5)
+    Basic.ex5.execute
   }
 
   val zioPoolConfig: ULayer[ZConnectionPoolConfig] =
