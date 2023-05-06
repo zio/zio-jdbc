@@ -166,9 +166,15 @@ object ZConnectionPool {
         tx      = ZLayer.scoped {
                     for {
                       connection <- pool.get
-                      _          <- ZIO.addFinalizerExit {
-                                      case Exit.Success(_) => ZIO.unit
-                                      case Exit.Failure(_) => connection.rollback.ignoreLogged
+                      _          <- ZIO.addFinalizerExit { exit =>
+                                      ZIO
+                                        .ifZIO(connection.isValid().orDie)(
+                                          onTrue = exit match {
+                                            case Exit.Success(_) => ZIO.unit
+                                            case Exit.Failure(_) => connection.rollback.ignoreLogged
+                                          },
+                                          onFalse = pool.invalidate(connection)
+                                        )
                                     }
                     } yield connection
                   }
