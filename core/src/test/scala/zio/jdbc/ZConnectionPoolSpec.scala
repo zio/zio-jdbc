@@ -48,13 +48,13 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
   val user4: UserNoId = UserNoId("John Watson III", 98)
   val user5: UserNoId = UserNoId("Sherlock Holmes II", 2)
 
-  def genUser = {
+  def genUser: UserNoId = {
     val name = Random.nextString(8)
     val id   = Random.nextInt(100000)
     UserNoId(name, id)
   }
 
-  def genUsers(size: Int) =
+  def genUsers(size: Int): List[UserNoId] =
     List.fill(size)(genUser)
 
   val createUsers: ZIO[ZConnectionPool with Any, Throwable, Unit] =
