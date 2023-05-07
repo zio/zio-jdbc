@@ -25,16 +25,16 @@ import java.sql.{ Connection, PreparedStatement, Statement }
  * `Connection` through the `access` method. Any such access will be attempted on the
  * blocking thread pool.
  */
-final class ZConnection(private[jdbc] val underlying: Connection) extends AnyVal {
+final class ZConnection(private[jdbc] val stateful: StatefulConnection) extends AnyVal {
 
-  def access[A](f: Connection => A): ZIO[Any, Throwable, A] =
-    ZIO.attemptBlocking(f(underlying))
+  private[jdbc] def access[A](f: Connection => A): ZIO[Any, Throwable, A] =
+    ZIO.attemptBlocking(f(stateful.underlying))
 
-  def accessZIO[A](f: Connection => ZIO[Scope, Throwable, A]): ZIO[Scope, Throwable, A] =
-    ZIO.blocking(f(underlying))
+  private[jdbc] def accessZIO[A](f: Connection => ZIO[Scope, Throwable, A]): ZIO[Scope, Throwable, A] =
+    ZIO.blocking(f(stateful.underlying))
 
-  def close: Task[Any]    = access(_.close())
-  def rollback: Task[Any] = access(_.rollback())
+  def close: Task[Any] =
+    access(_.close())
 
   private[jdbc] def executeSqlWith[A](
     sql: SqlFragment
@@ -61,6 +61,9 @@ final class ZConnection(private[jdbc] val underlying: Connection) extends AnyVal
       )
     }
 
+  def isClosed: Task[Boolean] =
+    access(_.isClosed)
+
   /**
    * Return whether the connection is still alive or not,
    * trying to prepare a statement and managing the exception SQLException
@@ -68,13 +71,12 @@ final class ZConnection(private[jdbc] val underlying: Connection) extends AnyVal
    *
    * see: https://www.baeldung.com/jdbc-connection-status
    *
-   * @param zc the connection to look into
    * @return true if the connection is alive (valid), false otherwise
    */
   def isValid(): Task[Boolean] =
     for {
-      closed    <- ZIO.attempt(this.underlying.isClosed)
-      statement <- ZIO.attempt(this.underlying.prepareStatement("SELECT 1"))
+      closed    <- isClosed
+      statement <- preparedStatement("SELECT 1")
       isAlive   <- ZIO.succeed(!closed && statement != null)
     } yield isAlive
 
@@ -88,13 +90,24 @@ final class ZConnection(private[jdbc] val underlying: Connection) extends AnyVal
    * @return true if the connection is alive (valid), false otherwise
    */
   def isValid(timeout: Int): Task[Boolean] =
-    ZIO.attempt(this.underlying.isValid(timeout))
+    access(_.isValid(timeout))
+
+  def preparedStatement(sql: String): Task[PreparedStatement] =
+    access(_.prepareStatement(sql))
+
+  def rollback: Task[Any] =
+    access(_.rollback())
+
+  def setAutoCommit(autoCommit: Boolean): Task[Unit] =
+    stateful.setAutoCommit(autoCommit)
+
+  def setTransactionIsolation(level: TransactionIsolationLevel): Task[Unit] =
+    stateful.setTransactionIsolation(level)
 
 }
 
 object ZConnection {
 
-  def apply(underlying: Connection): ZConnection =
+  def apply(underlying: StatefulConnection): ZConnection =
     new ZConnection(underlying)
-
 }

@@ -159,7 +159,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
             for {
               pool <- testPool().map(_._2)
               conn <- pool.transaction.build.map(_.get)
-              connClosed = conn.underlying.isClosed // temp workaround for assertTrue eval out of scope
+              connClosed <- conn.isClosed // temp workaround for assertTrue eval out of scope
             } yield assertTrue(!connClosed)
           }
         } +
@@ -170,8 +170,8 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
               conn <- ZIO.scoped(for {
                         conn <- pool.transaction.build.map(_.get)
                         _    <- pool.invalidate(conn)
-                      } yield conn.underlying)
-              invalidatedClosed = conn.isClosed // temp workaround for assertTrue eval out of scope
+                      } yield conn)
+              invalidatedClosed <- conn.isClosed // temp workaround for assertTrue eval out of scope
             } yield assertTrue(invalidatedClosed)
           }
         } +
@@ -181,8 +181,8 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
               t1                          <- testPool()
               (conns, pool)                = t1
               conn                        <- pool.transaction.build.map(_.get)
-              isClosedBeforePoolShutdown   = conn.underlying.isClosed
-              isClosedAfterPoolShutdownZIO = ZIO.succeed(conn.underlying.isClosed)
+              isClosedBeforePoolShutdown  <- conn.isClosed
+              isClosedAfterPoolShutdownZIO = conn.isClosed
             } yield (isClosedBeforePoolShutdown, isClosedAfterPoolShutdownZIO, conns.takeAll)
           }.flatMap { case (isClosedBeforePoolShutdown, isClosedAfterPoolShutdownZIO, allConnsZIO) =>
             for {
@@ -329,7 +329,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
 
     def setTransactionIsolation(level: RuntimeFlags): Unit = ???
 
-    def getTransactionIsolation: RuntimeFlags = ???
+    def getTransactionIsolation: RuntimeFlags = 1
 
     def getWarnings: SQLWarning = ???
 

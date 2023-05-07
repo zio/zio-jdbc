@@ -161,11 +161,16 @@ object ZConnectionPool {
     ZLayer.scoped {
       for {
         config <- ZIO.service[ZConnectionPoolConfig]
-        getConn = ZIO.acquireRelease(acquire.retry(config.retryPolicy).map(ZConnection(_)))(_.close.ignoreLogged)
+        getConn = ZIO.acquireRelease(
+                    acquire
+                      .retry(config.retryPolicy)
+                      .flatMap(conn => StatefulConnection.make(conn).map(ZConnection(_)))
+                  )(_.close.ignoreLogged)
         pool   <- ZPool.make(getConn, Range(config.minConnections, config.maxConnections), config.timeToLive)
         tx      = ZLayer.scoped {
                     for {
                       connection <- pool.get
+                      _          <- connection.stateful.resetState
                       _          <- ZIO.addFinalizerExit {
                                       case Exit.Success(_) =>
                                         ZIO.unit
