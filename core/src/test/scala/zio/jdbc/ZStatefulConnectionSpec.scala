@@ -5,10 +5,10 @@ import zio.test.Assertion._
 import zio.test.TestAspect._
 import zio.test._
 
-object StatefulConnectionSpec extends ZIOSpecDefault {
+object ZStatefulConnectionSpec extends ZIOSpecDefault {
 
-  val statefulConnectionLayer: TaskLayer[StatefulConnection] =
-    ZLayer.fromZIO(StatefulConnection.make(new TestConnection))
+  val statefulConnectionLayer: TaskLayer[ZStatefulConnection] =
+    ZLayer.fromZIO(ZStatefulConnection.make(new TestConnection))
 
   val poolConfig: ZConnectionPoolConfig =
     ZConnectionPoolConfig.default.copy(minConnections = 1, maxConnections = 1)
@@ -17,18 +17,18 @@ object StatefulConnectionSpec extends ZIOSpecDefault {
     ZConnectionPool.h2test(poolConfig)
 
   def isAutoCommitDirty(dirtyBits: Int): Boolean =
-    (dirtyBits & StatefulConnection.DirtyBitAutoCommit) != 0
+    (dirtyBits & ZStatefulConnection.DirtyBitAutoCommit) != 0
 
-  def getAutoCommit(stateful: StatefulConnection): Task[Boolean] =
+  def getAutoCommit(stateful: ZStatefulConnection): Task[Boolean] =
     ZIO.attemptBlocking(stateful.underlying.getAutoCommit)
 
   val initSpec =
     suite("initialization")(
       test("make") {
         for {
-          stateful  <- ZIO.service[StatefulConnection]
+          stateful  <- ZIO.service[ZStatefulConnection]
           dirtyBits <- stateful.dirtyBits.get
-        } yield assert(dirtyBits)(equalTo(StatefulConnection.DirtyBitInitial)) &&
+        } yield assert(dirtyBits)(equalTo(ZStatefulConnection.DirtyBitInitial)) &&
           assert(stateful.defaultTxnIsolationLevel)(equalTo(TransactionIsolationLevel.ReadUncommitted))
       }
     ).provide(statefulConnectionLayer)

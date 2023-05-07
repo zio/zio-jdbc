@@ -1,11 +1,11 @@
 package zio.jdbc
 
 import zio._
-import zio.jdbc.StatefulConnection._
+import zio.jdbc.ZStatefulConnection._
 
 import java.sql.Connection
 
-final class StatefulConnection(
+final class ZStatefulConnection(
   private[jdbc] val underlying: Connection,
   private[jdbc] val dirtyBits: Ref[Int],
   private[jdbc] val defaultTxnIsolationLevel: TransactionIsolationLevel
@@ -43,14 +43,14 @@ final class StatefulConnection(
 
 }
 
-object StatefulConnection {
+object ZStatefulConnection {
 
-  def make(underlying: Connection): Task[StatefulConnection] =
+  def make(underlying: Connection): Task[ZStatefulConnection] =
     for {
       defaultTxnIsolation      <- ZIO.attemptBlocking(underlying.getTransactionIsolation)
       defaultTxnIsolationLevel <- ZIO.fromEither(TransactionIsolationLevel.fromInt(defaultTxnIsolation))
       dirtyBits                <- Ref.make(DirtyBitInitial)
-    } yield new StatefulConnection(underlying, dirtyBits, defaultTxnIsolationLevel)
+    } yield new ZStatefulConnection(underlying, dirtyBits, defaultTxnIsolationLevel)
 
   private[jdbc] val DefaultAutoCommitMode = true
 

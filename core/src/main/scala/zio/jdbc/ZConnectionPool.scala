@@ -165,7 +165,7 @@ object ZConnectionPool {
         getConn = ZIO.acquireRelease(
                     acquire
                       .retry(config.retryPolicy)
-                      .flatMap(conn => StatefulConnection.make(conn).map(ZConnection(_)))
+                      .flatMap(conn => ZStatefulConnection.make(conn).map(ZConnection(_)))
                   )(_.close.ignoreLogged)
         pool   <- ZPool.make(getConn, Range(config.minConnections, config.maxConnections), config.timeToLive)
         tx      = ZLayer.scoped {

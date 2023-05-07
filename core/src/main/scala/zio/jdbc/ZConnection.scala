@@ -25,7 +25,7 @@ import java.sql.{ Connection, PreparedStatement, Statement }
  * `Connection` through the `access` method. Any such access will be attempted on the
  * blocking thread pool.
  */
-final class ZConnection(private[jdbc] val stateful: StatefulConnection) extends AnyVal {
+final class ZConnection(private[jdbc] val stateful: ZStatefulConnection) extends AnyVal {
 
   private[jdbc] def access[A](f: Connection => A): ZIO[Any, Throwable, A] =
     ZIO.attemptBlocking(f(stateful.underlying))
@@ -108,6 +108,6 @@ final class ZConnection(private[jdbc] val stateful: StatefulConnection) extends 
 
 object ZConnection {
 
-  def apply(underlying: StatefulConnection): ZConnection =
+  def apply(underlying: ZStatefulConnection): ZConnection =
     new ZConnection(underlying)
 }
