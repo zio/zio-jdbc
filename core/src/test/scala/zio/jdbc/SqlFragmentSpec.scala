@@ -6,6 +6,7 @@ import zio.test.Assertion._
 import zio.test._
 
 import java.sql.SQLException
+import java.util.Base64
 
 final case class Person(name: String, age: Int)
 final case class UserLogin(username: String, password: String)
@@ -222,9 +223,25 @@ object SqlFragmentSpec extends ZIOSpecDefault {
           assertTrue(
             result.toString == "Sql(UPDATE persons)"
           )
+        } +
+        test("Custom JdbcEncoder") {
+
+          implicit val byteArrayjdbcEncoder: JdbcEncoder[Base64Array] =
+            value => s"FROM_BASE64('${Base64.getEncoder.encodeToString(value.arr)}')"
+
+          val bytes = Base64Array(Array[Byte](1, 2, 3))
+
+          val result = sql"UPDATE foo SET bytes = $bytes"
+
+          assertTrue(
+            result.toString == "Sql(UPDATE foo SET bytes = FROM_BASE64('AQID'))"
+          )
         }
 
     }
+
+  case class Base64Array(arr: Array[Byte]) extends AnyVal
+
 }
 
 object Models {

@@ -208,10 +208,6 @@ object SqlFragment {
     final case class Param(value: Any, setter: Setter[Any]) extends Segment
     final case class Nested(sql: SqlFragment)               extends Segment
 
-    implicit def paramSegment[A](a: A)(implicit setter: Setter[A]): Segment.Param =
-      Segment.Param(a, setter.asInstanceOf[Setter[Any]])
-
-    implicit def nestedSqlSegment[A](sql: SqlFragment): Segment.Nested = Segment.Nested(sql)
   }
 
   trait Setter[A] { self =>

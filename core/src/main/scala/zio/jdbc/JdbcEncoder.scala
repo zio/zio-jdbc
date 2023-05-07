@@ -21,6 +21,9 @@ import zio.schema.{ Schema, StandardType }
 /**
  * A type class that describes the ability to convert a value of type `A` into
  * a fragment of SQL. This is useful for forming SQL insert statements.
+ *
+ * NOTE: Users should be careful when creating custom JdbcEncoders for already existing types. You should either
+ * also create implicit Setter instance or use AnyVal wrapper (see `Custom JdbcEncoder` test).
  */
 trait JdbcEncoder[-A] {
   def encode(value: A): SqlFragment
