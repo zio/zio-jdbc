@@ -176,6 +176,25 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
           }
         } @@ nonFlaky
     } +
+      suite("ZConnectionPoolSpec stateful connection") {
+        test("reset state between transactions") {
+          def getAutoCommit(conn: ZConnection) =
+            conn.access(_.getAutoCommit)
+
+          for {
+            autoCommitBefore <- transaction {
+                                  for {
+                                    conn       <- ZIO.service[ZConnection]
+                                    _          <- conn.setAutoCommit(false)
+                                    autoCommit <- getAutoCommit(conn)
+                                  } yield autoCommit
+                                }
+            autoCommitAfter  <- transaction(ZIO.serviceWithZIO[ZConnection](getAutoCommit))
+          } yield assertTrue(!autoCommitBefore) && assertTrue(autoCommitAfter)
+        }
+      }.provide(
+        ZConnectionPool.h2test(ZConnectionPoolConfig.default.copy(minConnections = 1, maxConnections = 1)).orDie
+      ) +
       suite("ZConnectionPoolSpec integration tests") {
         suite("pool") {
           test("creation") {
