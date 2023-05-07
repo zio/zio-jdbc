@@ -30,7 +30,8 @@ abstract class ZConnectionPool {
 }
 
 object ZConnectionPool {
-  def h2test: ZLayer[Any, Throwable, ZConnectionPool] =
+
+  def h2test(config: ZConnectionPoolConfig = ZConnectionPoolConfig.default): ZLayer[Any, Throwable, ZConnectionPool] =
     ZLayer.scoped {
       for {
         _      <- ZIO.attempt(Class.forName("org.h2.Driver"))
@@ -38,7 +39,7 @@ object ZConnectionPool {
         acquire = ZIO.attemptBlocking {
                     java.sql.DriverManager.getConnection(s"jdbc:h2:mem:test_database_$int")
                   }
-        zenv   <- make(acquire).build.provideSome[Scope](ZLayer.succeed(ZConnectionPoolConfig.default))
+        zenv   <- make(acquire).build.provideSome[Scope](ZLayer.succeed(config))
       } yield zenv.get[ZConnectionPool]
     }
 
@@ -187,4 +188,5 @@ object ZConnectionPool {
         def invalidate(conn: ZConnection): UIO[Any]          = pool.invalidate(conn)
       }
     }
+
 }

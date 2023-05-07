@@ -6,15 +6,15 @@ import zio.jdbc.StatefulConnection._
 import java.sql.Connection
 
 final class StatefulConnection(
-  val underlying: Connection,
-  dirtyBits: Ref[Int],
-  defaultTxnIsolationLevel: TransactionIsolationLevel
+  private[jdbc] val underlying: Connection,
+  private[jdbc] val dirtyBits: Ref[Int],
+  private[jdbc] val defaultTxnIsolationLevel: TransactionIsolationLevel
 ) {
 
   def resetState: Task[Unit] =
     for {
       currentDirtyBits <- dirtyBits.get
-      _                <- ZIO.when(currentDirtyBits != 0) {
+      _                <- ZIO.when(currentDirtyBits != DirtyBitInitial) {
                             for {
                               _ <- reset(DirtyBitAutoCommit)(_.setAutoCommit(DefaultAutoCommitMode))
                               _ <- reset(DirtyBitTransactionIsolation)(_.setTransactionIsolation(defaultTxnIsolationLevel.value))
