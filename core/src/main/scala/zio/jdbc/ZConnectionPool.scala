@@ -167,12 +167,16 @@ object ZConnectionPool {
                     for {
                       connection <- pool.get
                       _          <- ZIO.addFinalizerExit {
-                                      case Exit.Success(_) => ZIO.unit
-                                      case Exit.Failure(_) => connection.rollback.ignoreLogged
+                                      case Exit.Success(_) =>
+                                        ZIO.unit
+                                      case Exit.Failure(_) =>
+                                        for {
+                                          autoCommitMode <- connection.access(_.getAutoCommit).orElseSucceed(true)
+                                          _              <- ZIO.unless(autoCommitMode)(connection.rollback.ignoreLogged)
+                                        } yield ()
                                     }
                     } yield connection
                   }
-
       } yield new ZConnectionPool {
         def transaction: ZLayer[Any, Throwable, ZConnection] = tx
         def invalidate(conn: ZConnection): UIO[Any]          = pool.invalidate(conn)
