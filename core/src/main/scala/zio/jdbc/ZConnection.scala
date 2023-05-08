@@ -38,19 +38,21 @@ final class ZConnection(private[jdbc] val connection: Connection) extends AnyVal
   )(f: PreparedStatement => ZIO[Scope, Throwable, A]): ZIO[Scope, Throwable, A] =
     accessZIO { connection =>
       for {
-        statement <- ZIO.acquireRelease(ZIO.attempt {
-                       val sb = new StringBuilder()
-                       sql.foreachSegment(syntax => sb.append(syntax.value))(_ => sb.append("?"))
-                       connection.prepareStatement(sb.toString, Statement.RETURN_GENERATED_KEYS)
-                     })(statement => ZIO.attemptBlocking(statement.close()).ignoreLogged)
-        _         <- ZIO.attempt {
-                       var paramIndex = 1
-                       sql.foreachSegment(_ => ()) { param =>
-                         param.setter.setValue(statement, paramIndex, param.value)
-                         paramIndex += 1
-                       }
-                     }
-        result    <- f(statement)
+        transactionIsolationLevel <- currentTransactionIsolationLevel.get
+        statement                 <- ZIO.acquireRelease(ZIO.attempt {
+                                       val sb = new StringBuilder()
+                                       sql.foreachSegment(syntax => sb.append(syntax.value))(_ => sb.append("?"))
+                                       connection.setTransactionIsolation(transactionIsolationLevel.toInt)
+                                       connection.prepareStatement(sb.toString, Statement.RETURN_GENERATED_KEYS)
+                                     })(statement => ZIO.attemptBlocking(statement.close()).ignoreLogged)
+        _                         <- ZIO.attempt {
+                                       var paramIndex = 1
+                                       sql.foreachSegment(_ => ()) { param =>
+                                         param.setter.setValue(statement, paramIndex, param.value)
+                                         paramIndex += 1
+                                       }
+                                     }
+        result                    <- f(statement)
       } yield result
     }.tapErrorCause { cause => // TODO: Question: do we want logging here, switch to debug for now
       ZIO.logAnnotate("SQL", sql.toString)(

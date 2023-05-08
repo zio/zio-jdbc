@@ -33,4 +33,6 @@ package object jdbc {
   val transaction: ZLayer[ZConnectionPool, Throwable, ZConnection] =
     ZLayer(ZIO.serviceWith[ZConnectionPool](_.transaction)).flatten
 
+  private[jdbc] val currentTransactionIsolationLevel: FiberRef[TransactionIsolationLevel] =
+    FiberRef.unsafe.make[TransactionIsolationLevel](TransactionIsolationLevel.None)(Unsafe.unsafe)
 }
