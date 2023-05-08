@@ -42,7 +42,9 @@ final class ZConnection(private[jdbc] val connection: Connection) extends AnyVal
         statement                 <- ZIO.acquireRelease(ZIO.attempt {
                                        val sb = new StringBuilder()
                                        sql.foreachSegment(syntax => sb.append(syntax.value))(_ => sb.append("?"))
-                                       connection.setTransactionIsolation(transactionIsolationLevel.toInt)
+                                       transactionIsolationLevel.foreach { transactionIsolationLevel =>
+                                         connection.setTransactionIsolation(transactionIsolationLevel.toInt)
+                                       }
                                        connection.prepareStatement(sb.toString, Statement.RETURN_GENERATED_KEYS)
                                      })(statement => ZIO.attemptBlocking(statement.close()).ignoreLogged)
         _                         <- ZIO.attempt {

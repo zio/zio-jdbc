@@ -23,11 +23,10 @@ import java.sql.Connection
 sealed trait TransactionIsolationLevel extends ZIOAspect[Nothing, Any, Nothing, Any, Nothing, Any] { self =>
 
   def apply[R, E, A](zio: ZIO[R, E, A])(implicit trace: Trace): ZIO[R, E, A] =
-    currentTransactionIsolationLevel.locally(self)(zio)
+    currentTransactionIsolationLevel.locally(Some(self))(zio)
 
   def toInt: Int =
     self match {
-      case TransactionIsolationLevel.None            => Connection.TRANSACTION_NONE
       case TransactionIsolationLevel.ReadUncommitted => Connection.TRANSACTION_READ_UNCOMMITTED
       case TransactionIsolationLevel.ReadCommitted   => Connection.TRANSACTION_READ_COMMITTED
       case TransactionIsolationLevel.RepeatableRead  => Connection.TRANSACTION_REPEATABLE_READ
@@ -36,7 +35,6 @@ sealed trait TransactionIsolationLevel extends ZIOAspect[Nothing, Any, Nothing, 
 }
 
 object TransactionIsolationLevel {
-  case object None            extends TransactionIsolationLevel
   case object ReadUncommitted extends TransactionIsolationLevel
   case object ReadCommitted   extends TransactionIsolationLevel
   case object RepeatableRead  extends TransactionIsolationLevel
