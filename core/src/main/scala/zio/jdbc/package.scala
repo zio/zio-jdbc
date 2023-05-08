@@ -15,12 +15,9 @@
  */
 package zio
 
-import zio.jdbc.SqlFragment.{ Segment, Setter }
-import zio.jdbc.{ JdbcEncoder, SqlFragment }
-
 import scala.language.implicitConversions
 
-package object jdbc extends LowPriorityImplicits1 {
+package object jdbc {
 
   implicit def sqlInterpolator(sc: StringContext): SqlInterpolator = new SqlInterpolator(sc)
 
@@ -36,16 +33,4 @@ package object jdbc extends LowPriorityImplicits1 {
   val transaction: ZLayer[ZConnectionPool, Throwable, ZConnection] =
     ZLayer(ZIO.serviceWith[ZConnectionPool](_.transaction)).flatten
 
-}
-trait LowPriorityImplicits1 extends LowPriorityImplicits2 {
-
-  implicit def paramSegment[A](a: A)(implicit setter: Setter[A]): Segment.Param =
-    Segment.Param(a, setter.asInstanceOf[Setter[Any]])
-
-  implicit def nestedSqlSegment[A](sql: SqlFragment): Segment.Nested = Segment.Nested(sql)
-}
-
-trait LowPriorityImplicits2 {
-  implicit def segmentFromJdbcEncoder[A](obj: A)(implicit encoder: JdbcEncoder[A]): Segment =
-    Segment.Nested(encoder.encode(obj))
 }

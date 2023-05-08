@@ -117,10 +117,10 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
     implicit val jdbcDecoder: JdbcDecoder[User] =
       JdbcDecoder[(String, Int)]().map[User](t => User(t._1, t._2))
 
-    implicit val jdbcEncoder: JdbcEncoder[User] = (value: User) => {
+    implicit val jdbcEncoder: JdbcEncoder[User] = JdbcEncoder { value =>
       val name = value.name
       val age  = value.age
-      sql"""${name}""" ++ ", " ++ s"${age}"
+      sql"""$name""" ++ ", " ++ s"$age"
     }
   }
 
@@ -130,10 +130,10 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
     implicit val jdbcDecoder: JdbcDecoder[UserNoId] =
       JdbcDecoder[(String, Int)]().map[UserNoId](t => UserNoId(t._1, t._2))
 
-    implicit val jdbcEncoder: JdbcEncoder[UserNoId] = (value: UserNoId) => {
+    implicit val jdbcEncoder: JdbcEncoder[UserNoId] = JdbcEncoder { value =>
       val name = value.name
       val age  = value.age
-      sql"""${name}""" ++ ", " ++ s"${age}"
+      sql"""$name""" ++ ", " ++ s"$age"
     }
   }
 

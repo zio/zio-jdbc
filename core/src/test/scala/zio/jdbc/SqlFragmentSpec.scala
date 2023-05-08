@@ -46,13 +46,10 @@ object SqlFragmentSpec extends ZIOSpecDefault {
         } +
         test("type safe interpolation") {
           final case class Foo(value: String)
-          implicit val fooParamSetter: SqlFragment.Setter[Foo] = SqlFragment.Setter[String]().contramap(_.toString)
+          implicit val fooParamSetter: JdbcEncoder[Foo] = JdbcEncoder[String]().contramap(_.toString)
 
           val testSql = sql"${Foo("test")}"
 
-          assertTrue(testSql.segments.collect { case SqlFragment.Segment.Param(_, setter) =>
-            setter
-          }.head eq fooParamSetter) &&
           assertTrue(testSql.toString == "Sql(?, Foo(test))")
         } +
         suite(" SqlFragment.ParamSetter instances") { // TODO figure out how to test at PrepareStatement level
@@ -226,10 +223,10 @@ object SqlFragmentSpec extends ZIOSpecDefault {
         } +
         test("Custom JdbcEncoder") {
 
-          implicit val byteArrayjdbcEncoder: JdbcEncoder[Base64Array] =
-            value => s"FROM_BASE64('${Base64.getEncoder.encodeToString(value.arr)}')"
+          implicit val byteArrayjdbcEncoder: JdbcEncoder[Array[Byte]] =
+            JdbcEncoder(value => s"FROM_BASE64('${Base64.getEncoder.encodeToString(value)}')")
 
-          val bytes = Base64Array(Array[Byte](1, 2, 3))
+          val bytes = Array[Byte](1, 2, 3)
 
           val result = sql"UPDATE foo SET bytes = $bytes"
 

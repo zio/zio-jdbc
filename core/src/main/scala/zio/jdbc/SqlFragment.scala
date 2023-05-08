@@ -208,14 +208,22 @@ object SqlFragment {
     final case class Param(value: Any, setter: Setter[Any]) extends Segment
     final case class Nested(sql: SqlFragment)               extends Segment
 
+    implicit def jdbcEncoderSegment[A](obj: A)(implicit encoder: JdbcEncoder[A]): Segment =
+      encoder.setter match {
+        case Some(value) => Segment.Param(obj, value.asInstanceOf[Setter[Any]])
+        case None        => encoder.encode(obj)
+      }
+
+    implicit def nestedSqlSegment[A](sql: SqlFragment): Segment.Nested = Segment.Nested(sql)
+
   }
 
-  trait Setter[A] { self =>
-    def setValue(ps: PreparedStatement, index: Int, value: A): Unit
-    def setNull(ps: PreparedStatement, index: Int): Unit
+  trait Setter[-A] { self =>
+    def unsafeSetValue(ps: PreparedStatement, index: Int, value: A): Unit
+    def unsafeSetNull(ps: PreparedStatement, index: Int): Unit
 
     final def contramap[B](f: B => A): Setter[B] =
-      Setter((ps, i, value) => self.setValue(ps, i, f(value)), (ps, i) => self.setNull(ps, i))
+      Setter((ps, i, value) => self.unsafeSetValue(ps, i, f(value)), (ps, i) => self.unsafeSetNull(ps, i))
   }
 
   object Setter {
@@ -223,28 +231,28 @@ object SqlFragment {
 
     def apply[A](onValue: (PreparedStatement, Int, A) => Unit, onNull: (PreparedStatement, Int) => Unit): Setter[A] =
       new Setter[A] {
-        def setValue(ps: PreparedStatement, index: Int, value: A): Unit = onValue(ps, index, value)
-        def setNull(ps: PreparedStatement, index: Int): Unit            = onNull(ps, index)
+        def unsafeSetValue(ps: PreparedStatement, index: Int, value: A): Unit = onValue(ps, index, value)
+        def unsafeSetNull(ps: PreparedStatement, index: Int): Unit            = onNull(ps, index)
       }
 
     def forSqlType[A](onValue: (PreparedStatement, Int, A) => Unit, sqlType: Int): Setter[A] = new Setter[A] {
-      def setValue(ps: PreparedStatement, index: Int, value: A): Unit = onValue(ps, index, value)
-      def setNull(ps: PreparedStatement, index: Int): Unit            = ps.setNull(index, sqlType)
+      def unsafeSetValue(ps: PreparedStatement, index: Int, value: A): Unit = onValue(ps, index, value)
+      def unsafeSetNull(ps: PreparedStatement, index: Int): Unit            = ps.setNull(index, sqlType)
     }
 
     def other[A](onValue: (PreparedStatement, Int, A) => Unit, sqlType: String): Setter[A] = new Setter[A] {
-      def setValue(ps: PreparedStatement, index: Int, value: A): Unit = onValue(ps, index, value)
-      def setNull(ps: PreparedStatement, index: Int): Unit            = ps.setNull(index, Types.OTHER, sqlType)
+      def unsafeSetValue(ps: PreparedStatement, index: Int, value: A): Unit = onValue(ps, index, value)
+      def unsafeSetNull(ps: PreparedStatement, index: Int): Unit            = ps.setNull(index, Types.OTHER, sqlType)
     }
 
     implicit def optionParamSetter[A](implicit setter: Setter[A]): Setter[Option[A]] =
       Setter(
         (ps, i, value) =>
           value match {
-            case Some(value) => setter.setValue(ps, i, value)
-            case None        => setter.setNull(ps, i)
+            case Some(value) => setter.unsafeSetValue(ps, i, value)
+            case None        => setter.unsafeSetNull(ps, i)
           },
-        (ps, i) => setter.setNull(ps, i)
+        (ps, i) => setter.unsafeSetNull(ps, i)
       )
 
     implicit val intSetter: Setter[Int]               = forSqlType((ps, i, value) => ps.setInt(i, value), Types.INTEGER)
