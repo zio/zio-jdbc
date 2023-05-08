@@ -23,7 +23,8 @@ import java.sql.Connection
 final class ZStatefulConnection(
   private[jdbc] val underlying: Connection,
   private[jdbc] val dirtyBits: Ref[Int],
-  private[jdbc] val defaultTxnIsolationLevel: TransactionIsolationLevel
+  private[jdbc] val state: Ref[State],
+  private[jdbc] val defaultIsolationLevel: TransactionIsolationLevel
 ) {
 
   def resetState: Task[Unit] =
@@ -32,17 +33,20 @@ final class ZStatefulConnection(
       _                <- ZIO.when(currentDirtyBits != DirtyBitInitial) {
                             for {
                               _ <- reset(DirtyBitAutoCommit)(_.setAutoCommit(DefaultAutoCommitMode))
-                              _ <- reset(DirtyBitTransactionIsolation)(_.setTransactionIsolation(defaultTxnIsolationLevel.value))
+                              _ <- reset(DirtyBitTransactionIsolation)(_.setTransactionIsolation(defaultIsolationLevel.value))
                               _ <- dirtyBits.set(DirtyBitInitial)
+                              _ <- state.set(State.default(defaultIsolationLevel))
                             } yield ()
                           }
     } yield ()
 
   def setAutoCommit(autoCommit: Boolean): Task[Unit] =
-    set(DirtyBitAutoCommit)(_.setAutoCommit(autoCommit))
+    set(autoCommit, DirtyBitAutoCommit)(_.autoCommitMode)(_.copy(autoCommitMode = autoCommit))(_.setAutoCommit)
 
   def setTransactionIsolation(level: TransactionIsolationLevel): Task[Unit] =
-    set(DirtyBitTransactionIsolation)(_.setTransactionIsolation(level.value))
+    set(level.value, DirtyBitTransactionIsolation)(_.isolationLevel)(_.copy(isolationLevel = level.value))(
+      _.setTransactionIsolation
+    )
 
   private def reset[A](dirtyBit: Int)(f: Connection => A): Task[Unit] =
     for {
@@ -50,10 +54,19 @@ final class ZStatefulConnection(
       _                <- ZIO.when((currentDirtyBits & dirtyBit) != 0)(ZIO.attemptBlocking(f(underlying)))
     } yield ()
 
-  private def set[A](dirtyBit: Int)(f: Connection => A): Task[Unit] =
+  private def set[A, B](
+    value: A,
+    dirtyBit: Int
+  )(stateValue: State => A)(updateState: State => State)(f: Connection => A => B): Task[Unit] =
     for {
-      _ <- ZIO.attemptBlocking(f(underlying))
-      _ <- dirtyBits.update(_ | dirtyBit)
+      currentState <- state.get
+      _            <- ZIO.unless(stateValue(currentState) == value) {
+                        for {
+                          _ <- ZIO.attemptBlocking(f(underlying)(value))
+                          _ <- dirtyBits.update(_ | dirtyBit)
+                          _ <- state.update(updateState)
+                        } yield ()
+                      }
     } yield ()
 
 }
@@ -62,10 +75,21 @@ object ZStatefulConnection {
 
   def make(underlying: Connection): Task[ZStatefulConnection] =
     for {
-      defaultTxnIsolation      <- ZIO.attemptBlocking(underlying.getTransactionIsolation)
-      defaultTxnIsolationLevel <- ZIO.fromEither(TransactionIsolationLevel.fromInt(defaultTxnIsolation))
+      defaultIsolationLevelRaw <- ZIO.attemptBlocking(underlying.getTransactionIsolation)
+      defaultIsolationLevel    <- ZIO.fromEither(TransactionIsolationLevel.fromInt(defaultIsolationLevelRaw))
       dirtyBits                <- Ref.make(DirtyBitInitial)
-    } yield new ZStatefulConnection(underlying, dirtyBits, defaultTxnIsolationLevel)
+      state                    <- Ref.make(State.default(defaultIsolationLevel))
+    } yield new ZStatefulConnection(underlying, dirtyBits, state, defaultIsolationLevel)
+
+  final case class State(
+    autoCommitMode: Boolean,
+    isolationLevel: Int
+  )
+
+  object State {
+    def default(defaultTxnIsolationLevel: TransactionIsolationLevel): State =
+      State(autoCommitMode = DefaultAutoCommitMode, isolationLevel = defaultTxnIsolationLevel.value)
+  }
 
   private[jdbc] val DefaultAutoCommitMode = true
 

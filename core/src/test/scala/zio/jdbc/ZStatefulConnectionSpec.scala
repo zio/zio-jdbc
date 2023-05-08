@@ -29,29 +29,44 @@ object ZStatefulConnectionSpec extends ZIOSpecDefault {
           stateful  <- ZIO.service[ZStatefulConnection]
           dirtyBits <- stateful.dirtyBits.get
         } yield assert(dirtyBits)(equalTo(ZStatefulConnection.DirtyBitInitial)) &&
-          assert(stateful.defaultTxnIsolationLevel)(equalTo(TransactionIsolationLevel.ReadUncommitted))
+          assert(stateful.defaultIsolationLevel)(equalTo(TransactionIsolationLevel.ReadUncommitted))
       }
     ).provide(statefulConnectionLayer)
 
   val integrationSpec =
     suite("integration")(
-      test("setAutoCommit call makes bits dirty") {
+      test("setAutoCommit(false) call makes bits dirty") {
+        transaction {
+          for {
+            stateful  <- ZIO.service[ZConnection].map(_.stateful)
+            _         <- stateful.setAutoCommit(false)
+            dirtyBits <- stateful.dirtyBits.get
+            state     <- stateful.state.get
+          } yield assertTrue(isAutoCommitDirty(dirtyBits)) &&
+            assert(state.autoCommitMode)(equalTo(false))
+        }
+      },
+      test("calling setAutoCommit(false) multiple times makes bits dirty") {
+        transaction {
+          for {
+            stateful  <- ZIO.service[ZConnection].map(_.stateful)
+            times     <- Random.nextIntBetween(2, 10)
+            _         <- stateful.setAutoCommit(false).repeatN(times)
+            dirtyBits <- stateful.dirtyBits.get
+            state     <- stateful.state.get
+          } yield assertTrue(isAutoCommitDirty(dirtyBits)) &&
+            assert(state.autoCommitMode)(equalTo(false))
+        }
+      },
+      test("setAutoCommit(true) call doesn't make bits dirty") {
         transaction {
           for {
             stateful  <- ZIO.service[ZConnection].map(_.stateful)
             _         <- stateful.setAutoCommit(true)
             dirtyBits <- stateful.dirtyBits.get
-          } yield assertTrue(isAutoCommitDirty(dirtyBits))
-        }
-      },
-      test("calling setAutoCommit multiple times makes bits dirty") {
-        transaction {
-          for {
-            stateful  <- ZIO.service[ZConnection].map(_.stateful)
-            times     <- Random.nextIntBetween(2, 10)
-            _         <- stateful.setAutoCommit(true).repeatN(times)
-            dirtyBits <- stateful.dirtyBits.get
-          } yield assertTrue(isAutoCommitDirty(dirtyBits))
+            state     <- stateful.state.get
+          } yield assert(isAutoCommitDirty(dirtyBits))(equalTo(false)) &&
+            assertTrue(state.autoCommitMode)
         }
       },
       test("resetState successfully") {
@@ -61,13 +76,17 @@ object ZStatefulConnectionSpec extends ZIOSpecDefault {
             _                <- stateful.setAutoCommit(false)
             autoCommitBefore <- getAutoCommit(stateful)
             dirtyBitsBefore  <- stateful.dirtyBits.get
+            stateBefore      <- stateful.state.get
             _                <- stateful.resetState
             autoCommitAfter  <- getAutoCommit(stateful)
             dirtyBitsAfter   <- stateful.dirtyBits.get
+            stateAfter       <- stateful.state.get
           } yield assert(autoCommitBefore)(equalTo(false)) &&
             assertTrue(isAutoCommitDirty(dirtyBitsBefore)) &&
-            assert(autoCommitAfter)(equalTo(true)) &&
-            assertTrue(!isAutoCommitDirty(dirtyBitsAfter))
+            assert(stateBefore.autoCommitMode)(equalTo(false)) &&
+            assertTrue(autoCommitAfter) &&
+            assert(isAutoCommitDirty(dirtyBitsAfter))(equalTo(false)) &&
+            assertTrue(stateAfter.autoCommitMode)
         }
       }
     ).provide(connectionPoolLayer)
