@@ -172,6 +172,21 @@ object ZConnectionPool {
                     for {
                       connection <- pool.get
                       _          <- connection.stateful.resetState
+                      // commit when a transaction succeed and autoCommit is false
+                      _          <- ZIO.addFinalizerExit {
+                                      case Exit.Success(_) =>
+                                        for {
+                                          autoCommitMode <- connection.access(_.getAutoCommit).orElseSucceed(true)
+                                          _              <- ZIO.unless(autoCommitMode)(
+                                                              connection.commit
+                                                                .onError(_ => connection.rollback.ignoreLogged)
+                                                                .ignoreLogged
+                                                            )
+                                        } yield ()
+                                      case Exit.Failure(_) =>
+                                        ZIO.unit
+                                    }
+                      // rollback when a transaction failed and autoCommit is false
                       _          <- ZIO.addFinalizerExit {
                                       case Exit.Success(_) =>
                                         ZIO.unit

@@ -19,6 +19,9 @@ import scala.language.implicitConversions
 
 package object jdbc {
 
+  type ZQuery =
+    ZConnection with Option[TransactionIsolationLevel]
+
   implicit def sqlInterpolator(sc: StringContext): SqlInterpolator = new SqlInterpolator(sc)
 
   /**
@@ -30,7 +33,18 @@ package object jdbc {
    * A new transaction, which may be applied to ZIO effects that require a
    * connection in order to execute such effects in the transaction.
    */
-  val transaction: ZLayer[ZConnectionPool, Throwable, ZConnection] =
-    ZLayer(ZIO.serviceWith[ZConnectionPool](_.transaction)).flatten
+  val transaction: ZLayer[ZConnectionPool, Throwable, ZQuery] =
+    ZLayer(ZIO.serviceWith[ZConnectionPool](_.transaction)).flatten ++
+      ZLayer.succeed(Option.empty[TransactionIsolationLevel])
+
+  /**
+   * A new transaction for which the isolation level is set, which may be applied to
+   * ZIO effects that require a connection in order to execute such effects in the transaction.
+   * For this transaction autoCommit is set to false automatically and `Connection.commit` will
+   * be called when all queries within the transaction succeed.
+   */
+  def transactionIsolationLevel(level: TransactionIsolationLevel): ZLayer[ZConnectionPool, Throwable, ZQuery] =
+    ZLayer(ZIO.serviceWith[ZConnectionPool](_.transaction)).flatten ++
+      ZLayer.succeed(Option(level))
 
 }

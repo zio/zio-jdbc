@@ -14,9 +14,10 @@ object App extends ZIOAppDefault {
     Basic.ex0.execute
   }
 
-  val insertRow: ZIO[ZConnectionPool, Throwable, UpdateResult] = transaction {
-    sql"insert into users (name, age)".values(sampleUser1, sampleUser2).insert
-  }
+  val insertRow: ZIO[ZConnectionPool, Throwable, UpdateResult] =
+    transaction {
+      sql"insert into users (name, age)".values(sampleUser1, sampleUser2).insert
+    }
 
   val select: ZIO[ZConnectionPool, Throwable, Chunk[User]] = transaction {
     Basic.ex2.as[User].selectAll

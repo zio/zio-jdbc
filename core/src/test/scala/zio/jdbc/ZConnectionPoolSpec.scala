@@ -45,7 +45,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
   val createUsers: ZIO[ZConnectionPool with Any, Throwable, Unit] =
     transaction {
       sql"""
-      create table users (
+      create table if not exists users (
         id identity primary key,
         name varchar not null,
         age int not null
@@ -191,10 +191,29 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
                                 }
             autoCommitAfter  <- transaction(ZIO.serviceWithZIO[ZConnection](getAutoCommit))
           } yield assertTrue(!autoCommitBefore) && assertTrue(autoCommitAfter)
-        }
+        } +
+          test("set isolation level") {
+            def getLevel =
+              ZIO.service[ZConnection].flatMap(_.getTransactionIsolation)
+
+            for {
+              _           <- createUsers
+              levelBefore <- transaction(getLevel)
+              level       <- transactionIsolationLevel(TransactionIsolationLevel.Serializable) {
+                               for {
+                                 _     <-
+                                   sql"select name, age from users where name = ${sherlockHolmes.name}".query[User].selectOne
+                                 level <- getLevel
+                               } yield level
+                             }
+              levelAfter  <- transaction(getLevel)
+            } yield assert(levelBefore)(equalTo(TransactionIsolationLevel.ReadCommitted)) &&
+              assert(level)(equalTo(TransactionIsolationLevel.Serializable)) &&
+              assert(levelAfter)(equalTo(TransactionIsolationLevel.ReadCommitted))
+          }
       }.provide(
         ZConnectionPool.h2test(ZConnectionPoolConfig.default.copy(minConnections = 1, maxConnections = 1)).orDie
-      ) +
+      ) @@ sequential +
       suite("ZConnectionPoolSpec integration tests") {
         suite("pool") {
           test("creation") {

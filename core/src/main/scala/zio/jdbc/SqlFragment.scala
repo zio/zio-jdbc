@@ -131,7 +131,7 @@ final class SqlFragment(private[jdbc] val build: ChunkBuilder[Segment] => Unit) 
   /**
    * Executes a SQL statement, such as one that creates a table.
    */
-  def execute: ZIO[ZConnection, Throwable, Unit] =
+  def execute: ZIO[ZQuery, Throwable, Unit] =
     ZIO.scoped(for {
       connection <- ZIO.service[ZConnection]
       _          <- connection.executeSqlWith(self) { ps =>
@@ -142,7 +142,7 @@ final class SqlFragment(private[jdbc] val build: ChunkBuilder[Segment] => Unit) 
   /**
    * Executes a SQL delete query.
    */
-  def delete: ZIO[ZConnection, Throwable, Long] =
+  def delete: ZIO[ZQuery, Throwable, Long] =
     ZIO.scoped(executeLargeUpdate(self))
 
   /**
@@ -151,23 +151,23 @@ final class SqlFragment(private[jdbc] val build: ChunkBuilder[Segment] => Unit) 
    * parsed and returned as `Chunk[Long]`. If keys are non-numeric, a
    * `Chunk.empty` is returned.
    */
-  def insert: ZIO[ZConnection, Throwable, UpdateResult] =
+  def insert: ZIO[ZQuery, Throwable, UpdateResult] =
     ZIO.scoped(executeWithUpdateResult(self))
 
   /**
    * Performs a SQL update query, returning a count of rows updated.
    */
-  def update: ZIO[ZConnection, Throwable, Long] =
+  def update: ZIO[ZQuery, Throwable, Long] =
     ZIO.scoped(executeLargeUpdate(self))
 
-  private def executeLargeUpdate(sql: SqlFragment): ZIO[Scope with ZConnection, Throwable, Long] = for {
+  private def executeLargeUpdate(sql: SqlFragment): ZIO[Scope with ZQuery, Throwable, Long] = for {
     connection <- ZIO.service[ZConnection]
     count      <- connection.executeSqlWith(sql) { ps =>
                     ZIO.attempt(ps.executeLargeUpdate())
                   }
   } yield count
 
-  private def executeWithUpdateResult(sql: SqlFragment): ZIO[Scope with ZConnection, Throwable, UpdateResult] =
+  private def executeWithUpdateResult(sql: SqlFragment): ZIO[Scope with ZQuery, Throwable, UpdateResult] =
     for {
       connection <- ZIO.service[ZConnection]
       result     <- connection.executeSqlWith(sql) { ps =>
