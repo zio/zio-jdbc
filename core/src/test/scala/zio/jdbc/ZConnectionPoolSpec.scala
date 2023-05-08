@@ -174,22 +174,13 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
           }
         } +
         test("auto invalidate dead connections") {
-          def testPoolInvalid(
-            config: ZConnectionPoolConfig = ZConnectionPoolConfig(
-              1,
-              1,
-              ZConnectionPoolConfig.defaultRetryPolicy,
-              300.seconds
-            ) //Only one connection in pool
-          ) =
-            for { //Pool that contains some invalid connections
-              conns  <- Queue.unbounded[TestConnection]
-              getConn = ZIO.succeed(new TestConnection).tap(conns.offer(_))
-              pool   <- ZLayer.succeed(config).to(ZConnectionPool.make(getConn)).build.map(_.get)
-            } yield conns -> pool
+          def testPoolSingle = testPool(
+            ZConnectionPoolConfig(1, 1, ZConnectionPoolConfig.defaultRetryPolicy, 300.seconds)
+          ).map(_._2) //Pool with only one connection
+
           ZIO.scoped {
             for {
-              pool       <- testPoolInvalid().map(_._2)
+              pool       <- testPoolSingle
               conn       <- ZIO.scoped(for {
                               conn <- pool.transaction.build.map(_.get)
                               _    <- conn.close
