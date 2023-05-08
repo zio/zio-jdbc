@@ -30,16 +30,36 @@ import scala.language.implicitConversions
  * @param segments
  * @param decode
  */
-final class SqlFragment(private[jdbc] val build: ChunkBuilder[Segment] => Unit) { self =>
+sealed trait SqlFragment { self =>
 
   def ++(that: SqlFragment): SqlFragment =
-    new SqlFragment(builder => { self.build(builder); that.build(builder) })
+    SqlFragment.AndThen(self, that)
 
   def and(first: SqlFragment, rest: SqlFragment*): SqlFragment =
     and(first +: rest)
 
   def and(elements: Iterable[SqlFragment]): SqlFragment =
     self ++ SqlFragment.prependEach(SqlFragment.and, elements)
+
+  final def build(builder: ChunkBuilder[Segment]): Unit = {
+
+    val stack = zio.internal.Stack[SqlFragment]()
+
+    var currentSqlFragment = self
+
+    while (currentSqlFragment ne null)
+      currentSqlFragment match {
+        case SqlFragment.AndThen(left, right) =>
+          stack.push(right)
+          currentSqlFragment = left
+        case SqlFragment.Append(segments)     =>
+          builder ++= segments
+          currentSqlFragment = stack.pop()
+        case SqlFragment.FromFunction(f)      =>
+          f(builder)
+          currentSqlFragment = stack.pop()
+      }
+  }
 
   override def equals(that: Any): Boolean =
     that match {
@@ -202,6 +222,9 @@ object SqlFragment {
 
   val empty: SqlFragment = SqlFragment(Chunk.empty[Segment])
 
+  def fromFunction(f: ChunkBuilder[Segment] => Unit): SqlFragment =
+    SqlFragment.FromFunction(f)
+
   sealed trait Segment
   object Segment {
     final case class Syntax(value: String)                  extends Segment
@@ -281,7 +304,7 @@ object SqlFragment {
   def apply(sql: String): SqlFragment = sql
 
   def apply(segments: Chunk[Segment]): SqlFragment =
-    new SqlFragment(builder => builder ++= segments)
+    SqlFragment.Append(segments)
 
   def deleteFrom(table: String): SqlFragment =
     s"DELETE FROM $table"
@@ -327,4 +350,7 @@ object SqlFragment {
   private[jdbc] val values      = sql" VALUES "
   private[jdbc] val where       = sql" WHERE "
 
+  private final case class AndThen(left: SqlFragment, right: SqlFragment) extends SqlFragment
+  private final case class Append(override val segments: Chunk[Segment])  extends SqlFragment
+  private final case class FromFunction(f: ChunkBuilder[Segment] => Unit) extends SqlFragment
 }

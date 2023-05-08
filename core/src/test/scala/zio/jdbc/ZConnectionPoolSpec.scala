@@ -2,6 +2,7 @@ package zio.jdbc
 
 import zio._
 import zio.schema._
+import zio.test.Assertion._
 import zio.test.TestAspect._
 import zio.test._
 
@@ -48,13 +49,13 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
   val user4: UserNoId = UserNoId("John Watson III", 98)
   val user5: UserNoId = UserNoId("Sherlock Holmes II", 2)
 
-  def genUser = {
+  def genUser: UserNoId = {
     val name = Random.nextString(8)
     val id   = Random.nextInt(100000)
     UserNoId(name, id)
   }
 
-  def genUsers(size: Int) =
+  def genUsers(size: Int): List[UserNoId] =
     List.fill(size)(genUser)
 
   val createUsers: ZIO[ZConnectionPool with Any, Throwable, Unit] =
@@ -139,11 +140,12 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
 
   def spec: Spec[TestEnvironment, Any] =
     suite("ZConnectionPoolSpec") {
-      def testPool(config: ZConnectionPoolConfig = ZConnectionPoolConfig.default) = for {
-        conns  <- Queue.unbounded[TestConnection]
-        getConn = ZIO.succeed(new TestConnection).tap(conns.offer(_))
-        pool   <- ZLayer.succeed(config).to(ZConnectionPool.make(getConn)).build.map(_.get)
-      } yield conns -> pool
+      def testPool(config: ZConnectionPoolConfig = ZConnectionPoolConfig.default) =
+        for {
+          conns  <- Queue.unbounded[TestConnection]
+          getConn = ZIO.succeed(new TestConnection).tap(conns.offer(_))
+          pool   <- ZLayer.succeed(config).to(ZConnectionPool.make(getConn)).build.map(_.get)
+        } yield conns -> pool
 
       test("make") {
         ZIO.scoped {
@@ -157,7 +159,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
             for {
               pool <- testPool().map(_._2)
               conn <- pool.transaction.build.map(_.get)
-              connClosed = conn.connection.isClosed // temp workaround for assertTrue eval out of scope
+              connClosed = conn.underlying.isClosed // temp workaround for assertTrue eval out of scope
             } yield assertTrue(!connClosed)
           }
         } +
@@ -168,7 +170,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
               conn <- ZIO.scoped(for {
                         conn <- pool.transaction.build.map(_.get)
                         _    <- pool.invalidate(conn)
-                      } yield conn.connection)
+                      } yield conn.underlying)
               invalidatedClosed = conn.isClosed // temp workaround for assertTrue eval out of scope
             } yield assertTrue(invalidatedClosed)
           }
@@ -184,10 +186,10 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
               conn       <- ZIO.scoped(for {
                               conn <- pool.transaction.build.map(_.get)
                               _    <- conn.close
-                            } yield conn.connection)
+                            } yield conn.underlying)
               invalidatedClosed = conn.isClosed // temp workaround for assertTrue eval out of scope
               conn2      <- pool.transaction.build.map(_.get)
-              conn2Closed = conn2.connection.isClosed
+              conn2Closed = conn2.underlying.isClosed
             } yield assertTrue(
               invalidatedClosed && !conn2Closed
             )
@@ -199,8 +201,8 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
               t1                          <- testPool()
               (conns, pool)                = t1
               conn                        <- pool.transaction.build.map(_.get)
-              isClosedBeforePoolShutdown   = conn.connection.isClosed
-              isClosedAfterPoolShutdownZIO = ZIO.succeed(conn.connection.isClosed)
+              isClosedBeforePoolShutdown   = conn.underlying.isClosed
+              isClosedAfterPoolShutdownZIO = ZIO.succeed(conn.underlying.isClosed)
             } yield (isClosedBeforePoolShutdown, isClosedAfterPoolShutdownZIO, conns.takeAll)
           }.flatMap { case (isClosedBeforePoolShutdown, isClosedAfterPoolShutdownZIO, allConnsZIO) =>
             for {
@@ -286,6 +288,29 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
                          }
               } yield assertTrue(value.contains(Person(sherlockHolmes.name, sherlockHolmes.age)))
             }
+          } +
+          suite("transaction layer finalizer") {
+            test("do not rollback when autoCommit = true") {
+              // `ZIO.addFinalizerExit` doesn't allow throwing exceptions, so the only way to check
+              // if rollback failed is to check if there is a log added by `ignoreLogged`.
+              for {
+                // H2 won't throw an exception on rollback without this property being set to true.
+                _          <- ZIO.attempt(java.lang.System.setProperty("h2.forceAutoCommitOffOnCommit", "true"))
+                result     <- transaction {
+                                for {
+                                  conn   <- ZIO.service[ZConnection]
+                                  _      <- conn.access(_.setAutoCommit(true))
+                                  result <- sql"select * from non_existent_table".execute
+                                } yield result
+                              }.either
+                logEntries <- ZTestLogger.logOutput
+                logMessages = logEntries.map(_.message())
+              } yield assertTrue(
+                !logMessages.contains("An error was silently ignored because it is not anticipated to be useful")
+              ) &&
+                assert(logMessages.size)(equalTo(1)) &&
+                assert(result)(isLeft)
+            }
           }
       }.provide(ZConnectionPool.h2test.orDie) @@ sequential
 
@@ -306,7 +331,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
 
     def setAutoCommit(autoCommit: Boolean): Unit = ???
 
-    def getAutoCommit: Boolean = ???
+    def getAutoCommit: Boolean = true
 
     def commit(): Unit = ???
 
@@ -419,4 +444,5 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
 
     def isWrapperFor(iface: Class[_]): Boolean = ???
   }
+
 }
