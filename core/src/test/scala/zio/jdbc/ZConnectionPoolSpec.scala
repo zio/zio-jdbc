@@ -1,7 +1,7 @@
 package zio.jdbc
 
 import zio._
-import zio.jdbc.Sql.Setter
+import zio.jdbc.SqlFragment.Setter
 import zio.schema._
 import zio.test.Assertion._
 import zio.test.TestAspect._
@@ -239,9 +239,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
                 def assertUsersFound[A: Setter](collection: A) =
                   for {
                     users <- transaction {
-                               selectAll {
-                                 sql"select name, age from users where name IN ($collection)".as[User]
-                               }
+                               sql"select name, age from users where name IN ($collection)".query[User].selectAll
                              }
                   } yield assertTrue(users == Chunk(sherlockHolmes))
 

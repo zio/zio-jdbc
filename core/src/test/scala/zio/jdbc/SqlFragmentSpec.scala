@@ -1,7 +1,7 @@
 package zio.jdbc
 
 import zio.Chunk
-import zio.jdbc.Sql.Setter
+import zio.jdbc.SqlFragment.Setter
 import zio.jdbc.{ transaction => transact }
 import zio.schema.{ Schema, TypeId }
 import zio.test.Assertion._
