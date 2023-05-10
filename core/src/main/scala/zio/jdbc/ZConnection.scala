@@ -44,7 +44,21 @@ final class ZConnection(private[jdbc] val underlying: Connection) extends AnyVal
         transactionIsolationLevel <- currentTransactionIsolationLevel.get
         statement                 <- ZIO.acquireRelease(ZIO.attempt {
                                        val sb = new StringBuilder()
-                                       sql.foreachSegment(syntax => sb.append(syntax.value))(_ => sb.append("?"))
+                                       sql.foreachSegment(syntax => sb.append(syntax.value)) { param =>
+                                         param.value match {
+                                           case iterable: Iterable[_] =>
+                                             sb.append(
+                                               Seq.fill(iterable.iterator.size)("?").mkString(", ")
+                                             )
+
+                                           case array: Array[_] =>
+                                             sb.append(
+                                               Seq.fill(array.length)("?").mkString(", ")
+                                             )
+
+                                           case _ => sb.append("?")
+                                         }
+                                       }
                                        transactionIsolationLevel.foreach { transactionIsolationLevel =>
                                          connection.setTransactionIsolation(transactionIsolationLevel.toInt)
                                        }

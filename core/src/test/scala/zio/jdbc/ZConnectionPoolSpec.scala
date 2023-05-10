@@ -43,6 +43,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
 
   val sherlockHolmes: User = User("Sherlock Holmes", 42)
   val johnWatson: User     = User("John Watson", 40)
+  val johnDoe: User        = User("John Doe", 18)
 
   val user1: UserNoId = UserNoId("User 1", 3)
   val user2: UserNoId = UserNoId("User 2", 4)
@@ -87,6 +88,11 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
   val insertWatson: ZIO[ZConnectionPool with Any, Throwable, UpdateResult] =
     transaction {
       sql"insert into users values (default, ${johnWatson.name}, ${johnWatson.age})".insert
+    }
+
+  val insertJohn: ZIO[ZConnectionPool with Any, Throwable, UpdateResult] =
+    transaction {
+      sql"insert into users values (default, ${johnDoe.name}, ${johnDoe.age})".insert
     }
 
   val insertBatches: ZIO[ZConnectionPool, Throwable, Long] = transaction {
@@ -236,22 +242,26 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
                 } yield assertTrue(value == Chunk(sherlockHolmes, johnWatson))
               } +
               test("select all in") {
+                val namesToSearch = Seq(sherlockHolmes.name, johnDoe.name)
+
                 def assertUsersFound[A: Setter](collection: A) =
                   for {
                     users <- transaction {
                                sql"select name, age from users where name IN ($collection)".query[User].selectAll
                              }
-                  } yield assertTrue(users == Chunk(sherlockHolmes))
+                  } yield assertTrue(
+                    users.map(_.name) == Chunk.from(namesToSearch)
+                  )
 
                 def asserttions =
-                  assertUsersFound(Chunk(sherlockHolmes.name)) &&
-                    assertUsersFound(List(sherlockHolmes.name)) &&
-                    assertUsersFound(Vector(sherlockHolmes.name)) &&
-                    assertUsersFound(Set(sherlockHolmes.name)) &&
-                    assertUsersFound(Array(sherlockHolmes.name))
+                  assertUsersFound(Chunk.from(namesToSearch)) &&
+                    assertUsersFound(namesToSearch.toList) &&
+                    assertUsersFound(namesToSearch.toVector) &&
+                    assertUsersFound(namesToSearch.toSet) &&
+                    assertUsersFound(namesToSearch.toArray)
 
                 for {
-                  _          <- createUsers *> insertSherlock *> insertWatson
+                  _          <- createUsers *> insertSherlock *> insertWatson *> insertJohn
                   testResult <- asserttions
                 } yield testResult
               } +
