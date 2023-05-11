@@ -110,7 +110,7 @@ object ZConnection {
 
     private[this] val initialAutoCommit           = underlying.getAutoCommit()
     private[this] val initialCatalog              = underlying.getCatalog()
-    private[this] val initialClientInfo           = underlying.getClientInfo()
+    private[this] val initialClientInfo           = freeze(underlying.getClientInfo())
     private[this] val initialReadOnly             = underlying.isReadOnly()
     private[this] val initialSchema               = underlying.getSchema()
     private[this] val initialTransactionIsolation = underlying.getTransactionIsolation()
@@ -261,7 +261,15 @@ object ZConnection {
       underlying.unwrap(iface)
   }
 
-  object Restorable {
+  private[jdbc] object Restorable {
+
+    def freeze(properties: java.util.Properties): java.util.Properties = {
+      val frozen = new java.util.Properties()
+      properties.forEach { (k, v) =>
+        val _ = frozen.put(k, v)
+      }
+      frozen
+    }
 
     type Flags = Int
 

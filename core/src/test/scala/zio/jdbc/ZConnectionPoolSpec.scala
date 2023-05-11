@@ -190,7 +190,39 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
               isClosedAfterPoolShutdown <- isClosedAfterPoolShutdownZIO
             } yield assertTrue(!isClosedBeforePoolShutdown && isClosedAfterPoolShutdown && allConns.forall(_.isClosed))
           }
-        } @@ nonFlaky
+        } @@ nonFlaky +
+        test("restore") {
+          ZIO.scoped {
+            for {
+              tuple        <- testPool(ZConnectionPoolConfig.default.copy(minConnections = 1, maxConnections = 1))
+              (conns, pool) = tuple
+              _            <- ZIO.scoped {
+                                pool.transaction.build.map(_.get).tap { connection =>
+                                  ZIO.succeed {
+                                    connection.underlying.setAutoCommit(false)
+                                    connection.underlying.setCatalog("catalog")
+                                    connection.underlying.setClientInfo("clientInfo", "clientInfoValue")
+                                    connection.underlying.setReadOnly(true)
+                                    connection.underlying.setSchema("schema")
+                                    connection.underlying.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE)
+                                  }
+                                }
+                              }
+              conn         <- conns.take
+              autoCommit   <- ZIO.succeed(conn.getAutoCommit)
+              catalog      <- ZIO.succeed(conn.getCatalog)
+              clientInfo   <- ZIO.succeed(conn.getClientInfo("clientInfo"))
+              readOnly     <- ZIO.succeed(conn.isReadOnly)
+              schema       <- ZIO.succeed(conn.getSchema)
+              isolation    <- ZIO.succeed(conn.getTransactionIsolation)
+            } yield assertTrue(autoCommit) &&
+              assertTrue(catalog == "") &&
+              assertTrue(clientInfo == null) &&
+              assertTrue(readOnly == false) &&
+              assertTrue(schema == "") &&
+              assertTrue(isolation == Connection.TRANSACTION_NONE)
+          }
+        }
     } +
       suite("ZConnectionPoolSpec integration tests") {
         suite("pool") {
