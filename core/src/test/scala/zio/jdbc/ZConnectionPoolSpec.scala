@@ -294,8 +294,14 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
           }
       }.provide(ZConnectionPool.h2test.orDie) @@ sequential
 
-  class TestConnection extends Connection {
-    private var closed = false
+  class TestConnection extends Connection { self =>
+    private var closed               = false
+    private var autoCommit           = true
+    private var transactionIsolation = Connection.TRANSACTION_NONE
+    private var catalog              = ""
+    private var schema               = ""
+    private var clientInfo           = new java.util.Properties()
+    private var readOnly             = false
 
     def close(): Unit = closed = true
 
@@ -309,9 +315,9 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
 
     def nativeSQL(sql: String): String = ???
 
-    def setAutoCommit(autoCommit: Boolean): Unit = ???
+    def setAutoCommit(autoCommit: Boolean): Unit = self.autoCommit = autoCommit
 
-    def getAutoCommit: Boolean = true
+    def getAutoCommit: Boolean = autoCommit
 
     def commit(): Unit = ???
 
@@ -319,17 +325,17 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
 
     def getMetaData: DatabaseMetaData = ???
 
-    def setReadOnly(readOnly: Boolean): Unit = ???
+    def setReadOnly(readOnly: Boolean): Unit = self.readOnly = readOnly
 
-    def isReadOnly: Boolean = ???
+    def isReadOnly: Boolean = readOnly
 
-    def setCatalog(catalog: String): Unit = ???
+    def setCatalog(catalog: String): Unit = self.catalog = catalog
 
-    def getCatalog: String = ???
+    def getCatalog: String = catalog
 
-    def setTransactionIsolation(level: RuntimeFlags): Unit = ???
+    def setTransactionIsolation(level: RuntimeFlags): Unit = transactionIsolation = level
 
-    def getTransactionIsolation: RuntimeFlags = ???
+    def getTransactionIsolation: Int = transactionIsolation
 
     def getWarnings: SQLWarning = ???
 
@@ -398,21 +404,23 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
 
     def isValid(timeout: RuntimeFlags): Boolean = ???
 
-    def setClientInfo(name: String, value: String): Unit = ???
+    def setClientInfo(name: String, value: String): Unit = {
+      val _ = clientInfo.setProperty(name, value)
+    }
 
-    def setClientInfo(properties: Properties): Unit = ???
+    def setClientInfo(properties: Properties): Unit = self.clientInfo = properties
 
-    def getClientInfo(name: String): String = ???
+    def getClientInfo(name: String): String = clientInfo.getProperty(name)
 
-    def getClientInfo: Properties = ???
+    def getClientInfo: Properties = clientInfo
 
     def createArrayOf(typeName: String, elements: Array[AnyRef]): sql.Array = ???
 
     def createStruct(typeName: String, attributes: Array[AnyRef]): Struct = ???
 
-    def setSchema(schema: String): Unit = ???
+    def setSchema(schema: String): Unit = self.schema = schema
 
-    def getSchema: String = ???
+    def getSchema: String = schema
 
     def abort(executor: concurrent.Executor): Unit = ???
 

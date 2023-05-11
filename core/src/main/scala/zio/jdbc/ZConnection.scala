@@ -25,7 +25,7 @@ import java.sql.{ Connection, PreparedStatement, Statement }
  * `Connection` through the `access` method. Any such access will be attempted on the
  * blocking thread pool.
  */
-final class ZConnection(private[jdbc] val underlying: Connection) extends AnyVal {
+final class ZConnection(private[jdbc] val underlying: Connection, state: ZConnection.State) {
 
   def access[A](f: Connection => A): ZIO[Any, Throwable, A] =
     ZIO.attemptBlocking(f(underlying))
@@ -94,11 +94,44 @@ final class ZConnection(private[jdbc] val underlying: Connection) extends AnyVal
   def isValid(timeout: Int): Task[Boolean] =
     ZIO.attempt(this.underlying.isValid(timeout))
 
+  private[jdbc] def restore: UIO[Unit] =
+    ZIO.succeed {
+      underlying.setReadOnly(state.readOnly)
+      underlying.setAutoCommit(state.autoCommit)
+      underlying.setTransactionIsolation(state.transactionIsolation)
+      underlying.setCatalog(state.catalog)
+      underlying.setSchema(state.schema)
+      underlying.setClientInfo(state.clientInfo)
+    }
 }
 
 object ZConnection {
 
-  def apply(underlying: Connection): ZConnection =
-    new ZConnection(underlying)
+  def make(underlying: Connection): Task[ZConnection] =
+    for {
+      state <- State.make(underlying)
+    } yield new ZConnection(underlying, state)
 
+  private final case class State(
+    autoCommit: Boolean,
+    catalog: String,
+    clientInfo: java.util.Properties,
+    readOnly: Boolean,
+    schema: String,
+    transactionIsolation: Int
+  )
+
+  private object State {
+    def make(connection: Connection): Task[State] =
+      ZIO.attempt {
+        State(
+          autoCommit = connection.getAutoCommit(),
+          catalog = connection.getCatalog(),
+          clientInfo = connection.getClientInfo(),
+          readOnly = connection.isReadOnly(),
+          schema = connection.getSchema(),
+          transactionIsolation = connection.getTransactionIsolation()
+        )
+      }
+  }
 }
