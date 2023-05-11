@@ -106,12 +106,16 @@ object ZConnection {
     } yield new ZConnection(restorable)
 
   private[jdbc] class Restorable(underlying: Connection) extends Connection {
+    import Restorable._
+
     private[this] val initialAutoCommit           = underlying.getAutoCommit()
     private[this] val initialCatalog              = underlying.getCatalog()
     private[this] val initialClientInfo           = underlying.getClientInfo()
     private[this] val initialReadOnly             = underlying.isReadOnly()
     private[this] val initialSchema               = underlying.getSchema()
     private[this] val initialTransactionIsolation = underlying.getTransactionIsolation()
+
+    @volatile private[this] var flags = Flags.none
 
     def abort(executor: java.util.concurrent.Executor): Unit                                                          =
       underlying.abort(executor)
@@ -202,42 +206,110 @@ object ZConnection {
     def releaseSavepoint(savepoint: java.sql.Savepoint): Unit                                                         =
       underlying.releaseSavepoint(savepoint)
     def restore(): Unit                                                                                               = {
-      underlying.setAutoCommit(initialAutoCommit)
-      underlying.setCatalog(initialCatalog)
-      underlying.setClientInfo(initialClientInfo)
-      underlying.setReadOnly(initialReadOnly)
-      underlying.setSchema(initialSchema)
-      underlying.setTransactionIsolation(initialTransactionIsolation)
+      if (Flags.isModified(flags)(Flag.AutoCommit)) underlying.setAutoCommit(initialAutoCommit)
+      if (Flags.isModified(flags)(Flag.Catalog)) underlying.setCatalog(initialCatalog)
+      if (Flags.isModified(flags)(Flag.ClientInfo)) underlying.setClientInfo(initialClientInfo)
+      if (Flags.isModified(flags)(Flag.ReadOnly)) underlying.setReadOnly(initialReadOnly)
+      if (Flags.isModified(flags)(Flag.Schema)) underlying.setSchema(initialSchema)
+      if (Flags.isModified(flags)(Flag.TransactionIsolation))
+        underlying.setTransactionIsolation(initialTransactionIsolation)
+      flags = Flags.none
     }
     def rollback(savepoint: java.sql.Savepoint): Unit                                                                 =
       underlying.rollback(savepoint)
     def rollback(): Unit                                                                                              =
       underlying.rollback()
-    def setAutoCommit(autoCommit: Boolean): Unit                                                                      =
+    def setAutoCommit(autoCommit: Boolean): Unit                                                                      = {
+      flags = Flags.modified(flags)(Flag.AutoCommit)
       underlying.setAutoCommit(autoCommit)
-    def setCatalog(catalog: String): Unit                                                                             =
+    }
+    def setCatalog(catalog: String): Unit                                                                             = {
+      flags = Flags.modified(flags)(Flag.Catalog)
       underlying.setCatalog(catalog)
-    def setClientInfo(properties: java.util.Properties): Unit                                                         =
+    }
+    def setClientInfo(properties: java.util.Properties): Unit                                                         = {
+      flags = Flags.modified(flags)(Flag.ClientInfo)
       underlying.setClientInfo(properties)
-    def setClientInfo(name: String, value: String): Unit                                                              =
+    }
+    def setClientInfo(name: String, value: String): Unit                                                              = {
+      flags = Flags.modified(flags)(Flag.ClientInfo)
       underlying.setClientInfo(name, value)
+    }
     def setHoldability(holdability: Int): Unit                                                                        =
       underlying.setHoldability(holdability)
     def setNetworkTimeout(executor: java.util.concurrent.Executor, milliseconds: Int): Unit                           =
       underlying.setNetworkTimeout(executor, milliseconds)
-    def setReadOnly(readOnly: Boolean): Unit                                                                          =
+    def setReadOnly(readOnly: Boolean): Unit                                                                          = {
+      flags = Flags.modified(flags)(Flag.ReadOnly)
       underlying.setReadOnly(readOnly)
+    }
     def setSavepoint(name: String): java.sql.Savepoint                                                                =
       underlying.setSavepoint(name)
     def setSavepoint(): java.sql.Savepoint                                                                            =
       underlying.setSavepoint()
-    def setSchema(schema: String): Unit                                                                               =
+    def setSchema(schema: String): Unit                                                                               = {
+      flags = Flags.modified(flags)(Flag.Schema)
       underlying.setSchema(schema)
-    def setTransactionIsolation(level: Int): Unit                                                                     =
+    }
+    def setTransactionIsolation(level: Int): Unit                                                                     = {
+      flags = Flags.modified(flags)(Flag.TransactionIsolation)
       underlying.setTransactionIsolation(level)
+    }
     def setTypeMap(map: java.util.Map[String, Class[_]]): Unit                                                        =
       underlying.setTypeMap(map)
     def unwrap[T](iface: Class[T]): T                                                                                 =
       underlying.unwrap(iface)
+  }
+
+  object Restorable {
+
+    type Flags = Int
+
+    object Flags {
+      def isModified(flags: Flags)(flag: Flag): Boolean =
+        (flags & flag.mask) != 0
+      def modified(flags: Flags)(flag: Flag): Flags     =
+        flags | flag.mask
+      val none: Flags                                   =
+        0
+    }
+
+    sealed trait Flag {
+      def index: Int
+      def mask: Int
+    }
+
+    object Flag {
+
+      case object AutoCommit extends Flag {
+        val index = 1
+        val mask  = 1 << index
+      }
+
+      case object Catalog extends Flag {
+        val index = 2
+        val mask  = 1 << index
+      }
+
+      case object ClientInfo extends Flag {
+        val index = 3
+        val mask  = 1 << index
+      }
+
+      case object ReadOnly extends Flag {
+        val index = 4
+        val mask  = 1 << index
+      }
+
+      case object Schema extends Flag {
+        val index = 5
+        val mask  = 1 << index
+      }
+
+      case object TransactionIsolation extends Flag {
+        val index = 6
+        val mask  = 1 << index
+      }
+    }
   }
 }
