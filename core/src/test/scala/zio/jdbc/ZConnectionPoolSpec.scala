@@ -242,7 +242,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
                 } yield assertTrue(value == Chunk(sherlockHolmes, johnWatson))
               } +
               test("select all in") {
-                val namesToSearch = Seq(sherlockHolmes.name, johnDoe.name)
+                val namesToSearch = Chunk(sherlockHolmes.name, johnDoe.name)
 
                 def assertUsersFound[A: Setter](collection: A) =
                   for {
@@ -250,11 +250,11 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
                                sql"select name, age from users where name IN ($collection)".query[User].selectAll
                              }
                   } yield assertTrue(
-                    users.map(_.name) == Chunk.from(namesToSearch)
+                    users.map(_.name) == namesToSearch
                   )
 
                 def asserttions =
-                  assertUsersFound(Chunk.from(namesToSearch)) &&
+                  assertUsersFound(namesToSearch) &&
                     assertUsersFound(namesToSearch.toList) &&
                     assertUsersFound(namesToSearch.toVector) &&
                     assertUsersFound(namesToSearch.toSet) &&
