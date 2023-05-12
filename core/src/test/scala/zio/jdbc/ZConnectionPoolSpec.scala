@@ -23,6 +23,10 @@ import java.sql.{
 import java.util.{ Properties, concurrent }
 import java.{ sql, util }
 import scala.util.Random
+import org.h2.command.Prepared
+import java.io.InputStream
+import java.io.Reader
+import java.net.URL
 
 object ZConnectionPoolSpec extends ZIOSpecDefault {
   final case class Person(name: String, age: Int)
@@ -210,7 +214,39 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
               isClosedAfterPoolShutdown <- isClosedAfterPoolShutdownZIO
             } yield assertTrue(!isClosedBeforePoolShutdown && isClosedAfterPoolShutdown && allConns.forall(_.isClosed))
           }
-        } @@ nonFlaky
+        } @@ nonFlaky +
+        test("restore") {
+          ZIO.scoped {
+            for {
+              tuple        <- testPool(ZConnectionPoolConfig.default.copy(minConnections = 1, maxConnections = 1))
+              (conns, pool) = tuple
+              _            <- ZIO.scoped {
+                                pool.transaction.build.map(_.get).tap { connection =>
+                                  ZIO.succeed {
+                                    connection.underlying.setAutoCommit(false)
+                                    connection.underlying.setCatalog("catalog")
+                                    connection.underlying.setClientInfo("clientInfo", "clientInfoValue")
+                                    connection.underlying.setReadOnly(true)
+                                    connection.underlying.setSchema("schema")
+                                    connection.underlying.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE)
+                                  }
+                                }
+                              }
+              conn         <- conns.take
+              autoCommit   <- ZIO.succeed(conn.getAutoCommit)
+              catalog      <- ZIO.succeed(conn.getCatalog)
+              clientInfo   <- ZIO.succeed(conn.getClientInfo("clientInfo"))
+              readOnly     <- ZIO.succeed(conn.isReadOnly)
+              schema       <- ZIO.succeed(conn.getSchema)
+              isolation    <- ZIO.succeed(conn.getTransactionIsolation)
+            } yield assertTrue(autoCommit) &&
+              assertTrue(catalog == "") &&
+              assertTrue(clientInfo == null) &&
+              assertTrue(readOnly == false) &&
+              assertTrue(schema == "") &&
+              assertTrue(isolation == Connection.TRANSACTION_NONE)
+          }
+        }
     } +
       suite("ZConnectionPoolSpec integration tests") {
         suite("pool") {
@@ -314,8 +350,15 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
           }
       }.provide(ZConnectionPool.h2test.orDie) @@ sequential
 
-  class TestConnection extends Connection {
-    private var closed = false
+  class TestConnection extends Connection { self =>
+
+    private var closed               = false
+    private var autoCommit           = true
+    private var transactionIsolation = Connection.TRANSACTION_NONE
+    private var catalog              = ""
+    private var schema               = ""
+    private var clientInfo           = new java.util.Properties()
+    private var readOnly             = false
 
     def close(): Unit = closed = true
 
@@ -323,15 +366,15 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
 
     def createStatement(): Statement = ???
 
-    def prepareStatement(sql: String): PreparedStatement = null
+    def prepareStatement(sql: String): PreparedStatement = new DummyPreparedStatement()
 
     def prepareCall(sql: String): CallableStatement = ???
 
     def nativeSQL(sql: String): String = ???
 
-    def setAutoCommit(autoCommit: Boolean): Unit = ???
+    def setAutoCommit(autoCommit: Boolean): Unit = self.autoCommit = autoCommit
 
-    def getAutoCommit: Boolean = true
+    def getAutoCommit: Boolean = autoCommit
 
     def commit(): Unit = ???
 
@@ -339,17 +382,17 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
 
     def getMetaData: DatabaseMetaData = ???
 
-    def setReadOnly(readOnly: Boolean): Unit = ???
+    def setReadOnly(readOnly: Boolean): Unit = self.readOnly = readOnly
 
-    def isReadOnly: Boolean = ???
+    def isReadOnly: Boolean = readOnly
 
-    def setCatalog(catalog: String): Unit = ???
+    def setCatalog(catalog: String): Unit = self.catalog = catalog
 
-    def getCatalog: String = ???
+    def getCatalog: String = catalog
 
-    def setTransactionIsolation(level: RuntimeFlags): Unit = ???
+    def setTransactionIsolation(level: RuntimeFlags): Unit = transactionIsolation = level
 
-    def getTransactionIsolation: RuntimeFlags = ???
+    def getTransactionIsolation: Int = transactionIsolation
 
     def getWarnings: SQLWarning = ???
 
@@ -418,21 +461,23 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
 
     def isValid(timeout: RuntimeFlags): Boolean = ???
 
-    def setClientInfo(name: String, value: String): Unit = ???
+    def setClientInfo(name: String, value: String): Unit = {
+      val _ = clientInfo.setProperty(name, value)
+    }
 
-    def setClientInfo(properties: Properties): Unit = ???
+    def setClientInfo(properties: Properties): Unit = self.clientInfo = properties
 
-    def getClientInfo(name: String): String = ???
+    def getClientInfo(name: String): String = clientInfo.getProperty(name)
 
-    def getClientInfo: Properties = ???
+    def getClientInfo: Properties = clientInfo
 
     def createArrayOf(typeName: String, elements: Array[AnyRef]): sql.Array = ???
 
     def createStruct(typeName: String, attributes: Array[AnyRef]): Struct = ???
 
-    def setSchema(schema: String): Unit = ???
+    def setSchema(schema: String): Unit = self.schema = schema
 
-    def getSchema: String = ???
+    def getSchema: String = schema
 
     def abort(executor: concurrent.Executor): Unit = ???
 
@@ -443,6 +488,208 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
     def unwrap[T](iface: Class[T]): T = ???
 
     def isWrapperFor(iface: Class[_]): Boolean = ???
+  }
+
+  class DummyPreparedStatement() extends PreparedStatement {
+
+    override def unwrap[T <: Object](iface: Class[T]) = ???
+
+    override def isWrapperFor(iface: Class[_ <: Object]) = ???
+
+    override def executeQuery(sql: String) = ???
+
+    override def executeUpdate(sql: String) = ???
+
+    override def close() = ???
+
+    override def getMaxFieldSize() = ???
+
+    override def setMaxFieldSize(max: Int) = ???
+
+    override def getMaxRows() = ???
+
+    override def setMaxRows(max: Int) = ???
+
+    override def setEscapeProcessing(enable: Boolean) = ???
+
+    override def getQueryTimeout() = ???
+
+    override def setQueryTimeout(seconds: Int) = ???
+
+    override def cancel() = ???
+
+    override def getWarnings() = ???
+
+    override def clearWarnings() = ???
+
+    override def setCursorName(name: String) = ???
+
+    override def execute(sql: String): Boolean = ???
+
+    override def getResultSet(): sql.ResultSet = ???
+
+    override def getUpdateCount(): Int = ???
+
+    override def getMoreResults(): Boolean = ???
+
+    override def setFetchDirection(direction: Int): Unit = ???
+
+    override def getFetchDirection(): Int = ???
+
+    override def setFetchSize(rows: Int): Unit = ???
+
+    override def getFetchSize(): Int = ???
+
+    override def getResultSetConcurrency(): Int = ???
+
+    override def getResultSetType(): Int = ???
+
+    override def addBatch(sql: String): Unit = ???
+
+    override def clearBatch(): Unit = ???
+
+    override def executeBatch(): Array[Int] = ???
+
+    override def getConnection(): Connection = ???
+
+    override def getMoreResults(current: Int): Boolean = ???
+
+    override def getGeneratedKeys(): sql.ResultSet = ???
+
+    override def executeUpdate(sql: String, autoGeneratedKeys: Int): Int = ???
+
+    override def executeUpdate(sql: String, columnIndexes: Array[Int]): Int = ???
+
+    override def executeUpdate(sql: String, columnNames: Array[String]): Int = ???
+
+    override def execute(sql: String, autoGeneratedKeys: Int): Boolean = ???
+
+    override def execute(sql: String, columnIndexes: Array[Int]): Boolean = ???
+
+    override def execute(sql: String, columnNames: Array[String]): Boolean = ???
+
+    override def getResultSetHoldability(): Int = ???
+
+    override def isClosed(): Boolean = ???
+
+    override def setPoolable(poolable: Boolean): Unit = ???
+
+    override def isPoolable(): Boolean = ???
+
+    override def closeOnCompletion(): Unit = ???
+
+    override def isCloseOnCompletion(): Boolean = ???
+
+    override def executeQuery(): sql.ResultSet = ???
+
+    override def executeUpdate(): Int = ???
+
+    override def setNull(parameterIndex: Int, sqlType: Int): Unit = ???
+
+    override def setBoolean(parameterIndex: Int, x: Boolean): Unit = ???
+
+    override def setByte(parameterIndex: Int, x: Byte): Unit = ???
+
+    override def setShort(parameterIndex: Int, x: Short): Unit = ???
+
+    override def setInt(parameterIndex: Int, x: Int): Unit = ???
+
+    override def setLong(parameterIndex: Int, x: Long): Unit = ???
+
+    override def setFloat(parameterIndex: Int, x: Float): Unit = ???
+
+    override def setDouble(parameterIndex: Int, x: Double): Unit = ???
+
+    override def setBigDecimal(parameterIndex: Int, x: java.math.BigDecimal): Unit = ???
+
+    override def setString(parameterIndex: Int, x: String): Unit = ???
+
+    override def setBytes(parameterIndex: Int, x: Array[Byte]): Unit = ???
+
+    override def setDate(parameterIndex: Int, x: sql.Date): Unit = ???
+
+    override def setTime(parameterIndex: Int, x: sql.Time): Unit = ???
+
+    override def setTimestamp(parameterIndex: Int, x: sql.Timestamp): Unit = ???
+
+    override def setAsciiStream(parameterIndex: Int, x: InputStream, length: Int): Unit = ???
+
+    override def setUnicodeStream(parameterIndex: Int, x: InputStream, length: Int): Unit = ???
+
+    override def setBinaryStream(parameterIndex: Int, x: InputStream, length: Int): Unit = ???
+
+    override def clearParameters(): Unit = ???
+
+    override def setObject(parameterIndex: Int, x: Object, targetSqlType: Int): Unit = ???
+
+    override def setObject(parameterIndex: Int, x: Object): Unit = ???
+
+    override def execute(): Boolean = ???
+
+    override def addBatch(): Unit = ???
+
+    override def setCharacterStream(parameterIndex: Int, reader: Reader, length: Int): Unit = ???
+
+    override def setRef(parameterIndex: Int, x: sql.Ref): Unit = ???
+
+    override def setBlob(parameterIndex: Int, x: Blob): Unit = ???
+
+    override def setClob(parameterIndex: Int, x: Clob): Unit = ???
+
+    override def setArray(parameterIndex: Int, x: sql.Array): Unit = ???
+
+    override def getMetaData(): sql.ResultSetMetaData = ???
+
+    override def setDate(parameterIndex: Int, x: sql.Date, cal: util.Calendar): Unit = ???
+
+    override def setTime(parameterIndex: Int, x: sql.Time, cal: util.Calendar): Unit = ???
+
+    override def setTimestamp(parameterIndex: Int, x: sql.Timestamp, cal: util.Calendar): Unit = ???
+
+    override def setNull(parameterIndex: Int, sqlType: Int, typeName: String): Unit = ???
+
+    override def setURL(parameterIndex: Int, x: URL): Unit = ???
+
+    override def getParameterMetaData(): sql.ParameterMetaData = ???
+
+    override def setRowId(parameterIndex: Int, x: sql.RowId): Unit = ???
+
+    override def setNString(parameterIndex: Int, value: String): Unit = ???
+
+    override def setNCharacterStream(parameterIndex: Int, value: Reader, length: Long): Unit = ???
+
+    override def setNClob(parameterIndex: Int, value: NClob): Unit = ???
+
+    override def setClob(parameterIndex: Int, reader: Reader, length: Long): Unit = ???
+
+    override def setBlob(parameterIndex: Int, inputStream: InputStream, length: Long): Unit = ???
+
+    override def setNClob(parameterIndex: Int, reader: Reader, length: Long): Unit = ???
+
+    override def setSQLXML(parameterIndex: Int, xmlObject: SQLXML): Unit = ???
+
+    override def setObject(parameterIndex: Int, x: Object, targetSqlType: Int, scaleOrLength: Int): Unit = ???
+
+    override def setAsciiStream(parameterIndex: Int, x: InputStream, length: Long): Unit = ???
+
+    override def setBinaryStream(parameterIndex: Int, x: InputStream, length: Long): Unit = ???
+
+    override def setCharacterStream(parameterIndex: Int, reader: Reader, length: Long): Unit = ???
+
+    override def setAsciiStream(parameterIndex: Int, x: InputStream): Unit = ???
+
+    override def setBinaryStream(parameterIndex: Int, x: InputStream): Unit = ???
+
+    override def setCharacterStream(parameterIndex: Int, reader: Reader): Unit = ???
+
+    override def setNCharacterStream(parameterIndex: Int, value: Reader): Unit = ???
+
+    override def setClob(parameterIndex: Int, reader: Reader): Unit = ???
+
+    override def setBlob(parameterIndex: Int, inputStream: InputStream): Unit = ???
+
+    override def setNClob(parameterIndex: Int, reader: Reader): Unit = ???
+
   }
 
 }
