@@ -264,10 +264,13 @@ object ZConnection {
   private[jdbc] object Restorable {
 
     def freeze(properties: java.util.Properties): java.util.Properties = {
-      val frozen = new java.util.Properties()
-      properties.forEach { (k, v) =>
-        val _ = frozen.put(k, v)
+      val frozen                                    = new java.util.Properties()
+      def put[K, V](map: java.util.Hashtable[K, V]) = new java.util.function.BiConsumer[K, V] {
+        def accept(key: K, value: V): Unit = {
+          val _ = map.put(key, value)
+        }
       }
+      properties.forEach(put(frozen))
       frozen
     }
 
