@@ -23,9 +23,7 @@ import java.sql.{
 import java.util.{ Properties, concurrent }
 import java.{ sql, util }
 import scala.util.Random
-import org.h2.command.Prepared
-import java.io.InputStream
-import java.io.Reader
+import java.io.{InputStream, Reader}
 import java.net.URL
 
 object ZConnectionPoolSpec extends ZIOSpecDefault {
