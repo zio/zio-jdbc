@@ -112,8 +112,27 @@ sealed trait SqlFragment { self =>
     foreachSegment { syntax =>
       sql.append(syntax.value)
     } { param =>
-      sql.append("?")
-      paramsBuilder += param.value.toString
+      param.value match {
+        case iterable: Iterable[_] =>
+          iterable.iterator.foreach { item =>
+            paramsBuilder += item.toString
+          }
+          sql.append(
+            Seq.fill(iterable.iterator.size)("?").mkString(",")
+          )
+
+        case array: Array[_] =>
+          array.foreach { item =>
+            paramsBuilder += item.toString
+          }
+          sql.append(
+            Seq.fill(array.length)("?").mkString(",")
+          )
+
+        case _ =>
+          sql.append("?")
+          paramsBuilder += param.value.toString
+      }
     }
 
     val params       = paramsBuilder.result()
@@ -286,6 +305,29 @@ object SqlFragment {
     implicit val blobSetter: Setter[java.sql.Blob]    = forSqlType((ps, i, value) => ps.setBlob(i, value), Types.BLOB)
     implicit val sqlDateSetter: Setter[java.sql.Date] = forSqlType((ps, i, value) => ps.setDate(i, value), Types.DATE)
     implicit val sqlTimeSetter: Setter[java.sql.Time] = forSqlType((ps, i, value) => ps.setTime(i, value), Types.TIME)
+
+    implicit def chunkSetter[A](implicit setter: Setter[A]): Setter[Chunk[A]]   = iterableSetter[A, Chunk[A]]
+    implicit def listSetter[A](implicit setter: Setter[A]): Setter[List[A]]     = iterableSetter[A, List[A]]
+    implicit def vectorSetter[A](implicit setter: Setter[A]): Setter[Vector[A]] = iterableSetter[A, Vector[A]]
+    implicit def setSetter[A](implicit setter: Setter[A]): Setter[Set[A]]       = iterableSetter[A, Set[A]]
+
+    implicit def arraySetter[A](implicit setter: Setter[A]): Setter[Array[A]] =
+      forSqlType(
+        (ps, i, iterable) =>
+          iterable.zipWithIndex.foreach { case (value, valueIdx) =>
+            setter.setValue(ps, i + valueIdx, value)
+          },
+        Types.OTHER
+      )
+
+    private def iterableSetter[A, I <: Iterable[A]](implicit setter: Setter[A]): Setter[I] =
+      forSqlType(
+        (ps, i, iterable) =>
+          iterable.zipWithIndex.foreach { case (value, valueIdx) =>
+            setter.setValue(ps, i + valueIdx, value)
+          },
+        Types.OTHER
+      )
 
     implicit val bigDecimalSetter: Setter[java.math.BigDecimal] =
       forSqlType((ps, i, value) => ps.setBigDecimal(i, value), Types.NUMERIC)

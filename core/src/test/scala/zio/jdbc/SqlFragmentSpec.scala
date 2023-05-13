@@ -1,5 +1,7 @@
 package zio.jdbc
 
+import zio.Chunk
+import zio.jdbc.SqlFragment.Setter
 import zio.jdbc.{ transaction => transact }
 import zio.schema.{ Schema, TypeId }
 import zio.test.Assertion._
@@ -124,13 +126,37 @@ object SqlFragmentSpec extends ZIOSpecDefault {
                   s"Sql(select name, age from users WHERE id = ?, $id)"
               )
             } +
-            test("in") {
-              assertTrue(
-                sql"select name, age from users where id"
-                  .in(1, 2, 3)
-                  .toString ==
-                  s"Sql(select name, age from users where id IN (?,?,?), 1, 2, 3)"
-              )
+            suite("in") {
+              test("fragment method") {
+                assertTrue(
+                  sql"select name, age from users where id"
+                    .in(1, 2, 3)
+                    .toString ==
+                    "Sql(select name, age from users where id IN (?,?,?), 1, 2, 3)"
+                )
+              } + test("fragment method where param is iterable") {
+                val seq = Seq(1, 2, 3)
+                assertTrue(
+                  sql"select name, age from users where id"
+                    .in(seq)
+                    .toString ==
+                    "Sql(select name, age from users where id IN (?,?,?), 1, 2, 3)"
+                )
+              } + test("interpolation param is supported collection") {
+                def assertIn[A: Setter](collection: A) = {
+                  println(sql"select name, age from users where id in ($collection)".toString)
+                  assertTrue(
+                    sql"select name, age from users where id in ($collection)".toString ==
+                      "Sql(select name, age from users where id in (?,?,?), 1, 2, 3)"
+                  )
+                }
+
+                assertIn(Chunk(1, 2, 3)) &&
+                assertIn(List(1, 2, 3)) &&
+                assertIn(Vector(1, 2, 3)) &&
+                assertIn(Set(1, 2, 3)) &&
+                assertIn(Array(1, 2, 3))
+              }
             } +
             test("not in") {
               assertTrue(
