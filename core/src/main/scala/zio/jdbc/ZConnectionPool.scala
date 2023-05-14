@@ -161,18 +161,28 @@ object ZConnectionPool {
     ZLayer.scoped {
       for {
         config <- ZIO.service[ZConnectionPoolConfig]
-        getConn = ZIO.acquireRelease(acquire.retry(config.retryPolicy).map(ZConnection(_)))(_.close.ignoreLogged)
+        getConn = ZIO.acquireRelease(acquire.retry(config.retryPolicy).flatMap(ZConnection.make))(_.close.ignoreLogged)
         pool   <- ZPool.make(getConn, Range(config.minConnections, config.maxConnections), config.timeToLive)
         tx      = ZLayer.scoped {
                     for {
                       connection <- pool.get
-                      _          <- ZIO.addFinalizerExit {
-                                      case Exit.Success(_) => ZIO.unit
-                                      case Exit.Failure(_) => connection.rollback.ignoreLogged
+                      _          <- ZIO.addFinalizerExit { exit =>
+                                      ZIO
+                                        .ifZIO(connection.isValid().orDie)(
+                                          onTrue = exit match {
+                                            case Exit.Success(_) => connection.restore
+                                            case Exit.Failure(_) =>
+                                              for {
+                                                autoCommitMode <- connection.access(_.getAutoCommit).orElseSucceed(true)
+                                                _              <- ZIO.unless(autoCommitMode)(connection.rollback.ignoreLogged)
+                                                _              <- connection.restore
+                                              } yield ()
+                                          },
+                                          onFalse = pool.invalidate(connection)
+                                        )
                                     }
                     } yield connection
                   }
-
       } yield new ZConnectionPool {
         def transaction: ZLayer[Any, Throwable, ZConnection] = tx
         def invalidate(conn: ZConnection): UIO[Any]          = pool.invalidate(conn)

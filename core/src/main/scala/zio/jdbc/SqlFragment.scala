@@ -30,16 +30,36 @@ import scala.language.implicitConversions
  * @param segments
  * @param decode
  */
-final class SqlFragment(private[jdbc] val build: ChunkBuilder[Segment] => Unit) { self =>
+sealed trait SqlFragment { self =>
 
   def ++(that: SqlFragment): SqlFragment =
-    new SqlFragment(builder => { self.build(builder); that.build(builder) })
+    SqlFragment.AndThen(self, that)
 
   def and(first: SqlFragment, rest: SqlFragment*): SqlFragment =
     and(first +: rest)
 
   def and(elements: Iterable[SqlFragment]): SqlFragment =
     self ++ SqlFragment.prependEach(SqlFragment.and, elements)
+
+  final def build(builder: ChunkBuilder[Segment]): Unit = {
+
+    val stack = zio.internal.Stack[SqlFragment]()
+
+    var currentSqlFragment = self
+
+    while (currentSqlFragment ne null)
+      currentSqlFragment match {
+        case SqlFragment.AndThen(left, right) =>
+          stack.push(right)
+          currentSqlFragment = left
+        case SqlFragment.Append(segments)     =>
+          builder ++= segments
+          currentSqlFragment = stack.pop()
+        case SqlFragment.FromFunction(f)      =>
+          f(builder)
+          currentSqlFragment = stack.pop()
+      }
+  }
 
   override def equals(that: Any): Boolean =
     that match {
@@ -92,8 +112,27 @@ final class SqlFragment(private[jdbc] val build: ChunkBuilder[Segment] => Unit) 
     foreachSegment { syntax =>
       sql.append(syntax.value)
     } { param =>
-      sql.append("?")
-      paramsBuilder += param.value.toString
+      param.value match {
+        case iterable: Iterable[_] =>
+          iterable.iterator.foreach { item =>
+            paramsBuilder += item.toString
+          }
+          sql.append(
+            Seq.fill(iterable.iterator.size)("?").mkString(",")
+          )
+
+        case array: Array[_] =>
+          array.foreach { item =>
+            paramsBuilder += item.toString
+          }
+          sql.append(
+            Seq.fill(array.length)("?").mkString(",")
+          )
+
+        case _ =>
+          sql.append("?")
+          paramsBuilder += param.value.toString
+      }
     }
 
     val params       = paramsBuilder.result()
@@ -202,6 +241,9 @@ object SqlFragment {
 
   val empty: SqlFragment = SqlFragment(Chunk.empty[Segment])
 
+  def fromFunction(f: ChunkBuilder[Segment] => Unit): SqlFragment =
+    SqlFragment.FromFunction(f)
+
   sealed trait Segment
   object Segment {
     final case class Syntax(value: String)                  extends Segment
@@ -268,6 +310,29 @@ object SqlFragment {
     implicit val sqlDateSetter: Setter[java.sql.Date] = forSqlType((ps, i, value) => ps.setDate(i, value), Types.DATE)
     implicit val sqlTimeSetter: Setter[java.sql.Time] = forSqlType((ps, i, value) => ps.setTime(i, value), Types.TIME)
 
+    implicit def chunkSetter[A](implicit setter: Setter[A]): Setter[Chunk[A]]   = iterableSetter[A, Chunk[A]]
+    implicit def listSetter[A](implicit setter: Setter[A]): Setter[List[A]]     = iterableSetter[A, List[A]]
+    implicit def vectorSetter[A](implicit setter: Setter[A]): Setter[Vector[A]] = iterableSetter[A, Vector[A]]
+    implicit def setSetter[A](implicit setter: Setter[A]): Setter[Set[A]]       = iterableSetter[A, Set[A]]
+
+    implicit def arraySetter[A](implicit setter: Setter[A]): Setter[Array[A]] =
+      forSqlType(
+        (ps, i, iterable) =>
+          iterable.zipWithIndex.foreach { case (value, valueIdx) =>
+            setter.setValue(ps, i + valueIdx, value)
+          },
+        Types.OTHER
+      )
+
+    private def iterableSetter[A, I <: Iterable[A]](implicit setter: Setter[A]): Setter[I] =
+      forSqlType(
+        (ps, i, iterable) =>
+          iterable.zipWithIndex.foreach { case (value, valueIdx) =>
+            setter.setValue(ps, i + valueIdx, value)
+          },
+        Types.OTHER
+      )
+
     implicit val bigDecimalSetter: Setter[java.math.BigDecimal] =
       forSqlType((ps, i, value) => ps.setBigDecimal(i, value), Types.NUMERIC)
     implicit val sqlTimestampSetter: Setter[java.sql.Timestamp] =
@@ -285,7 +350,7 @@ object SqlFragment {
   def apply(sql: String): SqlFragment = sql
 
   def apply(segments: Chunk[Segment]): SqlFragment =
-    new SqlFragment(builder => builder ++= segments)
+    SqlFragment.Append(segments)
 
   def deleteFrom(table: String): SqlFragment =
     s"DELETE FROM $table"
@@ -331,4 +396,7 @@ object SqlFragment {
   private[jdbc] val values      = sql" VALUES "
   private[jdbc] val where       = sql" WHERE "
 
+  private final case class AndThen(left: SqlFragment, right: SqlFragment) extends SqlFragment
+  private final case class Append(override val segments: Chunk[Segment])  extends SqlFragment
+  private final case class FromFunction(f: ChunkBuilder[Segment] => Unit) extends SqlFragment
 }
