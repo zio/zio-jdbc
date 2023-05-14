@@ -45,19 +45,7 @@ final class ZConnection(private[jdbc] val underlying: ZConnection.Restorable) ex
         statement                 <- ZIO.acquireRelease(ZIO.attempt {
                                        val sb = new StringBuilder()
                                        sql.foreachSegment(syntax => sb.append(syntax.value)) { param =>
-                                         param.value match {
-                                           case iterable: Iterable[_] =>
-                                             sb.append(
-                                               Seq.fill(iterable.iterator.size)("?").mkString(", ")
-                                             )
-
-                                           case array: Array[_] =>
-                                             sb.append(
-                                               Seq.fill(array.length)("?").mkString(", ")
-                                             )
-
-                                           case _ => sb.append("?")
-                                         }
+                                         sb.append(param.setter.sql(param.value))
                                        }
                                        transactionIsolationLevel.foreach { transactionIsolationLevel =>
                                          connection.setTransactionIsolation(transactionIsolationLevel.toInt)
@@ -67,8 +55,7 @@ final class ZConnection(private[jdbc] val underlying: ZConnection.Restorable) ex
         _                         <- ZIO.attempt {
                                        var paramIndex = 1
                                        sql.foreachSegment(_ => ()) { param =>
-                                         param.setter.unsafeSetValue(statement, paramIndex, param.value)
-                                         paramIndex += 1
+                                         paramIndex = param.setter.unsafeSetValue(statement, paramIndex, param.value)
                                        }
                                      }
         result                    <- f(statement)

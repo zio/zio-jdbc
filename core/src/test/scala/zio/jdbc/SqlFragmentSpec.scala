@@ -1,9 +1,8 @@
 package zio.jdbc
 
 import zio.Chunk
-import zio.jdbc.SqlFragment.Setter
-import zio.jdbc.{ transaction => transact }
-import zio.schema.{ Schema, TypeId }
+import zio.jdbc.{transaction => transact}
+import zio.schema.{Schema, TypeId}
 import zio.test.Assertion._
 import zio.test._
 
@@ -48,11 +47,28 @@ object SqlFragmentSpec extends ZIOSpecDefault {
         } +
         test("type safe interpolation") {
           final case class Foo(value: String)
-          implicit val fooParamSetter: JdbcEncoder[Foo] = JdbcEncoder[String]().contramap(_.toString)
+          implicit val fooParamJdbcEncoder: JdbcEncoder[Foo] = JdbcEncoder[String]().contramap(_.toString)
 
           val testSql = sql"${Foo("test")}"
 
+          assertTrue(testSql.segments.collect { case SqlFragment.Segment.Param(_, setter) =>
+            setter
+          }.head eq fooParamJdbcEncoder) &&
           assertTrue(testSql.toString == "Sql(?, Foo(test))")
+        } + test("Custom JdbcEncoder") {
+
+          implicit val encoder: JdbcEncoder[Array[Byte]] = JdbcEncoder.single(
+            s"FROM_BASE64('?')",
+            value => Base64.getEncoder.encodeToString(value)
+          )
+
+          val bytes = Array[Byte](1, 2, 3)
+
+          val result = sql"UPDATE foo SET bytes = $bytes"
+
+          assertTrue(
+            result.toString == "Sql(UPDATE foo SET bytes = FROM_BASE64('?'), AQID)"
+          )
         } +
         suite(" SqlFragment.ParamSetter instances") { // TODO figure out how to test at PrepareStatement level
           test("Option") {
@@ -140,15 +156,24 @@ object SqlFragmentSpec extends ZIOSpecDefault {
                     .toString ==
                     "Sql(select name, age from users where id IN (?,?,?), 1, 2, 3)"
                 )
+              } + test("fragment method where with multiple iterator params") {
+                val seq = Seq(1, 2, 3)
+                assertTrue(
+                  sql"select name, age from users where id"
+                    .in(seq)
+                    .and()
+                    .notIn(seq)
+                    .toString ==
+                    "Sql(select name, age from users where id IN (?,?,?) AND  NOT IN (?,?,?), 1, 2, 3, 1, 2, 3)"
+                )
               } + test("interpolation param is supported collection") {
-                def assertIn[A: Setter](collection: A) = {
+                def assertIn[A: JdbcEncoder](collection: A) = {
                   println(sql"select name, age from users where id in ($collection)".toString)
                   assertTrue(
                     sql"select name, age from users where id in ($collection)".toString ==
                       "Sql(select name, age from users where id in (?,?,?), 1, 2, 3)"
                   )
                 }
-
                 assertIn(Chunk(1, 2, 3)) &&
                 assertIn(List(1, 2, 3)) &&
                 assertIn(Vector(1, 2, 3)) &&
@@ -246,25 +271,9 @@ object SqlFragmentSpec extends ZIOSpecDefault {
           assertTrue(
             result.toString == "Sql(UPDATE persons)"
           )
-        } +
-        test("Custom JdbcEncoder") {
-
-          implicit val byteArrayjdbcEncoder: JdbcEncoder[Array[Byte]] =
-            JdbcEncoder(value => s"FROM_BASE64('${Base64.getEncoder.encodeToString(value)}')")
-
-          val bytes = Array[Byte](1, 2, 3)
-
-          val result = sql"UPDATE foo SET bytes = $bytes"
-
-          assertTrue(
-            result.toString == "Sql(UPDATE foo SET bytes = FROM_BASE64('AQID'))"
-          )
         }
 
     }
-
-  case class Base64Array(arr: Array[Byte]) extends AnyVal
-
 }
 
 object Models {

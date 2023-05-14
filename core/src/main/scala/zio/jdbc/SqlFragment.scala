@@ -18,7 +18,6 @@ package zio.jdbc
 import zio._
 import zio.jdbc.SqlFragment.Segment
 
-import java.sql.{ PreparedStatement, Types }
 import scala.language.implicitConversions
 
 /**
@@ -84,6 +83,8 @@ sealed trait SqlFragment { self =>
   def notIn[B](b: B, bs: B*)(implicit encoder: JdbcEncoder[B]): SqlFragment =
     notIn(b +: bs)
 
+  def and(): SqlFragment = self ++ SqlFragment.and
+
   def notIn[B](bs: Iterable[B])(implicit encoder: JdbcEncoder[B]): SqlFragment =
     in0(SqlFragment.notIn, bs)
 
@@ -112,27 +113,8 @@ sealed trait SqlFragment { self =>
     foreachSegment { syntax =>
       sql.append(syntax.value)
     } { param =>
-      param.value match {
-        case iterable: Iterable[_] =>
-          iterable.iterator.foreach { item =>
-            paramsBuilder += item.toString
-          }
-          sql.append(
-            Seq.fill(iterable.iterator.size)("?").mkString(",")
-          )
-
-        case array: Array[_] =>
-          array.foreach { item =>
-            paramsBuilder += item.toString
-          }
-          sql.append(
-            Seq.fill(array.length)("?").mkString(",")
-          )
-
-        case _ =>
-          sql.append("?")
-          paramsBuilder += param.value.toString
-      }
+      sql.append(param.setter.sql(param.value))
+      paramsBuilder += param.setter.prettyValuePrinter(param.value)
     }
 
     val params       = paramsBuilder.result()
@@ -246,105 +228,17 @@ object SqlFragment {
 
   sealed trait Segment
   object Segment {
-    final case class Syntax(value: String)                  extends Segment
-    final case class Param(value: Any, setter: Setter[Any]) extends Segment
-    final case class Nested(sql: SqlFragment)               extends Segment
+    final case class Syntax(value: String)                       extends Segment
+    final case class Param(value: Any, setter: JdbcEncoder[Any]) extends Segment
+    final case class Nested(sql: SqlFragment)                    extends Segment
 
-    implicit def jdbcEncoderSegment[A](obj: A)(implicit encoder: JdbcEncoder[A]): Segment =
-      encoder.setter match {
-        case Some(value) => Segment.Param(obj, value.asInstanceOf[Setter[Any]])
-        case None        => encoder.encode(obj)
-      }
+    implicit def paramSegment[A](a: A)(implicit encoder: JdbcEncoder[A]): Segment.Param =
+      Segment.Param(a, encoder.asInstanceOf[JdbcEncoder[Any]])
+
+//    implicit def paramSegment[A](a: A)(implicit setter: JdbcEncoder[A]): Segment =
+//      Nested(setter.encode(a))
 
     implicit def nestedSqlSegment[A](sql: SqlFragment): Segment.Nested = Segment.Nested(sql)
-
-  }
-
-  trait Setter[-A] { self =>
-    def unsafeSetValue(ps: PreparedStatement, index: Int, value: A): Unit
-    def unsafeSetNull(ps: PreparedStatement, index: Int): Unit
-
-    final def contramap[B](f: B => A): Setter[B] =
-      Setter((ps, i, value) => self.unsafeSetValue(ps, i, f(value)), (ps, i) => self.unsafeSetNull(ps, i))
-  }
-
-  object Setter {
-    def apply[A]()(implicit setter: Setter[A]): Setter[A] = setter
-
-    def apply[A](onValue: (PreparedStatement, Int, A) => Unit, onNull: (PreparedStatement, Int) => Unit): Setter[A] =
-      new Setter[A] {
-        def unsafeSetValue(ps: PreparedStatement, index: Int, value: A): Unit = onValue(ps, index, value)
-        def unsafeSetNull(ps: PreparedStatement, index: Int): Unit            = onNull(ps, index)
-      }
-
-    def forSqlType[A](onValue: (PreparedStatement, Int, A) => Unit, sqlType: Int): Setter[A] = new Setter[A] {
-      def unsafeSetValue(ps: PreparedStatement, index: Int, value: A): Unit = onValue(ps, index, value)
-      def unsafeSetNull(ps: PreparedStatement, index: Int): Unit            = ps.setNull(index, sqlType)
-    }
-
-    def other[A](onValue: (PreparedStatement, Int, A) => Unit, sqlType: String): Setter[A] = new Setter[A] {
-      def unsafeSetValue(ps: PreparedStatement, index: Int, value: A): Unit = onValue(ps, index, value)
-      def unsafeSetNull(ps: PreparedStatement, index: Int): Unit            = ps.setNull(index, Types.OTHER, sqlType)
-    }
-
-    implicit def optionParamSetter[A](implicit setter: Setter[A]): Setter[Option[A]] =
-      Setter(
-        (ps, i, value) =>
-          value match {
-            case Some(value) => setter.unsafeSetValue(ps, i, value)
-            case None        => setter.unsafeSetNull(ps, i)
-          },
-        (ps, i) => setter.unsafeSetNull(ps, i)
-      )
-
-    implicit val intSetter: Setter[Int]               = forSqlType((ps, i, value) => ps.setInt(i, value), Types.INTEGER)
-    implicit val longSetter: Setter[Long]             = forSqlType((ps, i, value) => ps.setLong(i, value), Types.BIGINT)
-    implicit val doubleSetter: Setter[Double]         = forSqlType((ps, i, value) => ps.setDouble(i, value), Types.DOUBLE)
-    implicit val stringSetter: Setter[String]         = forSqlType((ps, i, value) => ps.setString(i, value), Types.VARCHAR)
-    implicit val booleanSetter: Setter[Boolean]       = forSqlType((ps, i, value) => ps.setBoolean(i, value), Types.BOOLEAN)
-    implicit val shortSetter: Setter[Short]           = forSqlType((ps, i, value) => ps.setShort(i, value), Types.SMALLINT)
-    implicit val floatSetter: Setter[Float]           = forSqlType((ps, i, value) => ps.setFloat(i, value), Types.FLOAT)
-    implicit val byteSetter: Setter[Byte]             = forSqlType((ps, i, value) => ps.setByte(i, value), Types.TINYINT)
-    implicit val byteArraySetter: Setter[Array[Byte]] = forSqlType((ps, i, value) => ps.setBytes(i, value), Types.ARRAY)
-    implicit val blobSetter: Setter[java.sql.Blob]    = forSqlType((ps, i, value) => ps.setBlob(i, value), Types.BLOB)
-    implicit val sqlDateSetter: Setter[java.sql.Date] = forSqlType((ps, i, value) => ps.setDate(i, value), Types.DATE)
-    implicit val sqlTimeSetter: Setter[java.sql.Time] = forSqlType((ps, i, value) => ps.setTime(i, value), Types.TIME)
-
-    implicit def chunkSetter[A](implicit setter: Setter[A]): Setter[Chunk[A]]   = iterableSetter[A, Chunk[A]]
-    implicit def listSetter[A](implicit setter: Setter[A]): Setter[List[A]]     = iterableSetter[A, List[A]]
-    implicit def vectorSetter[A](implicit setter: Setter[A]): Setter[Vector[A]] = iterableSetter[A, Vector[A]]
-    implicit def setSetter[A](implicit setter: Setter[A]): Setter[Set[A]]       = iterableSetter[A, Set[A]]
-
-    implicit def arraySetter[A](implicit setter: Setter[A]): Setter[Array[A]] =
-      forSqlType(
-        (ps, i, iterable) =>
-          iterable.zipWithIndex.foreach { case (value, valueIdx) =>
-            setter.setValue(ps, i + valueIdx, value)
-          },
-        Types.OTHER
-      )
-
-    private def iterableSetter[A, I <: Iterable[A]](implicit setter: Setter[A]): Setter[I] =
-      forSqlType(
-        (ps, i, iterable) =>
-          iterable.zipWithIndex.foreach { case (value, valueIdx) =>
-            setter.setValue(ps, i + valueIdx, value)
-          },
-        Types.OTHER
-      )
-
-    implicit val bigDecimalSetter: Setter[java.math.BigDecimal] =
-      forSqlType((ps, i, value) => ps.setBigDecimal(i, value), Types.NUMERIC)
-    implicit val sqlTimestampSetter: Setter[java.sql.Timestamp] =
-      forSqlType((ps, i, value) => ps.setTimestamp(i, value), Types.TIMESTAMP)
-
-    implicit val uuidParamSetter: Setter[java.util.UUID] = other((ps, i, value) => ps.setObject(i, value), "uuid")
-
-    implicit val charSetter: Setter[Char]                             = stringSetter.contramap(_.toString)
-    implicit val bigIntSetter: Setter[java.math.BigInteger]           = bigDecimalSetter.contramap(new java.math.BigDecimal(_))
-    implicit val bigDecimalScalaSetter: Setter[scala.math.BigDecimal] = bigDecimalSetter.contramap(_.bigDecimal)
-    implicit val byteChunkSetter: Setter[Chunk[Byte]]                 = byteArraySetter.contramap(_.toArray)
-    implicit val instantSetter: Setter[java.time.Instant]             = sqlTimestampSetter.contramap(java.sql.Timestamp.from)
   }
 
   def apply(sql: String): SqlFragment = sql
@@ -364,7 +258,7 @@ object SqlFragment {
   def update(table: String): SqlFragment =
     s"UPDATE $table"
 
-  private[jdbc] def intersperse(
+  def intersperse(
     sep: SqlFragment,
     elements: Iterable[SqlFragment]
   ): SqlFragment = {

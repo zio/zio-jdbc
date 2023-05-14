@@ -1,7 +1,6 @@
 package zio.jdbc
 
-import zio._
-import zio.jdbc.SqlFragment.Setter
+import zio.{ jdbc, _ }
 import zio.schema._
 import zio.test.Assertion._
 import zio.test.TestAspect._
@@ -127,11 +126,8 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
     implicit val jdbcDecoder: JdbcDecoder[User] =
       JdbcDecoder[(String, Int)]().map[User](t => User(t._1, t._2))
 
-    implicit val jdbcEncoder: JdbcEncoder[User] = JdbcEncoder { value =>
-      val name = value.name
-      val age  = value.age
-      sql"""$name""" ++ ", " ++ s"$age"
-    }
+    implicit val jdbcEncoder: JdbcEncoder[User] =
+      JdbcEncoder[(String, Int)]().contramap[User](t => (t.name, t.age))
   }
 
   final case class UserNoId(name: String, age: Int)
@@ -140,11 +136,9 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
     implicit val jdbcDecoder: JdbcDecoder[UserNoId] =
       JdbcDecoder[(String, Int)]().map[UserNoId](t => UserNoId(t._1, t._2))
 
-    implicit val jdbcEncoder: JdbcEncoder[UserNoId] = JdbcEncoder { value =>
-      val name = value.name
-      val age  = value.age
-      sql"""$name""" ++ ", " ++ s"$age"
-    }
+    implicit val jdbcEncoder: JdbcEncoder[UserNoId] =
+      JdbcEncoder[(String, Int)]().contramap[UserNoId](t => (t.name, t.age))
+
   }
 
   def spec: Spec[TestEnvironment, Any] =
@@ -298,7 +292,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
               test("select all in") {
                 val namesToSearch = Chunk(sherlockHolmes.name, johnDoe.name)
 
-                def assertUsersFound[A: Setter](collection: A) =
+                def assertUsersFound[A: JdbcEncoder](collection: A) =
                   for {
                     users <- transaction {
                                sql"select name, age from users where name IN ($collection)".query[User].selectAll
@@ -313,6 +307,32 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
                     assertUsersFound(namesToSearch.toVector) &&
                     assertUsersFound(namesToSearch.toSet) &&
                     assertUsersFound(namesToSearch.toArray)
+
+                for {
+                  _          <- createUsers *> insertSherlock *> insertWatson *> insertJohn
+                  testResult <- asserttions
+                } yield testResult
+              } + test("select all in multiple lists") {
+                val namesToSearch = Chunk(sherlockHolmes.name, johnDoe.name, johnWatson.name)
+                val namesToAvoid  = Chunk(johnWatson.name)
+
+                def assertUsersFound[A: JdbcEncoder](collection: A, collection2: A) =
+                  for {
+                    users <- transaction {
+                               sql"select name, age from users where name IN ($collection) and name NOT IN ($collection2)"
+                                 .query[User]
+                                 .selectAll
+                             }
+                  } yield assertTrue(
+                    users.map(_.name) == Chunk(sherlockHolmes.name, johnDoe.name)
+                  )
+
+                def asserttions =
+                  assertUsersFound(namesToSearch, namesToAvoid) &&
+                    assertUsersFound(namesToSearch.toList, namesToAvoid.toList) &&
+                    assertUsersFound(namesToSearch.toVector, namesToAvoid.toVector) &&
+                    assertUsersFound(namesToSearch.toSet, namesToAvoid.toSet) &&
+                    assertUsersFound(namesToSearch.toArray, namesToAvoid.toArray)
 
                 for {
                   _          <- createUsers *> insertSherlock *> insertWatson *> insertJohn
@@ -337,6 +357,18 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
                 for {
                   _   <- createUsers *> insertSherlock
                   num <- transaction(sql"update users set age = 43 where name = ${sherlockHolmes.name}".update)
+                } yield assertTrue(num == 1L)
+              } + test("select with custom encoder") {
+                implicit val encoder: JdbcEncoder[Array[Char]] = JdbcEncoder.single(
+                  s"TRIM(?)",
+                  value => new String(value)
+                )
+
+                val sherlockArray = "     Sherlock Holmes   ".toCharArray
+
+                for {
+                  _   <- createUsers *> insertSherlock
+                  num <- transaction(sql"delete from users where name = ${sherlockArray}".delete)
                 } yield assertTrue(num == 1L)
               }
           } +
