@@ -24,17 +24,6 @@ import zio.{ ZIO, RuntimeFlags, Random }
 
 object ZConnectionSpec extends ZIOSpecDefault {
 
-  val createUsers: ZIO[ZConnectionPool with Any, Throwable, Unit] =
-    transaction {
-      sql"""
-      create table users (
-        id identity primary key,
-        name varchar not null,
-        age int not null
-      )
-      """.execute
-    }
-
   def spec: Spec[TestEnvironment, Any] =
     suite("ZConnectionSpec TestConnection") {
       def testConnection = new ZConnection(new ZConnection.Restorable(new TestConnection))
