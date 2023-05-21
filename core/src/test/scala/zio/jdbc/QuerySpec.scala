@@ -2,7 +2,6 @@ package zio.jdbc
 
 import zio._
 import zio.test._
-import scala.util
 
 import java.sql.{
   Blob,
@@ -19,9 +18,9 @@ import java.sql.{
   Struct
 }
 import java.util.{ Properties, concurrent }
-import java.{ sql, util }
 import java.io.{ InputStream, Reader }
 import java.net.URL
+import java.sql
 
 object QuerySpec extends ZIOSpecDefault {
 
@@ -67,8 +66,8 @@ object QuerySpec extends ZIOSpecDefault {
 
   def genUsers(size: Int): List[UserNoId] = List.fill(size)(genUser)
 
-  def insertEverything: ZIO[ZConnection, Throwable, Long] = {
-    val users           = genUsers(3000)
+  def insertEverything(elems: Int): ZIO[ZConnection, Throwable, Long] = {
+    val users           = genUsers(elems)
     val insertStatement = SqlFragment.insertInto("users")("name", "age").values(users)
     for {
       inserted <- insertStatement.insert
@@ -77,29 +76,53 @@ object QuerySpec extends ZIOSpecDefault {
 
   def spec: Spec[TestEnvironment, Any] =
     suite("QuerySpec Unit") {
-      def testConnection     = new ZConnection(new ZConnection.Restorable(new TestConnection))
-      val tableName          = sql"users"
-      val fields             = SqlFragment("id, name, age")
-      val testSql            = sql"select $fields from $tableName"
-      val query: Query[User] = testSql.query[User]
+      def testConnection(failNext: Boolean, elems: Int) =
+        new ZConnection(new ZConnection.Restorable(new TestConnection(failNext, elems)))
+      val tableName                                     = sql"users"
+      val fields                                        = SqlFragment("id, name, age")
+      val testSql                                       = sql"select $fields from $tableName"
+      val query: Query[User]                            = testSql.query[User]
       test("Query Success ResultSet Automatic Close") {
+        val elements = 10
         ZIO.scoped {
           for {
             rsClosedTuple <- ZIO.scoped {
                                for {
                                  rs     <- query.executeQuery(testSql)
                                  closed <- rs.access(_.isClosed())
-                               } yield (rs, closed)
+                                 count   = {
+                                   var c = 0
+                                   while (rs.next()) c += 1
+                                   c
+                                 }
+                               } yield (rs, closed, count)
                              }
             closed        <- rsClosedTuple._1.access(_.isClosed())
-          } yield assertTrue(closed && !rsClosedTuple._2)
-        }.provide(ZLayer.succeed(testConnection))
+          } yield assertTrue(closed && !rsClosedTuple._2 && rsClosedTuple._3 == elements)
+        }.provide(ZLayer.succeed(testConnection(false, elements)))
       } +
         test("Query ResultSet Iteration Fail Automatic Close") {
           assertTrue(false)
-        } +
-        test("Query ResultSet excecute Fail Automatic Close") {
-          assertTrue(false)
+          val elements = 10
+          ZIO.scoped {
+            ZIO.scoped {
+              for {
+                rsClosedTuple <- ZIO.scoped {
+                                   for {
+                                     rs     <- query.executeQuery(testSql)
+                                     closed <- rs.access(_.isClosed())
+                                     failed <- ZIO.attempt {
+                                                 rs.next()
+                                                 false
+                                               }.catchSome { case e: java.sql.SQLException =>
+                                                 ZIO.succeed(true)
+                                               }
+                                   } yield (rs, closed, failed)
+                                 }
+                closed        <- rsClosedTuple._1.access(_.isClosed())
+              } yield assertTrue(closed && !rsClosedTuple._2, rsClosedTuple._3)
+            }.provide(ZLayer.succeed(testConnection(failNext = true, elems = elements)))
+          }
         }
     } +
       suite("QuerySpec Integration") {
@@ -120,24 +143,30 @@ object QuerySpec extends ZIOSpecDefault {
             val fields             = SqlFragment("id, name, age")
             val testSql            = sql"select $fields from $tableName"
             val query: Query[User] = testSql.query[User]
+            val elements           = 3000
             for {
               _             <- createTableUsers
-              _             <- insertEverything
+              _             <- insertEverything(elements)
               rsClosedTuple <- ZIO.scoped {
                                  for {
                                    rs     <- query.executeQuery(testSql)
                                    closed <- rs.access(_.isClosed())
-                                 } yield (rs, closed)
+                                   count   = {
+                                     var c = 0
+                                     while (rs.next()) c += 1
+                                     c
+                                   }
+                                 } yield (rs, closed, count)
                                }
               closed        <- rsClosedTuple._1.access(_.isClosed())
             } yield assertTrue(
-              closed && !rsClosedTuple._2
+              closed && !rsClosedTuple._2 && rsClosedTuple._3 == elements
             ) //Assert ResultSet is closed Outside scope but was open inside scope
           }.provide(ZLayer.fromZIO(liveConnection))
         }
       }
 
-  class TestConnection extends Connection { self =>
+  case class TestConnection(failNext: Boolean, elems: Int) extends Connection { self =>
 
     private var closed               = false
     private var autoCommit           = true
@@ -232,7 +261,8 @@ object QuerySpec extends ZIOSpecDefault {
       resultSetHoldability: RuntimeFlags
     ): CallableStatement = ???
 
-    def prepareStatement(sql: String, autoGeneratedKeys: RuntimeFlags): PreparedStatement = new DummyPreparedStatement
+    def prepareStatement(sql: String, autoGeneratedKeys: RuntimeFlags): PreparedStatement =
+      new DummyPreparedStatement(failNext: Boolean, elems: Int)
 
     def prepareStatement(sql: String, columnIndexes: Array[RuntimeFlags]): PreparedStatement = ???
 
@@ -277,7 +307,7 @@ object QuerySpec extends ZIOSpecDefault {
     def isWrapperFor(iface: Class[_]): Boolean = ???
   }
 
-  class DummyPreparedStatement() extends PreparedStatement {
+  case class DummyPreparedStatement(failNext: Boolean, elems: Int) extends PreparedStatement {
 
     override def unwrap[T <: Object](iface: Class[T]) = ???
 
@@ -367,7 +397,7 @@ object QuerySpec extends ZIOSpecDefault {
 
     override def isCloseOnCompletion(): Boolean = ???
 
-    override def executeQuery(): sql.ResultSet = new DummyResultSet
+    override def executeQuery(): sql.ResultSet = new DummyResultSet(failNext: Boolean, elems: Int)
 
     override def executeUpdate(): Int = ???
 
@@ -479,15 +509,24 @@ object QuerySpec extends ZIOSpecDefault {
 
   }
 
-  class DummyResultSet extends sql.ResultSet {
+  case class DummyResultSet(failNext: Boolean, elems: Int) extends sql.ResultSet {
 
-    var closed = false
+    var closed      = false
+    var currentElem = 0
 
     override def unwrap[T <: Object](x$1: Class[T]): T = ???
 
     override def isWrapperFor(x$1: Class[_ <: Object]): Boolean = ???
 
-    override def next(): Boolean = ???
+    override def next(): Boolean =
+      if (failNext) {
+        throw new sql.SQLException()
+      } else if (currentElem < elems) {
+        currentElem += 1
+        true
+      } else {
+        false
+      }
 
     override def close(): Unit = closed = true
 
