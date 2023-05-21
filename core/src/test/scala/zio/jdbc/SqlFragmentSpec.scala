@@ -1,12 +1,11 @@
 package zio.jdbc
 
-import zio.Chunk
+import zio._
+import zio.test._
 import zio.jdbc.SqlFragment.Setter
 import zio.jdbc.{ transaction => transact }
 import zio.schema.{ Schema, TypeId }
 import zio.test.Assertion._
-import zio.test._
-
 import java.sql.SQLException
 
 final case class Person(name: String, age: Int)
@@ -249,8 +248,128 @@ object SqlFragmentSpec extends ZIOSpecDefault {
             result.toString == "Sql(UPDATE persons)"
           )
         }
+    } +
+      suite("SqlFragment ResultSet tests") {
 
-    }
+        val tableName = sql"users_resultset"
+        val field     = SqlFragment("age")
+        val value     = SqlFragment("30")
+        val testSql   = sql"update $tableName set $field = $value"
+
+        suite("test connection") {
+          def testConnection(failNext: Boolean, elems: Int) =
+            new ZConnection(new ZConnection.Restorable(new TestConnection(failNext, elems)))
+          test(" SqlFragment.executeUpdate close ResultSet success") {
+            val elements = 10
+            ZIO.scoped {
+              for {
+                rsClosedTuple <- ZIO.scoped {
+                                   for {
+                                     rs     <- testSql.executeUpdate(testSql)
+                                     closed <- rs._2.access(_.isClosed())
+                                     count   = {
+                                       var c = 0
+                                       while (rs._2.next()) c += 1
+                                       c
+                                     }
+                                   } yield (rs._2, closed, count)
+                                 }
+                closed        <- rsClosedTuple._1.access(_.isClosed())
+              } yield assertTrue(closed && !rsClosedTuple._2 && rsClosedTuple._3 == elements)
+            }.provide(ZLayer.succeed(testConnection(false, elements)))
+          } +
+            test(" SqlFragment.executeUpdate close ResultSet fail") {
+              val elements = 10
+              ZIO.scoped {
+                for {
+                  rsClosedTuple <- ZIO.scoped {
+                                     for {
+                                       rs     <- testSql.executeUpdate(testSql)
+                                       closed <- rs._2.access(_.isClosed())
+                                       failed <- ZIO.attempt {
+                                                   rs._2.next()
+                                                   false
+                                                 }.orElseSucceed(true)
+                                     } yield (rs._2, closed, failed)
+                                   }
+                  closed        <- rsClosedTuple._1.access(_.isClosed())
+                } yield assertTrue(closed && !rsClosedTuple._2, rsClosedTuple._3)
+              }.provide(ZLayer.succeed(testConnection(failNext = true, elems = elements)))
+            }
+        } +
+          suite("live connection") {
+            test(" SqlFragment.executeUpdate close ResultSet success") {
+              def liveConnection =
+                for {
+                  _       <- ZIO.attempt(Class.forName("org.h2.Driver"))
+                  int     <- Random.nextInt
+                  acquire <- ZIO.attemptBlocking {
+                               java.sql.DriverManager.getConnection(s"jdbc:h2:mem:test_database_$int")
+                             }
+                } yield (new ZConnection(new ZConnection.Restorable(acquire)))
+
+              def createTableUsers =
+                sql"""
+                create table users_resultset (
+                id identity primary key,
+                name varchar not null,
+                age int not null
+                )""".execute
+
+              final case class UserNoId(name: String, age: Int)
+
+              object UserNoId {
+                implicit val jdbcDecoder: JdbcDecoder[UserNoId] =
+                  JdbcDecoder[(String, Int)]().map[UserNoId](t => UserNoId(t._1, t._2))
+
+                implicit val jdbcEncoder: JdbcEncoder[UserNoId] = (value: UserNoId) => {
+                  val name = value.name
+                  val age  = value.age
+                  sql"""${name}""" ++ ", " ++ s"${age}"
+                }
+              }
+
+              def genUser: UserNoId = {
+                val name = scala.util.Random.nextString(8)
+                val id   = scala.util.Random.nextInt(100000)
+                UserNoId(name, id)
+              }
+
+              def genUsers(size: Int): List[UserNoId] = List.fill(size)(genUser)
+
+              def insertEverything(elems: Int): ZIO[ZConnection, Throwable, Long] = {
+                val users           = genUsers(elems)
+                val insertStatement = SqlFragment.insertInto("users_resultset")("name", "age").values(users)
+                for {
+                  inserted <- insertStatement.insert
+                } yield inserted.rowsUpdated
+              }
+
+              ZIO.scoped {
+                val elements = 3000
+                for {
+                  _             <- createTableUsers
+                  _             <- insertEverything(elements)
+                  rsClosedTuple <- ZIO.scoped {
+                                     for {
+                                       rs     <- testSql.executeUpdate(testSql)
+                                       closed <- rs._2.access(_.isClosed())
+                                       count   = {
+                                         var c = 0
+                                         while (rs._2.next()) c += 1
+                                         c
+                                       }
+                                     } yield (rs._2, closed, count, rs._1)
+                                   }
+                  closed        <- rsClosedTuple._1.access(_.isClosed())
+                } yield assertTrue(
+                  closed && !rsClosedTuple._2 && rsClosedTuple._3 == elements && rsClosedTuple._4 == elements.toLong
+                ) //Assert ResultSet is closed Outside scope but was open inside scope
+              }.provide(ZLayer.fromZIO(liveConnection))
+            }
+          }
+      }
+
 }
 
 object Models {
