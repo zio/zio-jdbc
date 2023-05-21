@@ -371,11 +371,11 @@ class DummyResultSet(failNext: Boolean, elems: Int) extends ResultSet {
   var closed      = false
   var currentElem = 0
 
-  override def unwrap[T <: Object](x$1: Class[T]): T = ???
+  override def unwrap[T <: Object](x$1: Class[T]) = ???
 
-  override def isWrapperFor(x$1: Class[_ <: Object]): Boolean = ???
+  override def isWrapperFor(x$1: Class[_ <: Object]) = ???
 
-  override def next(): Boolean =
+  override def next() =
     if (failNext) {
       throw new sql.SQLException()
     } else if (currentElem < elems) {
@@ -385,380 +385,380 @@ class DummyResultSet(failNext: Boolean, elems: Int) extends ResultSet {
       false
     }
 
-  override def close(): Unit = closed = true
+  override def close() = closed = true
 
-  override def wasNull(): Boolean = ???
+  override def wasNull() = ???
 
-  override def getString(columnIndex: Int): String = ???
+  override def getString(columnIndex: Int) = ???
 
-  override def getBoolean(columnIndex: Int): Boolean = ???
+  override def getBoolean(columnIndex: Int) = ???
 
-  override def getByte(columnIndex: Int): Byte = ???
+  override def getByte(columnIndex: Int) = ???
 
-  override def getShort(columnIndex: Int): Short = ???
+  override def getShort(columnIndex: Int) = ???
 
-  override def getInt(columnIndex: Int): Int = ???
+  override def getInt(columnIndex: Int) = ???
 
-  override def getLong(columnIndex: Int): Long = ???
+  override def getLong(columnIndex: Int) = ???
 
-  override def getFloat(columnIndex: Int): Float = ???
+  override def getFloat(columnIndex: Int) = ???
 
-  override def getDouble(columnIndex: Int): Double = ???
+  override def getDouble(columnIndex: Int) = ???
 
-  override def getBigDecimal(columnIndex: Int, scale: Int): java.math.BigDecimal = ???
+  override def getBigDecimal(columnIndex: Int, scale: Int) = ???
 
-  override def getBytes(columnIndex: Int): Array[Byte] = ???
+  override def getBytes(columnIndex: Int) = ???
 
-  override def getDate(columnIndex: Int): sql.Date = ???
+  override def getDate(columnIndex: Int) = ???
 
-  override def getTime(columnIndex: Int): sql.Time = ???
+  override def getTime(columnIndex: Int) = ???
 
-  override def getTimestamp(columnIndex: Int): sql.Timestamp = ???
+  override def getTimestamp(columnIndex: Int) = ???
 
-  override def getAsciiStream(columnIndex: Int): InputStream = ???
+  override def getAsciiStream(columnIndex: Int) = ???
 
-  override def getUnicodeStream(columnIndex: Int): InputStream = ???
+  override def getUnicodeStream(columnIndex: Int) = ???
 
-  override def getBinaryStream(columnIndex: Int): InputStream = ???
+  override def getBinaryStream(columnIndex: Int) = ???
 
-  override def getString(columnLabel: String): String = ???
+  override def getString(columnLabel: String) = ???
 
-  override def getBoolean(columnLabel: String): Boolean = ???
+  override def getBoolean(columnLabel: String) = ???
 
-  override def getByte(columnLabel: String): Byte = ???
+  override def getByte(columnLabel: String) = ???
 
-  override def getShort(columnLabel: String): Short = ???
+  override def getShort(columnLabel: String) = ???
 
-  override def getInt(columnLabel: String): Int = ???
+  override def getInt(columnLabel: String) = ???
 
-  override def getLong(columnLabel: String): Long = ???
+  override def getLong(columnLabel: String) = ???
 
-  override def getFloat(columnLabel: String): Float = ???
+  override def getFloat(columnLabel: String) = ???
 
-  override def getDouble(columnLabel: String): Double = ???
+  override def getDouble(columnLabel: String) = ???
 
-  override def getBigDecimal(columnLabel: String, scale: Int): java.math.BigDecimal = ???
+  override def getBigDecimal(columnLabel: String, scale: Int) = ???
 
-  override def getBytes(columnLabel: String): Array[Byte] = ???
+  override def getBytes(columnLabel: String) = ???
 
-  override def getDate(columnLabel: String): sql.Date = ???
+  override def getDate(columnLabel: String) = ???
 
-  override def getTime(columnLabel: String): sql.Time = ???
+  override def getTime(columnLabel: String) = ???
 
-  override def getTimestamp(columnLabel: String): sql.Timestamp = ???
+  override def getTimestamp(columnLabel: String) = ???
 
-  override def getAsciiStream(columnLabel: String): InputStream = ???
+  override def getAsciiStream(columnLabel: String) = ???
 
-  override def getUnicodeStream(columnLabel: String): InputStream = ???
+  override def getUnicodeStream(columnLabel: String) = ???
 
-  override def getBinaryStream(columnLabel: String): InputStream = ???
+  override def getBinaryStream(columnLabel: String) = ???
 
-  override def getWarnings(): SQLWarning = ???
+  override def getWarnings() = ???
 
-  override def clearWarnings(): Unit = ???
+  override def clearWarnings() = ???
 
-  override def getCursorName(): String = ???
+  override def getCursorName() = ???
 
-  override def getMetaData(): sql.ResultSetMetaData = ???
+  override def getMetaData() = ???
 
-  override def getObject(columnIndex: Int): Object = ???
+  override def getObject(columnIndex: Int) = ???
 
-  override def getObject(columnLabel: String): Object = ???
+  override def getObject(columnLabel: String) = ???
 
-  override def findColumn(columnLabel: String): Int = ???
+  override def findColumn(columnLabel: String) = ???
 
-  override def getCharacterStream(columnIndex: Int): Reader = ???
+  override def getCharacterStream(columnIndex: Int) = ???
 
-  override def getCharacterStream(columnLabel: String): Reader = ???
+  override def getCharacterStream(columnLabel: String) = ???
 
-  override def getBigDecimal(columnIndex: Int): java.math.BigDecimal = ???
+  override def getBigDecimal(columnIndex: Int) = ???
 
-  override def getBigDecimal(columnLabel: String): java.math.BigDecimal = ???
+  override def getBigDecimal(columnLabel: String) = ???
 
-  override def isBeforeFirst(): Boolean = ???
+  override def isBeforeFirst() = ???
 
-  override def isAfterLast(): Boolean = ???
+  override def isAfterLast() = ???
 
-  override def isFirst(): Boolean = ???
+  override def isFirst() = ???
 
-  override def isLast(): Boolean = ???
+  override def isLast() = ???
 
-  override def beforeFirst(): Unit = ???
+  override def beforeFirst() = ???
 
-  override def afterLast(): Unit = ???
+  override def afterLast() = ???
 
-  override def first(): Boolean = ???
+  override def first() = ???
 
-  override def last(): Boolean = ???
+  override def last() = ???
 
-  override def getRow(): Int = ???
+  override def getRow() = ???
 
-  override def absolute(row: Int): Boolean = ???
+  override def absolute(row: Int) = ???
 
-  override def relative(rows: Int): Boolean = ???
+  override def relative(rows: Int) = ???
 
-  override def previous(): Boolean = ???
+  override def previous() = ???
 
-  override def setFetchDirection(direction: Int): Unit = ???
+  override def setFetchDirection(direction: Int) = ???
 
-  override def getFetchDirection(): Int = ???
+  override def getFetchDirection() = ???
 
-  override def setFetchSize(rows: Int): Unit = ???
+  override def setFetchSize(rows: Int) = ???
 
-  override def getFetchSize(): Int = ???
+  override def getFetchSize() = ???
 
-  override def getType(): Int = ???
+  override def getType() = ???
 
-  override def getConcurrency(): Int = ???
+  override def getConcurrency() = ???
 
-  override def rowUpdated(): Boolean = ???
+  override def rowUpdated() = ???
 
-  override def rowInserted(): Boolean = ???
+  override def rowInserted() = ???
 
-  override def rowDeleted(): Boolean = ???
+  override def rowDeleted() = ???
 
-  override def updateNull(columnIndex: Int): Unit = ???
+  override def updateNull(columnIndex: Int) = ???
 
-  override def updateBoolean(columnIndex: Int, x: Boolean): Unit = ???
+  override def updateBoolean(columnIndex: Int, x: Boolean) = ???
 
-  override def updateByte(columnIndex: Int, x: Byte): Unit = ???
+  override def updateByte(columnIndex: Int, x: Byte) = ???
 
-  override def updateShort(columnIndex: Int, x: Short): Unit = ???
+  override def updateShort(columnIndex: Int, x: Short) = ???
 
-  override def updateInt(columnIndex: Int, x: Int): Unit = ???
+  override def updateInt(columnIndex: Int, x: Int) = ???
 
-  override def updateLong(columnIndex: Int, x: Long): Unit = ???
+  override def updateLong(columnIndex: Int, x: Long) = ???
 
-  override def updateFloat(columnIndex: Int, x: Float): Unit = ???
+  override def updateFloat(columnIndex: Int, x: Float) = ???
 
   override def updateDouble(columnIndex: Int, x: Double): Unit = ???
 
-  override def updateBigDecimal(columnIndex: Int, x: java.math.BigDecimal): Unit = ???
+  override def updateBigDecimal(columnIndex: Int, x: java.math.BigDecimal) = ???
 
-  override def updateString(columnIndex: Int, x: String): Unit = ???
+  override def updateString(columnIndex: Int, x: String) = ???
 
-  override def updateBytes(columnIndex: Int, x: Array[Byte]): Unit = ???
+  override def updateBytes(columnIndex: Int, x: Array[Byte]) = ???
 
-  override def updateDate(columnIndex: Int, x: sql.Date): Unit = ???
+  override def updateDate(columnIndex: Int, x: sql.Date) = ???
 
-  override def updateTime(columnIndex: Int, x: sql.Time): Unit = ???
+  override def updateTime(columnIndex: Int, x: sql.Time) = ???
 
-  override def updateTimestamp(columnIndex: Int, x: sql.Timestamp): Unit = ???
+  override def updateTimestamp(columnIndex: Int, x: sql.Timestamp) = ???
 
-  override def updateAsciiStream(columnIndex: Int, x: InputStream, length: Int): Unit = ???
+  override def updateAsciiStream(columnIndex: Int, x: InputStream, length: Int) = ???
 
-  override def updateBinaryStream(columnIndex: Int, x: InputStream, length: Int): Unit = ???
+  override def updateBinaryStream(columnIndex: Int, x: InputStream, length: Int) = ???
 
-  override def updateCharacterStream(columnIndex: Int, x: Reader, length: Int): Unit = ???
+  override def updateCharacterStream(columnIndex: Int, x: Reader, length: Int) = ???
 
-  override def updateObject(columnIndex: Int, x: Object, scaleOrLength: Int): Unit = ???
+  override def updateObject(columnIndex: Int, x: Object, scaleOrLength: Int) = ???
 
-  override def updateObject(columnIndex: Int, x: Object): Unit = ???
+  override def updateObject(columnIndex: Int, x: Object) = ???
 
-  override def updateNull(columnLabel: String): Unit = ???
+  override def updateNull(columnLabel: String) = ???
 
-  override def updateBoolean(columnLabel: String, x: Boolean): Unit = ???
+  override def updateBoolean(columnLabel: String, x: Boolean) = ???
 
-  override def updateByte(columnLabel: String, x: Byte): Unit = ???
+  override def updateByte(columnLabel: String, x: Byte) = ???
 
-  override def updateShort(columnLabel: String, x: Short): Unit = ???
+  override def updateShort(columnLabel: String, x: Short) = ???
 
-  override def updateInt(columnLabel: String, x: Int): Unit = ???
+  override def updateInt(columnLabel: String, x: Int) = ???
 
-  override def updateLong(columnLabel: String, x: Long): Unit = ???
+  override def updateLong(columnLabel: String, x: Long) = ???
 
-  override def updateFloat(columnLabel: String, x: Float): Unit = ???
+  override def updateFloat(columnLabel: String, x: Float) = ???
 
-  override def updateDouble(columnLabel: String, x: Double): Unit = ???
+  override def updateDouble(columnLabel: String, x: Double) = ???
 
-  override def updateBigDecimal(columnLabel: String, x: java.math.BigDecimal): Unit = ???
+  override def updateBigDecimal(columnLabel: String, x: java.math.BigDecimal) = ???
 
-  override def updateString(columnLabel: String, x: String): Unit = ???
+  override def updateString(columnLabel: String, x: String) = ???
 
-  override def updateBytes(columnLabel: String, x: Array[Byte]): Unit = ???
+  override def updateBytes(columnLabel: String, x: Array[Byte]) = ???
 
-  override def updateDate(columnLabel: String, x: sql.Date): Unit = ???
+  override def updateDate(columnLabel: String, x: sql.Date) = ???
 
-  override def updateTime(columnLabel: String, x: sql.Time): Unit = ???
+  override def updateTime(columnLabel: String, x: sql.Time) = ???
 
-  override def updateTimestamp(columnLabel: String, x: sql.Timestamp): Unit = ???
+  override def updateTimestamp(columnLabel: String, x: sql.Timestamp) = ???
 
-  override def updateAsciiStream(columnLabel: String, x: InputStream, length: Int): Unit = ???
+  override def updateAsciiStream(columnLabel: String, x: InputStream, length: Int) = ???
 
-  override def updateBinaryStream(columnLabel: String, x: InputStream, length: Int): Unit = ???
+  override def updateBinaryStream(columnLabel: String, x: InputStream, length: Int) = ???
 
-  override def updateCharacterStream(columnLabel: String, reader: Reader, length: Int): Unit = ???
+  override def updateCharacterStream(columnLabel: String, reader: Reader, length: Int) = ???
 
-  override def updateObject(columnLabel: String, x: Object, scaleOrLength: Int): Unit = ???
+  override def updateObject(columnLabel: String, x: Object, scaleOrLength: Int) = ???
 
-  override def updateObject(columnLabel: String, x: Object): Unit = ???
+  override def updateObject(columnLabel: String, x: Object) = ???
 
-  override def insertRow(): Unit = ???
+  override def insertRow() = ???
 
-  override def updateRow(): Unit = ???
+  override def updateRow() = ???
 
-  override def deleteRow(): Unit = ???
+  override def deleteRow() = ???
 
-  override def refreshRow(): Unit = ???
+  override def refreshRow() = ???
 
-  override def cancelRowUpdates(): Unit = ???
+  override def cancelRowUpdates() = ???
 
-  override def moveToInsertRow(): Unit = ???
+  override def moveToInsertRow() = ???
 
-  override def moveToCurrentRow(): Unit = ???
+  override def moveToCurrentRow() = ???
 
-  override def getStatement(): Statement = ???
+  override def getStatement() = ???
 
-  override def getObject(columnIndex: Int, map: util.Map[String, Class[_ <: Object]]): Object = ???
+  override def getObject(columnIndex: Int, map: util.Map[String, Class[_ <: Object]]) = ???
 
-  override def getRef(columnIndex: Int): sql.Ref = ???
+  override def getRef(columnIndex: Int) = ???
 
-  override def getBlob(columnIndex: Int): Blob = ???
+  override def getBlob(columnIndex: Int) = ???
 
-  override def getClob(columnIndex: Int): Clob = ???
+  override def getClob(columnIndex: Int) = ???
 
-  override def getArray(columnIndex: Int): sql.Array = ???
+  override def getArray(columnIndex: Int) = ???
 
-  override def getObject(columnLabel: String, map: util.Map[String, Class[_ <: Object]]): Object = ???
+  override def getObject(columnLabel: String, map: util.Map[String, Class[_ <: Object]]) = ???
 
-  override def getRef(columnLabel: String): sql.Ref = ???
+  override def getRef(columnLabel: String) = ???
 
-  override def getBlob(columnLabel: String): Blob = ???
+  override def getBlob(columnLabel: String) = ???
 
-  override def getClob(columnLabel: String): Clob = ???
+  override def getClob(columnLabel: String) = ???
 
-  override def getArray(columnLabel: String): sql.Array = ???
+  override def getArray(columnLabel: String) = ???
 
-  override def getDate(columnIndex: Int, cal: java.util.Calendar): sql.Date = ???
+  override def getDate(columnIndex: Int, cal: java.util.Calendar) = ???
 
-  override def getDate(columnLabel: String, cal: java.util.Calendar): sql.Date = ???
+  override def getDate(columnLabel: String, cal: java.util.Calendar) = ???
 
-  override def getTime(columnIndex: Int, cal: java.util.Calendar): sql.Time = ???
+  override def getTime(columnIndex: Int, cal: java.util.Calendar) = ???
 
-  override def getTime(columnLabel: String, cal: java.util.Calendar): sql.Time = ???
+  override def getTime(columnLabel: String, cal: java.util.Calendar) = ???
 
-  override def getTimestamp(columnIndex: Int, cal: java.util.Calendar): sql.Timestamp = ???
+  override def getTimestamp(columnIndex: Int, cal: java.util.Calendar) = ???
 
-  override def getTimestamp(columnLabel: String, cal: java.util.Calendar): sql.Timestamp = ???
+  override def getTimestamp(columnLabel: String, cal: java.util.Calendar) = ???
 
-  override def getURL(columnIndex: Int): URL = ???
+  override def getURL(columnIndex: Int) = ???
 
-  override def getURL(columnLabel: String): URL = ???
+  override def getURL(columnLabel: String) = ???
 
-  override def updateRef(columnIndex: Int, x: sql.Ref): Unit = ???
+  override def updateRef(columnIndex: Int, x: sql.Ref) = ???
 
-  override def updateRef(columnLabel: String, x: sql.Ref): Unit = ???
+  override def updateRef(columnLabel: String, x: sql.Ref) = ???
 
-  override def updateBlob(columnIndex: Int, x: Blob): Unit = ???
+  override def updateBlob(columnIndex: Int, x: Blob) = ???
 
-  override def updateBlob(columnLabel: String, x: Blob): Unit = ???
+  override def updateBlob(columnLabel: String, x: Blob) = ???
 
-  override def updateClob(columnIndex: Int, x: Clob): Unit = ???
+  override def updateClob(columnIndex: Int, x: Clob) = ???
 
-  override def updateClob(columnLabel: String, x: Clob): Unit = ???
+  override def updateClob(columnLabel: String, x: Clob) = ???
 
-  override def updateArray(columnIndex: Int, x: sql.Array): Unit = ???
+  override def updateArray(columnIndex: Int, x: sql.Array) = ???
 
-  override def updateArray(columnLabel: String, x: sql.Array): Unit = ???
+  override def updateArray(columnLabel: String, x: sql.Array) = ???
 
-  override def getRowId(columnIndex: Int): sql.RowId = ???
+  override def getRowId(columnIndex: Int) = ???
 
-  override def getRowId(columnLabel: String): sql.RowId = ???
+  override def getRowId(columnLabel: String) = ???
 
-  override def updateRowId(columnIndex: Int, x: sql.RowId): Unit = ???
+  override def updateRowId(columnIndex: Int, x: sql.RowId) = ???
 
-  override def updateRowId(columnLabel: String, x: sql.RowId): Unit = ???
+  override def updateRowId(columnLabel: String, x: sql.RowId) = ???
 
-  override def getHoldability(): Int = ???
+  override def getHoldability() = ???
 
-  override def isClosed(): Boolean = closed
+  override def isClosed() = closed
 
-  override def updateNString(columnIndex: Int, nString: String): Unit = ???
+  override def updateNString(columnIndex: Int, nString: String) = ???
 
-  override def updateNString(columnLabel: String, nString: String): Unit = ???
+  override def updateNString(columnLabel: String, nString: String) = ???
 
-  override def updateNClob(columnIndex: Int, nClob: NClob): Unit = ???
+  override def updateNClob(columnIndex: Int, nClob: NClob) = ???
 
-  override def updateNClob(columnLabel: String, nClob: NClob): Unit = ???
+  override def updateNClob(columnLabel: String, nClob: NClob) = ???
 
-  override def getNClob(columnIndex: Int): NClob = ???
+  override def getNClob(columnIndex: Int) = ???
 
-  override def getNClob(columnLabel: String): NClob = ???
+  override def getNClob(columnLabel: String) = ???
 
-  override def getSQLXML(columnIndex: Int): SQLXML = ???
+  override def getSQLXML(columnIndex: Int) = ???
 
-  override def getSQLXML(columnLabel: String): SQLXML = ???
+  override def getSQLXML(columnLabel: String) = ???
 
-  override def updateSQLXML(columnIndex: Int, xmlObject: SQLXML): Unit = ???
+  override def updateSQLXML(columnIndex: Int, xmlObject: SQLXML) = ???
 
-  override def updateSQLXML(columnLabel: String, xmlObject: SQLXML): Unit = ???
+  override def updateSQLXML(columnLabel: String, xmlObject: SQLXML) = ???
 
-  override def getNString(columnIndex: Int): String = ???
+  override def getNString(columnIndex: Int) = ???
 
-  override def getNString(columnLabel: String): String = ???
+  override def getNString(columnLabel: String) = ???
 
-  override def getNCharacterStream(columnIndex: Int): Reader = ???
+  override def getNCharacterStream(columnIndex: Int) = ???
 
-  override def getNCharacterStream(columnLabel: String): Reader = ???
+  override def getNCharacterStream(columnLabel: String) = ???
 
-  override def updateNCharacterStream(columnIndex: Int, x: Reader, length: Long): Unit = ???
+  override def updateNCharacterStream(columnIndex: Int, x: Reader, length: Long) = ???
 
-  override def updateNCharacterStream(columnLabel: String, reader: Reader, length: Long): Unit = ???
+  override def updateNCharacterStream(columnLabel: String, reader: Reader, length: Long) = ???
 
-  override def updateAsciiStream(columnIndex: Int, x: InputStream, length: Long): Unit = ???
+  override def updateAsciiStream(columnIndex: Int, x: InputStream, length: Long) = ???
 
-  override def updateBinaryStream(columnIndex: Int, x: InputStream, length: Long): Unit = ???
+  override def updateBinaryStream(columnIndex: Int, x: InputStream, length: Long) = ???
 
-  override def updateCharacterStream(columnIndex: Int, x: Reader, length: Long): Unit = ???
+  override def updateCharacterStream(columnIndex: Int, x: Reader, length: Long) = ???
 
-  override def updateAsciiStream(columnLabel: String, x: InputStream, length: Long): Unit = ???
+  override def updateAsciiStream(columnLabel: String, x: InputStream, length: Long) = ???
 
-  override def updateBinaryStream(columnLabel: String, x: InputStream, length: Long): Unit = ???
+  override def updateBinaryStream(columnLabel: String, x: InputStream, length: Long) = ???
 
-  override def updateCharacterStream(columnLabel: String, reader: Reader, length: Long): Unit = ???
+  override def updateCharacterStream(columnLabel: String, reader: Reader, length: Long) = ???
 
-  override def updateBlob(columnIndex: Int, inputStream: InputStream, length: Long): Unit = ???
+  override def updateBlob(columnIndex: Int, inputStream: InputStream, length: Long) = ???
 
-  override def updateBlob(columnLabel: String, inputStream: InputStream, length: Long): Unit = ???
+  override def updateBlob(columnLabel: String, inputStream: InputStream, length: Long) = ???
 
-  override def updateClob(columnIndex: Int, reader: Reader, length: Long): Unit = ???
+  override def updateClob(columnIndex: Int, reader: Reader, length: Long) = ???
 
-  override def updateClob(columnLabel: String, reader: Reader, length: Long): Unit = ???
+  override def updateClob(columnLabel: String, reader: Reader, length: Long) = ???
 
-  override def updateNClob(columnIndex: Int, reader: Reader, length: Long): Unit = ???
+  override def updateNClob(columnIndex: Int, reader: Reader, length: Long) = ???
 
-  override def updateNClob(columnLabel: String, reader: Reader, length: Long): Unit = ???
+  override def updateNClob(columnLabel: String, reader: Reader, length: Long) = ???
 
-  override def updateNCharacterStream(columnIndex: Int, x: Reader): Unit = ???
+  override def updateNCharacterStream(columnIndex: Int, x: Reader) = ???
 
-  override def updateNCharacterStream(columnLabel: String, reader: Reader): Unit = ???
+  override def updateNCharacterStream(columnLabel: String, reader: Reader) = ???
 
-  override def updateAsciiStream(columnIndex: Int, x: InputStream): Unit = ???
+  override def updateAsciiStream(columnIndex: Int, x: InputStream) = ???
 
-  override def updateBinaryStream(columnIndex: Int, x: InputStream): Unit = ???
+  override def updateBinaryStream(columnIndex: Int, x: InputStream) = ???
 
-  override def updateCharacterStream(columnIndex: Int, x: Reader): Unit = ???
+  override def updateCharacterStream(columnIndex: Int, x: Reader) = ???
 
-  override def updateAsciiStream(columnLabel: String, x: InputStream): Unit = ???
+  override def updateAsciiStream(columnLabel: String, x: InputStream) = ???
 
-  override def updateBinaryStream(columnLabel: String, x: InputStream): Unit = ???
+  override def updateBinaryStream(columnLabel: String, x: InputStream) = ???
 
-  override def updateCharacterStream(columnLabel: String, reader: Reader): Unit = ???
+  override def updateCharacterStream(columnLabel: String, reader: Reader) = ???
 
-  override def updateBlob(columnIndex: Int, inputStream: InputStream): Unit = ???
+  override def updateBlob(columnIndex: Int, inputStream: InputStream) = ???
 
-  override def updateBlob(columnLabel: String, inputStream: InputStream): Unit = ???
+  override def updateBlob(columnLabel: String, inputStream: InputStream) = ???
 
-  override def updateClob(columnIndex: Int, reader: Reader): Unit = ???
+  override def updateClob(columnIndex: Int, reader: Reader) = ???
 
-  override def updateClob(columnLabel: String, reader: Reader): Unit = ???
+  override def updateClob(columnLabel: String, reader: Reader) = ???
 
-  override def updateNClob(columnIndex: Int, reader: Reader): Unit = ???
+  override def updateNClob(columnIndex: Int, reader: Reader) = ???
 
-  override def updateNClob(columnLabel: String, reader: Reader): Unit = ???
+  override def updateNClob(columnLabel: String, reader: Reader) = ???
 
-  override def getObject[T <: Object](columnIndex: Int, `type`: Class[T]): T = ???
+  override def getObject[T <: Object](columnIndex: Int, `type`: Class[T]) = ???
 
-  override def getObject[T <: Object](columnLabel: String, `type`: Class[T]): T = ???
+  override def getObject[T <: Object](columnLabel: String, `type`: Class[T]) = ???
 
 }
