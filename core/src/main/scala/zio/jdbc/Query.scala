@@ -75,7 +75,7 @@ final case class Query[+A](sql: SqlFragment, decode: ZResultSet => A) {
 
   private def executeQuery(sql: SqlFragment): ZIO[Scope with ZConnection, Throwable, ZResultSet] = for {
     connection <- ZIO.service[ZConnection]
-    zrs        <- connection.executeSqlWith(sql) { ps =>
+    zrs        <- connection.executeSqlWith(sql, false) { ps =>
                     ZIO.acquireRelease {
                       ZIO.attempt(ZResultSet(ps.executeQuery()))
                     }(_.close)
