@@ -36,7 +36,7 @@ final case class Query[+A](decode: ZResultSet => IO[CodecException, A], sql: Sql
       zrs   <- executeQuery(sql)
       chunk <- ZIO.iterate(ChunkBuilder.make[A]())(_ => zrs.next()) { builder =>
                  for {
-                  decoded <- decode(zrs)
+                   decoded <- decode(zrs)
                  } yield builder += decoded
                }
     } yield chunk.result())
@@ -59,8 +59,10 @@ final case class Query[+A](decode: ZResultSet => IO[CodecException, A], sql: Sql
     ZStream.unwrapScoped {
       for {
         zrs   <- executeQuery(sql)
-        stream = ZStream.repeatZIOOption { ZIO
-                     .suspendSucceed(if (zrs.next()) decode(zrs).map(Some(_)) else ZIO.none).mapError(Some(_))
+        stream = ZStream.repeatZIOOption {
+                   ZIO
+                     .suspendSucceed(if (zrs.next()) decode(zrs).map(Some(_)) else ZIO.none)
+                     .mapError(Some(_))
                      .flatMap {
                        case None    => ZIO.fail(None)
                        case Some(v) => ZIO.succeed(v)
@@ -76,8 +78,8 @@ final case class Query[+A](decode: ZResultSet => IO[CodecException, A], sql: Sql
     connection <- ZIO.service[ZConnection]
     zrs        <- connection.executeSqlWith(sql) { ps =>
                     ZIO.acquireRelease {
-                      ZIO.attempt(ZResultSet(ps.executeQuery())).refineOrDie {
-                        case e: SQLException => ZSQLException(e)
+                      ZIO.attempt(ZResultSet(ps.executeQuery())).refineOrDie { case e: SQLException =>
+                        ZSQLException(e)
                       }
                     }(_.close)
                   }
@@ -88,13 +90,12 @@ final case class Query[+A](decode: ZResultSet => IO[CodecException, A], sql: Sql
 object Query {
 
   def apply[A](sql: SqlFragment, decode: ZResultSet => A): Query[A] = {
-    def decodeZIO(zrs: ZResultSet): IO[DecodeException, A] = 
-      ZIO.attempt(decode(zrs)).refineOrDie {
-        case e: Throwable => DecodeException(e)
+    def decodeZIO(zrs: ZResultSet): IO[DecodeException, A] =
+      ZIO.attempt(decode(zrs)).refineOrDie { case e: Throwable =>
+        DecodeException(e)
       }
     new Query[A](zrs => decodeZIO(zrs), sql)
   }
-    
 
   def fromSqlFragment[A](sql: SqlFragment)(implicit decoder: JdbcDecoder[A]): Query[A] =
     Query[A](sql, (zrs: ZResultSet) => decoder.unsafeDecode(1, zrs.resultSet)._2)

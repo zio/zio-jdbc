@@ -18,8 +18,8 @@ package zio.jdbc
 import zio._
 
 import java.io.File
-import java.sql.{ Connection, SQLException }
 import java.lang.ClassNotFoundException
+import java.sql.{ Connection, SQLException }
 
 /**
  * A `ZConnectionPool` represents a pool of connections, and has the ability to
@@ -35,8 +35,8 @@ object ZConnectionPool {
   def h2test: ZLayer[Any, ConnectionException, ZConnectionPool] =
     ZLayer.scoped {
       for {
-        int      <- Random.nextInt
-        zenv   <- connect("org.h2.Driver", s"jdbc:h2:mem:test_database_$int", Map.empty).build
+        int  <- Random.nextInt
+        zenv <- connect("org.h2.Driver", s"jdbc:h2:mem:test_database_$int", Map.empty).build
       } yield zenv.get[ZConnectionPool]
     }
 
@@ -75,7 +75,11 @@ object ZConnectionPool {
     database: String,
     props: Map[String, String]
   ): ZLayer[ZConnectionPoolConfig, ConnectionException, ZConnectionPool] =
-    connect("com.microsoft.sqlserver.jdbc.SQLServerDriver", s"jdbc:sqlserver://$host:$port;databaseName=$database", props)
+    connect(
+      "com.microsoft.sqlserver.jdbc.SQLServerDriver",
+      s"jdbc:sqlserver://$host:$port;databaseName=$database",
+      props
+    )
 
   def mysql(
     host: String,
@@ -85,25 +89,31 @@ object ZConnectionPool {
   ): ZLayer[ZConnectionPoolConfig, ConnectionException, ZConnectionPool] =
     connect("com.mysql.cj.jdbc.Driver", s"jdbc:mysql://$host:$port/$database", props)
 
-  def connect(driverName: String, url: String, props: Map[String, String]): ZLayer[Any, ConnectionException, ZConnectionPool] =
+  def connect(
+    driverName: String,
+    url: String,
+    props: Map[String, String]
+  ): ZLayer[Any, ConnectionException, ZConnectionPool] =
     ZLayer.scoped {
       for {
-        _      <- ZIO.attempt(Class.forName(driverName)).refineOrDie {
-          case e: ClassNotFoundException => DriverNotFound(e, driverName)
-        }
+        _      <- ZIO.attempt(Class.forName(driverName)).refineOrDie { case e: ClassNotFoundException =>
+                    DriverNotFound(e, driverName)
+                  }
         acquire = ZIO.attemptBlocking {
                     val properties = new java.util.Properties
                     props.foreach { case (k, v) => properties.setProperty(k, v) }
 
                     java.sql.DriverManager.getConnection(url, properties)
-                  }.refineOrDie {
-                    case e: SQLException => FailedToConnect(e) 
+                  }.refineOrDie { case e: SQLException =>
+                    FailedToConnect(e)
                   }
         zenv   <- make(acquire).build.provideSome[Scope](ZLayer.succeed(ZConnectionPoolConfig.default))
       } yield zenv.get[ZConnectionPool]
     }
 
-  def make(acquire: IO[ConnectionException, Connection]): ZLayer[ZConnectionPoolConfig, ConnectionException, ZConnectionPool] =
+  def make(
+    acquire: IO[ConnectionException, Connection]
+  ): ZLayer[ZConnectionPoolConfig, ConnectionException, ZConnectionPool] =
     ZLayer.scoped {
       for {
         config <- ZIO.service[ZConnectionPoolConfig]
@@ -131,7 +141,7 @@ object ZConnectionPool {
                   }
       } yield new ZConnectionPool {
         def transaction: ZLayer[Any, ConnectionException, ZConnection] = tx
-        def invalidate(conn: ZConnection): UIO[Any]          = pool.invalidate(conn)
+        def invalidate(conn: ZConnection): UIO[Any]                    = pool.invalidate(conn)
       }
     }
 }

@@ -18,9 +18,7 @@ package zio.jdbc
 import zio._
 
 import java.io.IOException
-import java.sql.ResultSetMetaData
-import java.sql.SQLException
-import java.sql.Connection
+import java.sql.{ Connection, ResultSetMetaData, SQLException }
 
 /**
  * Trait to encapsule all the exceptions employed by ZIO JDBC
@@ -28,21 +26,22 @@ import java.sql.Connection
 sealed trait JdbcException extends Exception
 
 sealed trait ConnectionException extends JdbcException
-sealed trait QueryException extends JdbcException
+sealed trait QueryException      extends JdbcException
 
 /**
  * ConnectionException. Related to the connection operations with a database
  */
 final case class DriverNotFound(cause: Throwable, driver: String)
-  extends Exception(s"Could not found driver: $driver", cause) with ConnectionException
-final case class FailedToConnect(cause: Throwable) extends Exception(cause) with ConnectionException
+    extends Exception(s"Could not found driver: $driver", cause)
+    with ConnectionException
+final case class FailedToConnect(cause: Throwable)        extends Exception(cause) with ConnectionException
 final case class FailedMakingRestorable(cause: Throwable) extends Exception(cause) with ConnectionException
 
 /**
  * QueryExceptions. Related to transactions
  */
 sealed trait CodecException extends QueryException
-sealed trait FailedQuery extends QueryException
+sealed trait FailedQuery    extends QueryException
 
 /**
  * CodecExceptions. Related to the decoding and encoding of the data in a transaction
@@ -54,11 +53,16 @@ final case class JdbcDecoderError(
   metadata: ResultSetMetaData,
   row: Int,
   column: Option[Int] = None
-) extends IOException(message, cause) with CodecException
-final case class JdbcEncoderError(message: String, cause: Throwable) extends IOException(message, cause) with CodecException
+) extends IOException(message, cause)
+    with CodecException
+final case class JdbcEncoderError(message: String, cause: Throwable)
+    extends IOException(message, cause)
+    with CodecException
 
 /**
  * FailedQueries. Related to the failure of actions executed directly on a database
  */
-final case class ZSQLException(cause: SQLException) extends Exception(cause) with  FailedQuery
-final case class FailedAccess[+A](cause: Throwable, f: Connection => ZIO[Scope, Throwable, A]) extends Exception(cause) with FailedQuery
+final case class ZSQLException(cause: SQLException) extends Exception(cause) with FailedQuery
+final case class FailedAccess[+A](cause: Throwable, f: Connection => ZIO[Scope, Throwable, A])
+    extends Exception(cause)
+    with FailedQuery

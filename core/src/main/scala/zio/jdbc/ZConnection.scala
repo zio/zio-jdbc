@@ -17,7 +17,7 @@ package zio.jdbc
 
 import zio._
 
-import java.sql.{ Connection, PreparedStatement, Statement, SQLException }
+import java.sql.{ Connection, PreparedStatement, SQLException, Statement }
 
 /**
  * A `ZConnection` is a straightforward wrapper around `java.sql.Connection`. In order
@@ -31,12 +31,11 @@ final class ZConnection(private[jdbc] val underlying: ZConnection.Restorable) ex
     ZIO.scoped {
       accessZIO(f.andThen(ZIO.attempt(_)))
     }
-    
 
   def accessZIO[A](f: Connection => ZIO[Scope, Throwable, A]): ZIO[Scope, FailedAccess[A], A] =
-    ZIO.blocking(f(underlying)).refineOrDie {
-                    case e: SQLException => FailedAccess(e, f) 
-                  }
+    ZIO.blocking(f(underlying)).refineOrDie { case e: SQLException =>
+      FailedAccess(e, f)
+    }
 
   def close: ZIO[Scope, FailedAccess[Unit], Any]    = access(_.close())
   def rollback: ZIO[Scope, FailedAccess[Unit], Any] = access(_.rollback())
@@ -78,16 +77,17 @@ final class ZConnection(private[jdbc] val underlying: ZConnection.Restorable) ex
                                      }
         result                    <- f(statement)
       } yield result
-    }.refineOrDie {
-      case err @ FailedAccess(e, _) => e match {
+    }.refineOrDie { case err @ FailedAccess(e, _) =>
+      e match {
         case sqlEx: SQLException => ZSQLException(sqlEx)
-        case _ => err
-      case e: SQLException => ZSQLException(e)
+        case _                   => err
+        case e: SQLException     => ZSQLException(e)
       }
-    }.refineToOrDie[ZSQLException].tapErrorCause { cause => // TODO: Question: do we want logging here, switch to debug for now
-      ZIO.logAnnotate("SQL", sql.toString)(
-        ZIO.logDebugCause(s"Error executing SQL due to: ${cause.prettyPrint}", cause)
-      )
+    }.refineToOrDie[ZSQLException].tapErrorCause {
+      cause => // TODO: Question: do we want logging here, switch to debug for now
+        ZIO.logAnnotate("SQL", sql.toString)(
+          ZIO.logDebugCause(s"Error executing SQL due to: ${cause.prettyPrint}", cause)
+        )
     }
 
   /**
@@ -127,9 +127,9 @@ object ZConnection {
 
   def make(underlying: Connection): IO[ConnectionException, ZConnection] =
     for {
-      restorable <- ZIO.attempt(new Restorable(underlying)).refineOrDie {
-        case e: SQLException => FailedMakingRestorable(e)
-      }
+      restorable <- ZIO.attempt(new Restorable(underlying)).refineOrDie { case e: SQLException =>
+                      FailedMakingRestorable(e)
+                    }
     } yield new ZConnection(restorable)
 
   private[jdbc] class Restorable(underlying: Connection) extends Connection {
@@ -320,33 +320,33 @@ object ZConnection {
     object Flag {
 
       case object AutoCommit extends Flag {
-        val index = 1
-        val mask  = 1 << index
+        val index     = 1
+        val mask: Int = 1 << index
       }
 
       case object Catalog extends Flag {
-        val index = 2
-        val mask  = 1 << index
+        val index     = 2
+        val mask: Int = 1 << index
       }
 
       case object ClientInfo extends Flag {
-        val index = 3
-        val mask  = 1 << index
+        val index     = 3
+        val mask: Int = 1 << index
       }
 
       case object ReadOnly extends Flag {
-        val index = 4
-        val mask  = 1 << index
+        val index     = 4
+        val mask: Int = 1 << index
       }
 
       case object Schema extends Flag {
-        val index = 5
-        val mask  = 1 << index
+        val index     = 5
+        val mask: Int = 1 << index
       }
 
       case object TransactionIsolation extends Flag {
-        val index = 6
-        val mask  = 1 << index
+        val index     = 6
+        val mask: Int = 1 << index
       }
     }
   }

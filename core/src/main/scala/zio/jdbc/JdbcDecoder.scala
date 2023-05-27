@@ -29,8 +29,8 @@ trait JdbcDecoder[+A] { self =>
   def unsafeDecode(columIndex: Int, rs: ResultSet): (Int, A)
 
   final def decode(columnIndex: Int, rs: ResultSet): IO[JdbcDecoderError, (Int, A)] =
-    ZIO.attempt(unsafeDecode(columnIndex, rs)).refineOrDie {
-      case e => JdbcDecoderError(e.getMessage(), e, rs.getMetaData(), rs.getRow())
+    ZIO.attempt(unsafeDecode(columnIndex, rs)).refineOrDie { case e =>
+      JdbcDecoderError(e.getMessage(), e, rs.getMetaData(), rs.getRow())
     }
 
   final def map[B](f: A => B): JdbcDecoder[B] =
@@ -110,9 +110,8 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
   implicit def optionDecoder[A](implicit decoder: JdbcDecoder[A]): JdbcDecoder[Option[A]] =
     JdbcDecoder(rs =>
       int =>
-        try {
-          Some(decoder.unsafeDecode(int, rs)._2)
-        } catch {
+        try Some(decoder.unsafeDecode(int, rs)._2)
+        catch {
           case e: Throwable => None
         }
     )

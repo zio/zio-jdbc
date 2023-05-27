@@ -7,6 +7,8 @@ import zio.test.Assertion._
 import zio.test.TestAspect._
 import zio.test._
 
+import java.io.{ InputStream, Reader }
+import java.net.URL
 import java.sql.{
   Blob,
   CallableStatement,
@@ -24,8 +26,6 @@ import java.sql.{
 import java.util.{ Properties, concurrent }
 import java.{ sql, util }
 import scala.util.Random
-import java.io.{ InputStream, Reader }
-import java.net.URL
 
 object ZConnectionPoolSpec extends ZIOSpecDefault {
   final case class Person(name: String, age: Int)
