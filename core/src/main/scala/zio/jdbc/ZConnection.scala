@@ -17,7 +17,7 @@ package zio.jdbc
 
 import zio._
 
-import java.sql.{ Connection, PreparedStatement, Statement }
+import java.sql.{ Connection, PreparedStatement, Statement, SQLException }
 
 /**
  * A `ZConnection` is a straightforward wrapper around `java.sql.Connection`. In order
@@ -27,18 +27,23 @@ import java.sql.{ Connection, PreparedStatement, Statement }
  */
 final class ZConnection(private[jdbc] val underlying: ZConnection.Restorable) extends AnyVal {
 
-  def access[A](f: Connection => A): ZIO[Any, Throwable, A] =
-    ZIO.attemptBlocking(f(underlying))
+  def access[A](f: Connection => A): IO[FailedAccess[A], A] =
+    ZIO.scoped {
+      accessZIO(f.andThen(ZIO.attempt(_)))
+    }
+    
 
-  def accessZIO[A](f: Connection => ZIO[Scope, Throwable, A]): ZIO[Scope, Throwable, A] =
-    ZIO.blocking(f(underlying))
+  def accessZIO[A](f: Connection => ZIO[Scope, Throwable, A]): ZIO[Scope, FailedAccess[A], A] =
+    ZIO.blocking(f(underlying)).refineOrDie {
+                    case e: SQLException => FailedAccess(e, f) 
+                  }
 
-  def close: Task[Any]    = access(_.close())
-  def rollback: Task[Any] = access(_.rollback())
+  def close: ZIO[Scope, FailedAccess[Unit], Any]    = access(_.close())
+  def rollback: ZIO[Scope, FailedAccess[Unit], Any] = access(_.rollback())
 
   private[jdbc] def executeSqlWith[A](
     sql: SqlFragment
-  )(f: PreparedStatement => ZIO[Scope, Throwable, A]): ZIO[Scope, Throwable, A] =
+  )(f: PreparedStatement => ZIO[Scope, ZSQLException, A]): ZIO[Scope, ZSQLException, A] =
     accessZIO { connection =>
       for {
         transactionIsolationLevel <- currentTransactionIsolationLevel.get
@@ -73,7 +78,13 @@ final class ZConnection(private[jdbc] val underlying: ZConnection.Restorable) ex
                                      }
         result                    <- f(statement)
       } yield result
-    }.tapErrorCause { cause => // TODO: Question: do we want logging here, switch to debug for now
+    }.refineOrDie {
+      case err @ FailedAccess(e, _) => e match {
+        case sqlEx: SQLException => ZSQLException(sqlEx)
+        case _ => err
+      case e: SQLException => ZSQLException(e)
+      }
+    }.refineToOrDie[ZSQLException].tapErrorCause { cause => // TODO: Question: do we want logging here, switch to debug for now
       ZIO.logAnnotate("SQL", sql.toString)(
         ZIO.logDebugCause(s"Error executing SQL due to: ${cause.prettyPrint}", cause)
       )
@@ -89,10 +100,10 @@ final class ZConnection(private[jdbc] val underlying: ZConnection.Restorable) ex
    * @param zc the connection to look into
    * @return true if the connection is alive (valid), false otherwise
    */
-  def isValid(): Task[Boolean] =
+  def isValid(): ZIO[Scope, FailedAccess[Any], Boolean] =
     for {
-      closed    <- ZIO.attempt(this.underlying.isClosed)
-      statement <- ZIO.attempt(this.underlying.prepareStatement("SELECT 1"))
+      closed    <- access(_.isClosed)
+      statement <- access(_.prepareStatement("SELECT 1"))
       isAlive   <- ZIO.succeed(!closed && statement != null)
     } yield isAlive
 
@@ -105,8 +116,8 @@ final class ZConnection(private[jdbc] val underlying: ZConnection.Restorable) ex
    * @param zc the connection to look into
    * @return true if the connection is alive (valid), false otherwise
    */
-  def isValid(timeout: Int): Task[Boolean] =
-    ZIO.attempt(this.underlying.isValid(timeout))
+  def isValid(timeout: Int): ZIO[Scope, FailedAccess[Boolean], Boolean] =
+    access(_.isValid(timeout))
 
   private[jdbc] def restore: UIO[Unit] =
     ZIO.succeed(underlying.restore())
@@ -114,9 +125,11 @@ final class ZConnection(private[jdbc] val underlying: ZConnection.Restorable) ex
 
 object ZConnection {
 
-  def make(underlying: Connection): Task[ZConnection] =
+  def make(underlying: Connection): IO[ConnectionException, ZConnection] =
     for {
-      restorable <- ZIO.attempt(new Restorable(underlying))
+      restorable <- ZIO.attempt(new Restorable(underlying)).refineOrDie {
+        case e: SQLException => FailedMakingRestorable(e)
+      }
     } yield new ZConnection(restorable)
 
   private[jdbc] class Restorable(underlying: Connection) extends Connection {

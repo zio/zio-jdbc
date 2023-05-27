@@ -17,7 +17,7 @@ package zio.jdbc
 
 import zio.{ URIO, _ }
 
-import java.sql.ResultSet
+import java.sql.{ ResultSet, SQLException }
 
 /**
  * A `ZResultSet` is a straightforward wrapper around `java.sql.ResultSet`. In order
@@ -26,7 +26,9 @@ import java.sql.ResultSet
  * blocking thread pool.
  */
 final class ZResultSet(private[jdbc] val resultSet: ResultSet) {
-  def access[A](f: ResultSet => A): ZIO[Any, Throwable, A] = ZIO.attemptBlocking(f(resultSet))
+  def access[A](f: ResultSet => A): ZIO[Any, ZSQLException, A] = ZIO.attemptBlocking(f(resultSet)).refineOrDie {
+    case e: SQLException => ZSQLException(e)
+  }
   def close: URIO[Any, Unit]                               =
     ZIO.attempt(resultSet.close()).ignoreLogged
 

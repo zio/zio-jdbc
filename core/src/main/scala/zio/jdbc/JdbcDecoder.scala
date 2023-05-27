@@ -28,9 +28,10 @@ import scala.collection.immutable.ListMap
 trait JdbcDecoder[+A] { self =>
   def unsafeDecode(columIndex: Int, rs: ResultSet): (Int, A)
 
-  final def decode(columnIndex: Int, rs: ResultSet): Either[Throwable, (Int, A)] =
-    try Right(unsafeDecode(columnIndex, rs))
-    catch { case e: JdbcDecoderError => Left(e) }
+  final def decode(columnIndex: Int, rs: ResultSet): IO[JdbcDecoderError, (Int, A)] =
+    ZIO.attempt(unsafeDecode(columnIndex, rs)).refineOrDie {
+      case e => JdbcDecoderError(e.getMessage(), e, rs.getMetaData(), rs.getRow())
+    }
 
   final def map[B](f: A => B): JdbcDecoder[B] =
     new JdbcDecoder[B] {
@@ -109,9 +110,10 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
   implicit def optionDecoder[A](implicit decoder: JdbcDecoder[A]): JdbcDecoder[Option[A]] =
     JdbcDecoder(rs =>
       int =>
-        decoder.decode(int, rs) match {
-          case Left(_)      => None
-          case Right(value) => Option(value._2)
+        try {
+          Some(decoder.unsafeDecode(int, rs)._2)
+        } catch {
+          case e: Throwable => None
         }
     )
 

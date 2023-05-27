@@ -18,7 +18,7 @@ package zio.jdbc
 import zio._
 import zio.jdbc.SqlFragment.Segment
 
-import java.sql.{ PreparedStatement, Types }
+import java.sql.{ PreparedStatement, SQLException, Types }
 import scala.language.implicitConversions
 
 /**
@@ -170,18 +170,23 @@ sealed trait SqlFragment { self =>
   /**
    * Executes a SQL statement, such as one that creates a table.
    */
-  def execute: ZIO[ZConnection, Throwable, Unit] =
+  def execute: ZIO[ZConnection, ZSQLException, Unit] = {
+    def executePs(ps: PreparedStatement): IO[ZSQLException, Int] =
+      ZIO.attempt(ps.executeUpdate()).refineOrDie {
+        case e: SQLException => ZSQLException(e)
+      }
     ZIO.scoped(for {
       connection <- ZIO.service[ZConnection]
       _          <- connection.executeSqlWith(self) { ps =>
-                      ZIO.attempt(ps.executeUpdate())
+                      executePs(ps)
                     }
     } yield ())
+  }
 
   /**
    * Executes a SQL delete query.
    */
-  def delete: ZIO[ZConnection, Throwable, Long] =
+  def delete: ZIO[ZConnection, ZSQLException, Long] =
     ZIO.scoped(executeLargeUpdate(self))
 
   /**
@@ -190,23 +195,25 @@ sealed trait SqlFragment { self =>
    * parsed and returned as `Chunk[Long]`. If keys are non-numeric, a
    * `Chunk.empty` is returned.
    */
-  def insert: ZIO[ZConnection, Throwable, UpdateResult] =
+  def insert: ZIO[ZConnection, ZSQLException, UpdateResult] =
     ZIO.scoped(executeWithUpdateResult(self))
 
   /**
    * Performs a SQL update query, returning a count of rows updated.
    */
-  def update: ZIO[ZConnection, Throwable, Long] =
+  def update: ZIO[ZConnection, ZSQLException, Long] =
     ZIO.scoped(executeLargeUpdate(self))
 
-  private def executeLargeUpdate(sql: SqlFragment): ZIO[Scope with ZConnection, Throwable, Long] = for {
+  private def executeLargeUpdate(sql: SqlFragment): ZIO[Scope with ZConnection, ZSQLException, Long] = for {
     connection <- ZIO.service[ZConnection]
     count      <- connection.executeSqlWith(sql) { ps =>
-                    ZIO.attempt(ps.executeLargeUpdate())
+                    ZIO.attempt(ps.executeLargeUpdate()).refineOrDie {
+                      case e: SQLException => ZSQLException(e)
+                    }
                   }
   } yield count
 
-  private def executeWithUpdateResult(sql: SqlFragment): ZIO[Scope with ZConnection, Throwable, UpdateResult] =
+  private def executeWithUpdateResult(sql: SqlFragment): ZIO[Scope with ZConnection, ZSQLException, UpdateResult] =
     for {
       connection <- ZIO.service[ZConnection]
       result     <- connection.executeSqlWith(sql) { ps =>
@@ -215,6 +222,8 @@ sealed trait SqlFragment { self =>
                                         val rowsUpdated = ps.executeLargeUpdate()
                                         val updatedKeys = ps.getGeneratedKeys
                                         (rowsUpdated, ZResultSet(updatedKeys))
+                                      }.refineOrDie {
+                                        case e: SQLException => ZSQLException(e)
                                       })(_._2.close)
                         (count, rs) = result
                         keys       <- ZIO.attempt {

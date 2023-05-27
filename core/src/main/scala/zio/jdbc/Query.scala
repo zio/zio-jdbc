@@ -18,50 +18,49 @@ package zio.jdbc
 import zio._
 import zio.stream._
 
-final case class Query[+A](sql: SqlFragment, decode: ZResultSet => A) {
+import java.sql.SQLException
+
+final case class Query[+A](decode: ZResultSet => IO[CodecException, A], sql: SqlFragment) {
 
   def as[B](implicit decoder: JdbcDecoder[B]): Query[B] =
-    Query(sql, zrs => decoder.unsafeDecode(1, zrs.resultSet)._2)
+    Query(zrs => decoder.decode(1, zrs.resultSet).map(_._2), sql)
 
   def map[B](f: A => B): Query[B] =
-    Query(sql, zrs => f(decode(zrs)))
+    Query(zrs => decode(zrs).map(f), sql)
 
   /**
    * Performs a SQL select query, returning all results in a chunk.
    */
-  def selectAll: ZIO[ZConnection, Throwable, Chunk[A]] =
+  def selectAll: ZIO[ZConnection, QueryException, Chunk[A]] =
     ZIO.scoped(for {
       zrs   <- executeQuery(sql)
-      chunk <- ZIO.attempt {
-                 val builder = ChunkBuilder.make[A]()
-                 while (zrs.next())
-                   builder += decode(zrs)
-                 builder.result()
+      chunk <- ZIO.iterate(ChunkBuilder.make[A]())(_ => zrs.next()) { builder =>
+                 for {
+                  decoded <- decode(zrs)
+                 } yield builder += decoded
                }
-    } yield chunk)
+    } yield chunk.result())
 
   /**
    * Performs a SQL select query, returning the first result, if any.
    */
-  def selectOne: ZIO[ZConnection, Throwable, Option[A]] =
+  def selectOne: ZIO[ZConnection, QueryException, Option[A]] =
     ZIO.scoped(for {
       zrs    <- executeQuery(sql)
-      option <- ZIO.attempt {
-                  if (zrs.next()) Some(decode(zrs)) else None
-                }
+      option <-
+        if (zrs.next()) decode(zrs).map(Some(_))
+        else ZIO.none
     } yield option)
 
   /**
    * Performs a SQL select query, returning a stream of results.
    */
-  def selectStream: ZStream[ZConnection, Throwable, A] =
+  def selectStream: ZStream[ZConnection, QueryException, A] =
     ZStream.unwrapScoped {
       for {
         zrs   <- executeQuery(sql)
-        stream = ZStream.repeatZIOOption {
-                   ZIO
-                     .suspend(if (zrs.next()) ZIO.attempt(Some(decode(zrs))) else ZIO.none)
-                     .mapError(Option(_))
+        stream = ZStream.repeatZIOOption { ZIO
+                     .suspendSucceed(if (zrs.next()) decode(zrs).map(Some(_)) else ZIO.none).mapError(Some(_))
                      .flatMap {
                        case None    => ZIO.fail(None)
                        case Some(v) => ZIO.succeed(v)
@@ -73,11 +72,13 @@ final case class Query[+A](sql: SqlFragment, decode: ZResultSet => A) {
   def withDecode[B](f: ZResultSet => B): Query[B] =
     Query(sql, f)
 
-  private def executeQuery(sql: SqlFragment): ZIO[Scope with ZConnection, Throwable, ZResultSet] = for {
+  private def executeQuery(sql: SqlFragment): ZIO[Scope with ZConnection, ZSQLException, ZResultSet] = for {
     connection <- ZIO.service[ZConnection]
     zrs        <- connection.executeSqlWith(sql) { ps =>
                     ZIO.acquireRelease {
-                      ZIO.attempt(ZResultSet(ps.executeQuery()))
+                      ZIO.attempt(ZResultSet(ps.executeQuery())).refineOrDie {
+                        case e: SQLException => ZSQLException(e)
+                      }
                     }(_.close)
                   }
   } yield zrs
@@ -86,7 +87,16 @@ final case class Query[+A](sql: SqlFragment, decode: ZResultSet => A) {
 
 object Query {
 
+  def apply[A](sql: SqlFragment, decode: ZResultSet => A): Query[A] = {
+    def decodeZIO(zrs: ZResultSet): IO[DecodeException, A] = 
+      ZIO.attempt(decode(zrs)).refineOrDie {
+        case e: Throwable => DecodeException(e)
+      }
+    new Query[A](zrs => decodeZIO(zrs), sql)
+  }
+    
+
   def fromSqlFragment[A](sql: SqlFragment)(implicit decoder: JdbcDecoder[A]): Query[A] =
-    Query[A](sql, zrs => decoder.unsafeDecode(1, zrs.resultSet)._2)
+    Query[A](sql, (zrs: ZResultSet) => decoder.unsafeDecode(1, zrs.resultSet)._2)
 
 }

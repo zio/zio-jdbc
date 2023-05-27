@@ -23,7 +23,7 @@ import zio._
 final case class ZConnectionPoolConfig(
   minConnections: Int,
   maxConnections: Int,
-  retryPolicy: Schedule[Any, Throwable, Any],
+  retryPolicy: Schedule[Any, ConnectionException, Any],
   timeToLive: Duration
 )
 object ZConnectionPoolConfig {
