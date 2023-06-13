@@ -100,7 +100,7 @@ object QuerySpec extends ZIOSpecDefault {
           val users           = genUsers(elems)
           val insertStatement = SqlFragment.insertInto("users")("name", "age").values(users)
           for {
-            inserted <- insertStatement.insert
+            inserted <- insertStatement.insert(false)
           } yield inserted.rowsUpdated
         }
 

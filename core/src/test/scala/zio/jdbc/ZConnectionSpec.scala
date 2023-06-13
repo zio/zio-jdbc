@@ -31,11 +31,14 @@ object ZConnectionSpec extends ZIOSpecDefault {
       test("PreparedStatement Automatic Close Normal") {
         ZIO.scoped {
           for {
-            statementClosedTuple <- testConnection.executeSqlWith(sql"""
+            statementClosedTuple <- testConnection.executeSqlWith(
+                                      sql"""
                 create table users_no_id (
                 name varchar not null,
                 age int not null
-                )""")(ps => ZIO.succeed((ps, ps.isClosed())))
+                )""",
+                                      false
+                                    )(ps => ZIO.succeed((ps, ps.isClosed())))
           } yield assertTrue(statementClosedTuple._1.isClosed() && !statementClosedTuple._2)
         }
       } +
@@ -44,11 +47,14 @@ object ZConnectionSpec extends ZIOSpecDefault {
             for {
               statementClosedTuple <-
                 testConnection
-                  .executeSqlWith(sql"""
+                  .executeSqlWith(
+                    sql"""
                 create table users_no_id (
                 name varchar not null,
                 age int not null
-                )""")(ps => ZIO.fail(new DummyException("Error Ocurred", ps, ps.isClosed())))
+                )""",
+                    false
+                  )(ps => ZIO.fail(new DummyException("Error Ocurred", ps, ps.isClosed())))
                   .catchSome { case e: DummyException => ZIO.succeed((e.preparedStatement, e.closedInScope)) }
             } yield assertTrue(statementClosedTuple._1.isClosed() && !statementClosedTuple._2)
           } //A bit of a hack, DummyException receives the prepared Statement so that its closed State can be checked outside ZConnection's Scope
@@ -68,11 +74,14 @@ object ZConnectionSpec extends ZIOSpecDefault {
           ZIO.scoped {
             for {
               conn                 <- liveConnection
-              statementClosedTuple <- conn.executeSqlWith(sql"""
+              statementClosedTuple <- conn.executeSqlWith(
+                                        sql"""
                 create table users_no_id (
                 name varchar not null,
                 age int not null
-                )""")(ps => ZIO.succeed((ps.executeUpdate(), ps, ps.isClosed())))
+                )""",
+                                        false
+                                      )(ps => ZIO.succeed((ps.executeUpdate(), ps, ps.isClosed())))
             } yield assertTrue(
               statementClosedTuple._1 == 0 &&
                 statementClosedTuple._2.isClosed() && !statementClosedTuple._3
