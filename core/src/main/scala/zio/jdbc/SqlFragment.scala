@@ -208,23 +208,27 @@ sealed trait SqlFragment { self =>
 
   private def executeWithUpdateResult(sql: SqlFragment): ZIO[Scope with ZConnection, Throwable, UpdateResult] =
     for {
+      updateRes  <- executeUpdate(sql)
+      (count, rs) = updateRes
+      keys       <- ZIO.attempt {
+                      val builder = ChunkBuilder.make[Long]()
+                      while (rs.next())
+                        builder += rs.resultSet.getLong(1)
+                      builder.result()
+                    }.orElseSucceed(Chunk.empty)
+    } yield UpdateResult(count, keys)
+
+  private[jdbc] def executeUpdate(sql: SqlFragment): ZIO[Scope with ZConnection, Throwable, (Long, ZResultSet)] =
+    for {
       connection <- ZIO.service[ZConnection]
       result     <- connection.executeSqlWith(sql) { ps =>
-                      for {
-                        result     <- ZIO.acquireRelease(ZIO.attempt {
-                                        val rowsUpdated = ps.executeLargeUpdate()
-                                        val updatedKeys = ps.getGeneratedKeys
-                                        (rowsUpdated, ZResultSet(updatedKeys))
-                                      })(_._2.close)
-                        (count, rs) = result
-                        keys       <- ZIO.attempt {
-                                        val builder = ChunkBuilder.make[Long]()
-                                        while (rs.next())
-                                          builder += rs.resultSet.getLong(1)
-                                        builder.result()
-                                      }.orElseSucceed(Chunk.empty)
+                      ZIO.acquireRelease(ZIO.attempt {
+                        val rowsUpdated = ps.executeLargeUpdate()
+                        val updatedKeys = ps.getGeneratedKeys
+                        (rowsUpdated, ZResultSet(updatedKeys))
 
-                      } yield UpdateResult(count, keys)
+                      })(_._2.close)
+
                     }
     } yield result
 
