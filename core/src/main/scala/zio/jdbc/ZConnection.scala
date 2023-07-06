@@ -302,7 +302,11 @@ object ZConnection {
           val _ = map.put(key, value)
         }
       }
-      properties.forEach(put(frozen))
+
+      if (properties != null) {
+        properties.forEach(put(frozen))
+      }
+
       frozen
     }
 
