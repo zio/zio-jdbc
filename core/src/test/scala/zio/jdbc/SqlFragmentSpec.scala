@@ -265,16 +265,16 @@ object SqlFragmentSpec extends ZIOSpecDefault {
               for {
                 rsClosedTuple <- ZIO.scoped {
                                    for {
-                                     rs     <- testSql.executeUpdate(testSql)
-                                     closed <- rs._2.access(_.isClosed())
+                                     rs     <- testSql.executeUpdate(testSql, true)
+                                     closed <- rs._2.get.access(_.isClosed())
                                      count   = {
                                        var c = 0
-                                       while (rs._2.next()) c += 1
+                                       while (rs._2.get.next()) c += 1
                                        c
                                      }
                                    } yield (rs._2, closed, count)
                                  }
-                closed        <- rsClosedTuple._1.access(_.isClosed())
+                closed        <- rsClosedTuple._1.get.access(_.isClosed())
               } yield assertTrue(closed && !rsClosedTuple._2 && rsClosedTuple._3 == elements)
             }.provide(ZLayer.succeed(testConnection(false, elements)))
           } +
@@ -284,15 +284,15 @@ object SqlFragmentSpec extends ZIOSpecDefault {
                 for {
                   rsClosedTuple <- ZIO.scoped {
                                      for {
-                                       rs     <- testSql.executeUpdate(testSql)
-                                       closed <- rs._2.access(_.isClosed())
+                                       rs     <- testSql.executeUpdate(testSql, true)
+                                       closed <- rs._2.get.access(_.isClosed())
                                        failed <- ZIO.attempt {
-                                                   rs._2.next()
+                                                   rs._2.get.next()
                                                    false
                                                  }.orElseSucceed(true)
                                      } yield (rs._2, closed, failed)
                                    }
-                  closed        <- rsClosedTuple._1.access(_.isClosed())
+                  closed        <- rsClosedTuple._1.get.access(_.isClosed())
                 } yield assertTrue(closed && !rsClosedTuple._2, rsClosedTuple._3)
               }.provide(ZLayer.succeed(testConnection(failNext = true, elems = elements)))
             }
@@ -342,7 +342,7 @@ object SqlFragmentSpec extends ZIOSpecDefault {
                 val insertStatement = SqlFragment.insertInto("users_resultset")("name", "age").values(users)
                 for {
                   inserted <- insertStatement.insert
-                } yield inserted.rowsUpdated
+                } yield inserted
               }
 
               ZIO.scoped {
@@ -352,16 +352,16 @@ object SqlFragmentSpec extends ZIOSpecDefault {
                   _             <- insertEverything(elements)
                   rsClosedTuple <- ZIO.scoped {
                                      for {
-                                       rs     <- testSql.executeUpdate(testSql)
-                                       closed <- rs._2.access(_.isClosed())
+                                       rs     <- testSql.executeUpdate(testSql, true)
+                                       closed <- rs._2.get.access(_.isClosed())
                                        count   = {
                                          var c = 0
-                                         while (rs._2.next()) c += 1
+                                         while (rs._2.get.next()) c += 1
                                          c
                                        }
                                      } yield (rs._2, closed, count, rs._1)
                                    }
-                  closed        <- rsClosedTuple._1.access(_.isClosed())
+                  closed        <- rsClosedTuple._1.get.access(_.isClosed())
                 } yield assertTrue(
                   closed && !rsClosedTuple._2 && rsClosedTuple._3 == elements && rsClosedTuple._4 == elements.toLong
                 ) //Assert ResultSet is closed Outside scope but was open inside scope

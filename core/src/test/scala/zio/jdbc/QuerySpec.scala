@@ -101,7 +101,7 @@ object QuerySpec extends ZIOSpecDefault {
           val insertStatement = SqlFragment.insertInto("users")("name", "age").values(users)
           for {
             inserted <- insertStatement.insert
-          } yield inserted.rowsUpdated
+          } yield inserted
         }
 
         def liveConnection =

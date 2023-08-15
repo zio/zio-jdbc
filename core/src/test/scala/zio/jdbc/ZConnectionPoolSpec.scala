@@ -67,24 +67,24 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
 
   val insertSherlock: ZIO[ZConnectionPool with Any, Throwable, UpdateResult] =
     transaction {
-      sql"insert into users values (default, ${sherlockHolmes.name}, ${sherlockHolmes.age})".insert
+      sql"insert into users values (default, ${sherlockHolmes.name}, ${sherlockHolmes.age})".insertWithKeys
     }
 
   val insertWatson: ZIO[ZConnectionPool with Any, Throwable, UpdateResult] =
     transaction {
-      sql"insert into users values (default, ${johnWatson.name}, ${johnWatson.age})".insert
+      sql"insert into users values (default, ${johnWatson.name}, ${johnWatson.age})".insertWithKeys
     }
 
   val insertJohn: ZIO[ZConnectionPool with Any, Throwable, UpdateResult] =
     transaction {
-      sql"insert into users values (default, ${johnDoe.name}, ${johnDoe.age})".insert
+      sql"insert into users values (default, ${johnDoe.name}, ${johnDoe.age})".insertWithKeys
     }
 
   val insertBatches: ZIO[ZConnectionPool, Throwable, Long] = transaction {
     val users  = genUsers(10000).toSeq
     val mapped = users.map(SqlFragment.insertInto("users_no_id")("name", "age").values(_))
     for {
-      inserted <- ZIO.foreach(mapped)(_.insert)
+      inserted <- ZIO.foreach(mapped)(_.insertWithKeys)
     } yield inserted.map(_.rowsUpdated).sum
   }
 
@@ -92,7 +92,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
     val users           = Seq(user1, user2, user3, user4, user5)
     val insertStatement = SqlFragment.insertInto("users_no_id")("name", "age").values(users)
     for {
-      inserted <- insertStatement.insert
+      inserted <- insertStatement.insertWithKeys
     } yield inserted.rowsUpdated
   }
 
@@ -100,7 +100,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
     val users           = genUsers(3000)
     val insertStatement = SqlFragment.insertInto("users_no_id")("name", "age").values(users)
     for {
-      inserted <- insertStatement.insert
+      inserted <- insertStatement.insertWithKeys
     } yield inserted.rowsUpdated
   }
 
