@@ -75,7 +75,11 @@ final class ZConnection(private[jdbc] val underlying: ZConnection.Restorable) ex
                                          paramIndex += 1
                                        }
                                      }
-        result                    <- ZIO.blocking(f(statement)).fork.flatMap(_.join).onInterrupt(ZIO.attemptBlocking(statement.cancel()).ignoreLogged)
+        result                    <- ZIO
+                                       .blocking(f(statement))
+                                       .fork
+                                       .flatMap(_.join)
+                                       .onInterrupt(ZIO.attemptBlocking(statement.cancel()).ignoreLogged)
       } yield result
     }.tapErrorCause { cause => // TODO: Question: do we want logging here, switch to debug for now
       ZIO.logAnnotate("SQL", sql.toString)(
