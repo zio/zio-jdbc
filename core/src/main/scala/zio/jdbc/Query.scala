@@ -77,7 +77,7 @@ final case class Query[+A](sql: SqlFragment, decode: ZResultSet => A) {
     connection <- ZIO.service[ZConnection]
     zrs        <- connection.executeSqlWith(sql, false) { ps =>
                     ZIO.acquireRelease {
-                      ZIO.attemptBlockingInterrupt(ZResultSet(ps.executeQuery()))
+                      ZIO.attempt(ZResultSet(ps.executeQuery()))
                     }(_.close)
                   }
   } yield zrs
