@@ -18,7 +18,7 @@ package zio.jdbc
 import zio._
 
 import java.io._
-import java.sql.{ Array => _, _ }
+import java.sql.{Array => _, _}
 import scala.collection.immutable.ListMap
 
 /**
@@ -546,7 +546,8 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
 
 trait JdbcDecoderLowPriorityImplicits {
   import zio.schema._
-  import java.sql.{ Types => SqlTypes }
+
+  import java.sql.{Types => SqlTypes}
 
   private def getBinary(binary: InputStream): Chunk[Byte] = {
     val baos = new ByteArrayOutputStream()
@@ -585,9 +586,7 @@ trait JdbcDecoderLowPriorityImplicits {
         val sqlType = meta.getColumnType(columnIndex)
         val value: DynamicValue =
           mapPrimitiveType(resultSet, columnIndex, sqlType)
-            .orElse(
-              mapComplexType(resultSet, columnIndex, sqlType)
-            )
+            .orElse(mapComplexType(resultSet, columnIndex, sqlType))
             .getOrElse{
               throw new SQLException(
                 s"Unsupported SQL type ${sqlType} when attempting to decode result set from a ZIO Schema ${schema}"
@@ -602,8 +601,7 @@ trait JdbcDecoderLowPriorityImplicits {
       DynamicValue.Record(TypeId.Structural, listMap)
     }
 
-  private def mapPrimitiveType(resultSet: ResultSet,columnIndex: Int, sqlType: Int)
-  : Option[DynamicValue] = {
+  private def mapPrimitiveType(resultSet: ResultSet, columnIndex: Int, sqlType: Int): Option[DynamicValue] = {
     sqlType match {
       case SqlTypes.BIGINT =>
         val bigInt = resultSet.getBigDecimal(columnIndex).toBigInteger()
@@ -760,13 +758,12 @@ trait JdbcDecoderLowPriorityImplicits {
 
         Some(DynamicValue.Primitive(string, StandardType.StringType))
 
-      case other =>
+      case _ =>
         None
     }
   }
 
-  private def mapComplexType(resultSet: ResultSet, columnIndex: Int, sqlType: Int)
-  : Option[DynamicValue] = {
+  private def mapComplexType(resultSet: ResultSet, columnIndex: Int, sqlType: Int): Option[DynamicValue] = {
     sqlType match {
       case SqlTypes.ARRAY =>
         val array = resultSet.getArray(columnIndex)

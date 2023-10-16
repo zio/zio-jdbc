@@ -11,18 +11,28 @@ import scala.util.Random
 import java.sql.Connection
 
 object ZConnectionPoolSpec extends ZIOSpecDefault {
-  final case class Person(name: String, age: Int)
+  final case class Person(name: String, age: Int, distances: Array[Int] = Array.empty) {
+
+    override def equals(obj: Any): Boolean = obj match {
+      case other: Person =>
+        name == other.name &&
+          age == other.age &&
+          distances.sameElements(other.distances)
+      case _ => false
+    }
+  }
 
   object Person {
 
     import Schema.Field
 
     implicit val schema: Schema[Person] =
-      Schema.CaseClass2[String, Int, Person](
+      Schema.CaseClass3[String, Int, Chunk[Int], Person](
         TypeId.parse(classOf[Person].getName),
         Field("name", Schema[String], get0 = _.name, set0 = (x, v) => x.copy(name = v)),
         Field("age", Schema[Int], get0 = _.age, set0 = (x, v) => x.copy(age = v)),
-        Person.apply
+        Field("distances", Schema[Chunk[Int]], get0 = p => Chunk.fromArray(p.distances), set0 = (x, v) => x.copy(distances = v.toArray)),
+        (name, age, distances) => Person(name, age, distances.toArray)
       )
   }
 
@@ -51,7 +61,8 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
       create table users (
         id identity primary key,
         name varchar not null,
-        age int not null
+        age int not null,
+        distances INTEGER ARRAY DEFAULT ARRAY[]
       )
       """.execute
     }
@@ -60,24 +71,25 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
     sql"""
     create table users_no_id (
         name varchar not null,
-        age int not null
+        age int not null,
+        distances INTEGER ARRAY DEFAULT ARRAY[]
     )
      """.execute
   }
 
   val insertSherlock: ZIO[ZConnectionPool with Any, Throwable, UpdateResult] =
     transaction {
-      sql"insert into users values (default, ${sherlockHolmes.name}, ${sherlockHolmes.age})".insertWithKeys
+      sql"insert into users values (default, ${sherlockHolmes.name}, ${sherlockHolmes.age}, ARRAY[1,2,3])".insertWithKeys
     }
 
   val insertWatson: ZIO[ZConnectionPool with Any, Throwable, UpdateResult] =
     transaction {
-      sql"insert into users values (default, ${johnWatson.name}, ${johnWatson.age})".insertWithKeys
+      sql"insert into users values (default, ${johnWatson.name}, ${johnWatson.age}, ARRAY[])".insertWithKeys
     }
 
   val insertJohn: ZIO[ZConnectionPool with Any, Throwable, UpdateResult] =
     transaction {
-      sql"insert into users values (default, ${johnDoe.name}, ${johnDoe.age})".insertWithKeys
+      sql"insert into users values (default, ${johnDoe.name}, ${johnDoe.age}, ARRAY[])".insertWithKeys
     }
 
   val insertBatches: ZIO[ZConnectionPool, Throwable, Long] = transaction {
@@ -328,13 +340,13 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
               for {
                 _     <- createUsers *> insertSherlock
                 value <- transaction {
-                           sql"select name, age from users where name = ${sherlockHolmes.name}"
+                           sql"select name, age, distances from users where name = ${sherlockHolmes.name}"
                              .query[Person](
                                JdbcDecoder.fromSchema(Person.schema)
                              )
                              .selectOne
                          }
-              } yield assertTrue(value.contains(Person(sherlockHolmes.name, sherlockHolmes.age)))
+              } yield assertTrue(value.contains(Person(sherlockHolmes.name, sherlockHolmes.age, Array(1,2,3))))
             }
           } +
           suite("transaction layer finalizer") {
