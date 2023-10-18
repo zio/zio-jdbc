@@ -587,7 +587,7 @@ trait JdbcDecoderLowPriorityImplicits {
         val value: DynamicValue =
           mapPrimitiveType(resultSet, columnIndex, sqlType)
             .orElse(mapComplexType(resultSet, columnIndex, sqlType))
-            .getOrElse{
+            .getOrElse {
               throw new SQLException(
                 s"Unsupported SQL type ${sqlType} when attempting to decode result set from a ZIO Schema ${schema}"
               )
@@ -763,27 +763,22 @@ trait JdbcDecoderLowPriorityImplicits {
     }
   }
 
-  private def mapComplexType(resultSet: ResultSet, columnIndex: Int, sqlType: Int): Option[DynamicValue] = {
+  private def mapComplexType(resultSet: ResultSet, columnIndex: Int, sqlType: Int): Option[DynamicValue] =
     sqlType match {
       case SqlTypes.ARRAY =>
-        val array = resultSet.getArray(columnIndex)
-
-        val arrayRs = array.getResultSet
-        val metaData = arrayRs.getMetaData()
+        val arrayRs = resultSet.getArray(columnIndex).getResultSet
+        val metaData = arrayRs.getMetaData
         var chunkData = Chunk.empty[DynamicValue]
-        while (arrayRs.next()) {
-          mapPrimitiveType(arrayRs, 2, metaData.getColumnType(2)) match {
-            case Some(et) =>
-              chunkData = chunkData :+ et
-            case _ => None
+        while (arrayRs.next())
+          mapPrimitiveType(arrayRs, 2, metaData.getColumnType(2)).foreach { el =>
+            chunkData = chunkData :+ el
           }
-        }
         Some(DynamicValue.Sequence(chunkData))
 
+      // other SQL types
       case _ =>
         None
     }
-  }
 
   def fromSchema[A](implicit schema: Schema[A]): JdbcDecoder[A] =
     (columnIndex: Int, resultSet: ResultSet) => {
