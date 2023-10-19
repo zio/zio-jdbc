@@ -7,8 +7,8 @@ import zio.test.Assertion._
 import zio.test.TestAspect._
 import zio.test._
 
-import scala.util.Random
 import java.sql.Connection
+import scala.util.Random
 
 object ZConnectionPoolSpec extends ZIOSpecDefault {
   final case class Person(name: String, age: Int, distances: Array[Int] = Array.empty) {
@@ -18,7 +18,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
         name == other.name &&
           age == other.age &&
           distances.sameElements(other.distances)
-      case _ => false
+      case _             => false
     }
   }
 
@@ -31,7 +31,12 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
         TypeId.parse(classOf[Person].getName),
         Field("name", Schema[String], get0 = _.name, set0 = (x, v) => x.copy(name = v)),
         Field("age", Schema[Int], get0 = _.age, set0 = (x, v) => x.copy(age = v)),
-        Field("distances", Schema[Chunk[Int]], get0 = p => Chunk.fromArray(p.distances), set0 = (x, v) => x.copy(distances = v.toArray)),
+        Field(
+          "distances",
+          Schema[Chunk[Int]],
+          get0 = p => Chunk.fromArray(p.distances),
+          set0 = (x, v) => x.copy(distances = v.toArray)
+        ),
         (name, age, distances) => Person(name, age, distances.toArray)
       )
   }
@@ -346,7 +351,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
                              )
                              .selectOne
                          }
-              } yield assertTrue(value.contains(Person(sherlockHolmes.name, sherlockHolmes.age, Array(1,2,3))))
+              } yield assertTrue(value.contains(Person(sherlockHolmes.name, sherlockHolmes.age, Array(1, 2, 3))))
             }
           } +
           suite("transaction layer finalizer") {

@@ -18,7 +18,7 @@ package zio.jdbc
 import zio._
 
 import java.io._
-import java.sql.{Array => _, _}
+import java.sql.{ Array => _, _ }
 import scala.collection.immutable.ListMap
 
 /**
@@ -547,7 +547,7 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
 trait JdbcDecoderLowPriorityImplicits {
   import zio.schema._
 
-  import java.sql.{Types => SqlTypes}
+  import java.sql.{ Types => SqlTypes }
 
   private def getBinary(binary: InputStream): Chunk[Byte] = {
     val baos = new ByteArrayOutputStream()
@@ -582,8 +582,8 @@ trait JdbcDecoderLowPriorityImplicits {
       var listMap     = ListMap.empty[String, DynamicValue]
 
       while (columnIndex <= meta.getColumnCount()) {
-        val name = remapName(meta.getColumnName(columnIndex))
-        val sqlType = meta.getColumnType(columnIndex)
+        val name                = remapName(meta.getColumnName(columnIndex))
+        val sqlType             = meta.getColumnType(columnIndex)
         val value: DynamicValue =
           mapPrimitiveType(resultSet, columnIndex, sqlType)
             .orElse(mapComplexType(resultSet, columnIndex, sqlType))
@@ -766,8 +766,8 @@ trait JdbcDecoderLowPriorityImplicits {
   private def mapComplexType(resultSet: ResultSet, columnIndex: Int, sqlType: Int): Option[DynamicValue] =
     sqlType match {
       case SqlTypes.ARRAY =>
-        val arrayRs = resultSet.getArray(columnIndex).getResultSet
-        val metaData = arrayRs.getMetaData
+        val arrayRs   = resultSet.getArray(columnIndex).getResultSet
+        val metaData  = arrayRs.getMetaData
         var chunkData = Chunk.empty[DynamicValue]
         while (arrayRs.next())
           mapPrimitiveType(arrayRs, 2, metaData.getColumnType(2)).foreach { el =>
