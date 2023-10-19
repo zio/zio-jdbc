@@ -2,4 +2,4 @@ package zio.jdbc
 
 import zio.Chunk
 
-final case class UpdateResult(rowsUpdated: Long, updatedKeys: Chunk[Long])
+final case class UpdateResult[+A](rowsUpdated: Long, updatedKeys: Chunk[A])
