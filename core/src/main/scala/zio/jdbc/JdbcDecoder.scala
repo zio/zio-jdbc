@@ -20,6 +20,7 @@ import zio._
 import java.io._
 import java.sql.{ Array => _, _ }
 import scala.collection.immutable.ListMap
+import scala.collection.mutable
 
 /**
  * A type class that describes the ability to decode  a value of type `A` from
@@ -585,13 +586,14 @@ trait JdbcDecoderLowPriorityImplicits {
         val name                = remapName(meta.getColumnName(columnIndex))
         val sqlType             = meta.getColumnType(columnIndex)
         val value: DynamicValue =
-          mapPrimitiveType(resultSet, columnIndex, sqlType)
-            .orElse(mapComplexType(resultSet, columnIndex, sqlType))
-            .getOrElse {
-              throw new SQLException(
-                s"Unsupported SQL type ${sqlType} when attempting to decode result set from a ZIO Schema ${schema}"
-              )
-            }
+          (mapPrimitiveType(resultSet, columnIndex) orElse mapComplexType(resultSet, columnIndex))
+            .applyOrElse(
+              sqlType,
+              (_: Int) =>
+                throw new SQLException(
+                  s"Unsupported SQL type ${sqlType} when attempting to decode result set from a ZIO Schema ${schema}"
+                )
+            )
 
         listMap = listMap.updated(name, value)
 
@@ -601,184 +603,174 @@ trait JdbcDecoderLowPriorityImplicits {
       DynamicValue.Record(TypeId.Structural, listMap)
     }
 
-  private def mapPrimitiveType(resultSet: ResultSet, columnIndex: Int, sqlType: Int): Option[DynamicValue] = {
-    sqlType match {
-      case SqlTypes.BIGINT =>
-        val bigInt = resultSet.getBigDecimal(columnIndex).toBigInteger()
+  private def mapPrimitiveType(resultSet: ResultSet, columnIndex: Int): PartialFunction[Int, DynamicValue] = {
+    case SqlTypes.BIGINT =>
+      val bigInt = resultSet.getBigDecimal(columnIndex).toBigInteger()
 
-        Some(DynamicValue.Primitive(bigInt, StandardType.BigIntegerType))
+      DynamicValue.Primitive(bigInt, StandardType.BigIntegerType)
 
-      case SqlTypes.BINARY =>
-        val chunk = getBinary(resultSet.getBinaryStream(columnIndex))
+    case SqlTypes.BINARY =>
+      val chunk = getBinary(resultSet.getBinaryStream(columnIndex))
 
-        Some(DynamicValue.Primitive(chunk, StandardType.BinaryType))
+      DynamicValue.Primitive(chunk, StandardType.BinaryType)
 
-      case SqlTypes.BIT =>
-        val bit = resultSet.getBoolean(columnIndex) // should be more compatible
+    case SqlTypes.BIT =>
+      val bit = resultSet.getBoolean(columnIndex) // should be more compatible
 
-        Some(DynamicValue.Primitive(bit, StandardType.BoolType))
+      DynamicValue.Primitive(bit, StandardType.BoolType)
 
-      case SqlTypes.BLOB =>
-        val blob = resultSet.getBlob(columnIndex)
+    case SqlTypes.BLOB =>
+      val blob = resultSet.getBlob(columnIndex)
 
-        Some(DynamicValue.Primitive(Chunk.fromArray(blob.getBytes(0, blob.length().toInt)), StandardType.BinaryType))
+      DynamicValue.Primitive(Chunk.fromArray(blob.getBytes(0, blob.length().toInt)), StandardType.BinaryType)
 
-      case SqlTypes.BOOLEAN =>
-        val bool = resultSet.getBoolean(columnIndex)
+    case SqlTypes.BOOLEAN =>
+      val bool = resultSet.getBoolean(columnIndex)
 
-        Some(DynamicValue.Primitive(bool, StandardType.BoolType))
+      DynamicValue.Primitive(bool, StandardType.BoolType)
 
-      case SqlTypes.CHAR =>
-        val char: Char = resultSet.getString(columnIndex)(0)
+    case SqlTypes.CHAR =>
+      val char: Char = resultSet.getString(columnIndex)(0)
 
-        Some(DynamicValue.Primitive(char, StandardType.CharType))
+      DynamicValue.Primitive(char, StandardType.CharType)
 
-      case SqlTypes.CLOB =>
-        val clob = resultSet.getClob(columnIndex)
+    case SqlTypes.CLOB =>
+      val clob = resultSet.getClob(columnIndex)
 
-        Some(DynamicValue.Primitive(clob.getSubString(0L, clob.length().toInt), StandardType.StringType))
+      DynamicValue.Primitive(clob.getSubString(0L, clob.length().toInt), StandardType.StringType)
 
-      case SqlTypes.DATE =>
-        val date = resultSet.getDate(columnIndex)
+    case SqlTypes.DATE =>
+      val date = resultSet.getDate(columnIndex)
 
-        Some(DynamicValue.Primitive(date.toLocalDate(), StandardType.LocalDateType))
+      DynamicValue.Primitive(date.toLocalDate(), StandardType.LocalDateType)
 
-      case SqlTypes.DECIMAL =>
-        val bigDecimal = resultSet.getBigDecimal(columnIndex)
+    case SqlTypes.DECIMAL =>
+      val bigDecimal = resultSet.getBigDecimal(columnIndex)
 
-        Some(DynamicValue.Primitive(bigDecimal, StandardType.BigDecimalType))
+      DynamicValue.Primitive(bigDecimal, StandardType.BigDecimalType)
 
-      case SqlTypes.DOUBLE =>
-        val double = resultSet.getDouble(columnIndex)
+    case SqlTypes.DOUBLE =>
+      val double = resultSet.getDouble(columnIndex)
 
-        Some(DynamicValue.Primitive(double, StandardType.DoubleType))
+      DynamicValue.Primitive(double, StandardType.DoubleType)
 
-      case SqlTypes.FLOAT =>
-        val float = resultSet.getFloat(columnIndex)
+    case SqlTypes.FLOAT =>
+      val float = resultSet.getFloat(columnIndex)
 
-        Some(DynamicValue.Primitive(float, StandardType.FloatType))
+      DynamicValue.Primitive(float, StandardType.FloatType)
 
-      case SqlTypes.INTEGER =>
-        val int = resultSet.getInt(columnIndex)
+    case SqlTypes.INTEGER =>
+      val int = resultSet.getInt(columnIndex)
 
-        Some(DynamicValue.Primitive(int, StandardType.IntType))
+      DynamicValue.Primitive(int, StandardType.IntType)
 
-      case SqlTypes.LONGNVARCHAR =>
-        val string = resultSet.getString(columnIndex)
+    case SqlTypes.LONGNVARCHAR =>
+      val string = resultSet.getString(columnIndex)
 
-        Some(DynamicValue.Primitive(string, StandardType.StringType))
+      DynamicValue.Primitive(string, StandardType.StringType)
 
-      case SqlTypes.LONGVARBINARY =>
-        val chunk = getBinary(resultSet.getBinaryStream(columnIndex))
+    case SqlTypes.LONGVARBINARY =>
+      val chunk = getBinary(resultSet.getBinaryStream(columnIndex))
 
-        Some(DynamicValue.Primitive(chunk, StandardType.BinaryType))
+      DynamicValue.Primitive(chunk, StandardType.BinaryType)
 
-      case SqlTypes.LONGVARCHAR =>
-        val string = resultSet.getString(columnIndex)
+    case SqlTypes.LONGVARCHAR =>
+      val string = resultSet.getString(columnIndex)
 
-        Some(DynamicValue.Primitive(string, StandardType.StringType))
+      DynamicValue.Primitive(string, StandardType.StringType)
 
-      case SqlTypes.NCHAR =>
-        val string = resultSet.getNString(columnIndex)
+    case SqlTypes.NCHAR =>
+      val string = resultSet.getNString(columnIndex)
 
-        Some(DynamicValue.Primitive(string, StandardType.StringType))
+      DynamicValue.Primitive(string, StandardType.StringType)
 
-      case SqlTypes.NCLOB =>
-        val clob = resultSet.getNClob(columnIndex)
+    case SqlTypes.NCLOB =>
+      val clob = resultSet.getNClob(columnIndex)
 
-        Some(DynamicValue.Primitive(clob.getSubString(0L, clob.length().toInt), StandardType.StringType))
+      DynamicValue.Primitive(clob.getSubString(0L, clob.length().toInt), StandardType.StringType)
 
-      case SqlTypes.NULL =>
-        Some(DynamicValue.Primitive((), StandardType.UnitType))
+    case SqlTypes.NULL =>
+      DynamicValue.Primitive((), StandardType.UnitType)
 
-      case SqlTypes.NUMERIC =>
-        val bigDecimal = resultSet.getBigDecimal(columnIndex)
+    case SqlTypes.NUMERIC =>
+      val bigDecimal = resultSet.getBigDecimal(columnIndex)
 
-        Some(DynamicValue.Primitive(bigDecimal, StandardType.BigDecimalType))
+      DynamicValue.Primitive(bigDecimal, StandardType.BigDecimalType)
 
-      case SqlTypes.NVARCHAR =>
-        val string = resultSet.getString(columnIndex)
+    case SqlTypes.NVARCHAR =>
+      val string = resultSet.getString(columnIndex)
 
-        Some(DynamicValue.Primitive(string, StandardType.StringType))
+      DynamicValue.Primitive(string, StandardType.StringType)
 
-      case SqlTypes.REAL =>
-        val bigDecimal = resultSet.getBigDecimal(columnIndex)
+    case SqlTypes.REAL =>
+      val bigDecimal = resultSet.getBigDecimal(columnIndex)
 
-        Some(DynamicValue.Primitive(bigDecimal, StandardType.BigDecimalType))
+      DynamicValue.Primitive(bigDecimal, StandardType.BigDecimalType)
 
-      case SqlTypes.ROWID =>
-        val long = resultSet.getLong(columnIndex)
+    case SqlTypes.ROWID =>
+      val long = resultSet.getLong(columnIndex)
 
-        Some(DynamicValue.Primitive(long, StandardType.LongType))
+      DynamicValue.Primitive(long, StandardType.LongType)
 
-      case SqlTypes.SMALLINT =>
-        val short = resultSet.getShort(columnIndex)
+    case SqlTypes.SMALLINT =>
+      val short = resultSet.getShort(columnIndex)
 
-        Some(DynamicValue.Primitive(short, StandardType.ShortType))
+      DynamicValue.Primitive(short, StandardType.ShortType)
 
-      case SqlTypes.SQLXML =>
-        val xml = resultSet.getSQLXML(columnIndex)
+    case SqlTypes.SQLXML =>
+      val xml = resultSet.getSQLXML(columnIndex)
 
-        Some(DynamicValue.Primitive(xml.getString(), StandardType.StringType))
+      DynamicValue.Primitive(xml.getString(), StandardType.StringType)
 
-      case SqlTypes.TIME =>
-        val time = resultSet.getTime(columnIndex)
+    case SqlTypes.TIME =>
+      val time = resultSet.getTime(columnIndex)
 
-        Some(DynamicValue.Primitive(time.toLocalTime(), StandardType.LocalTimeType))
+      DynamicValue.Primitive(time.toLocalTime(), StandardType.LocalTimeType)
 
-      case SqlTypes.TIMESTAMP =>
-        val timestamp = resultSet.getTimestamp(columnIndex)
+    case SqlTypes.TIMESTAMP =>
+      val timestamp = resultSet.getTimestamp(columnIndex)
 
-        Some(DynamicValue.Primitive(timestamp.toInstant(), StandardType.InstantType))
+      DynamicValue.Primitive(timestamp.toInstant(), StandardType.InstantType)
 
-      case SqlTypes.TIMESTAMP_WITH_TIMEZONE =>
-        // TODO: Timezone
-        val timestamp = resultSet.getTimestamp(columnIndex)
+    case SqlTypes.TIMESTAMP_WITH_TIMEZONE =>
+      // TODO: Timezone
+      val timestamp = resultSet.getTimestamp(columnIndex)
 
-        Some(DynamicValue.Primitive(timestamp.toInstant(), StandardType.InstantType))
+      DynamicValue.Primitive(timestamp.toInstant(), StandardType.InstantType)
 
-      case SqlTypes.TIME_WITH_TIMEZONE =>
-        // TODO: Timezone
-        val time = resultSet.getTime(columnIndex)
+    case SqlTypes.TIME_WITH_TIMEZONE =>
+      // TODO: Timezone
+      val time = resultSet.getTime(columnIndex)
 
-        Some(DynamicValue.Primitive(time.toLocalTime(), StandardType.LocalTimeType))
+      DynamicValue.Primitive(time.toLocalTime(), StandardType.LocalTimeType)
 
-      case SqlTypes.TINYINT =>
-        val short = resultSet.getShort(columnIndex)
+    case SqlTypes.TINYINT =>
+      val short = resultSet.getShort(columnIndex)
 
-        Some(DynamicValue.Primitive(short, StandardType.ShortType))
+      DynamicValue.Primitive(short, StandardType.ShortType)
 
-      case SqlTypes.VARBINARY =>
-        val chunk = getBinary(resultSet.getBinaryStream(columnIndex))
+    case SqlTypes.VARBINARY =>
+      val chunk = getBinary(resultSet.getBinaryStream(columnIndex))
 
-        Some(DynamicValue.Primitive(chunk, StandardType.BinaryType))
+      DynamicValue.Primitive(chunk, StandardType.BinaryType)
 
-      case SqlTypes.VARCHAR =>
-        val string = resultSet.getString(columnIndex)
+    case SqlTypes.VARCHAR =>
+      val string = resultSet.getString(columnIndex)
 
-        Some(DynamicValue.Primitive(string, StandardType.StringType))
+      DynamicValue.Primitive(string, StandardType.StringType)
 
-      case _ =>
-        None
-    }
   }
 
-  private def mapComplexType(resultSet: ResultSet, columnIndex: Int, sqlType: Int): Option[DynamicValue] =
-    sqlType match {
-      case SqlTypes.ARRAY =>
-        val arrayRs   = resultSet.getArray(columnIndex).getResultSet
-        val metaData  = arrayRs.getMetaData
-        var chunkData = Chunk.empty[DynamicValue]
-        while (arrayRs.next())
-          mapPrimitiveType(arrayRs, 2, metaData.getColumnType(2)).foreach { el =>
-            chunkData = chunkData :+ el
-          }
-        Some(DynamicValue.Sequence(chunkData))
+  private def mapComplexType(resultSet: ResultSet, columnIndex: Int): PartialFunction[Int, DynamicValue] = {
+    case SqlTypes.ARRAY =>
+      val arrayRs  = resultSet.getArray(columnIndex).getResultSet
+      val metaData = arrayRs.getMetaData
+      val data     = mutable.ArrayBuffer.empty[DynamicValue]
+      while (arrayRs.next())
+        data += mapPrimitiveType(arrayRs, 2)(metaData.getColumnType(2))
 
-      // other SQL types
-      case _ =>
-        None
-    }
+      DynamicValue.Sequence(Chunk.from(data))
+  }
 
   def fromSchema[A](implicit schema: Schema[A]): JdbcDecoder[A] =
     (columnIndex: Int, resultSet: ResultSet) => {
