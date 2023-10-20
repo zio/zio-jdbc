@@ -769,7 +769,7 @@ trait JdbcDecoderLowPriorityImplicits {
       while (arrayRs.next())
         data += mapPrimitiveType(arrayRs, 2)(metaData.getColumnType(2))
 
-      DynamicValue.Sequence(Chunk.from(data))
+      DynamicValue.Sequence(Chunk.fromArray(data.toArray))
   }
 
   def fromSchema[A](implicit schema: Schema[A]): JdbcDecoder[A] =
