@@ -185,10 +185,24 @@ sealed trait SqlFragment { self =>
     ZIO.scoped(executeLargeUpdate(self))
 
   /**
+   * Executes a SQL delete query with a RETURNING clause, materialized
+   * as values of type `A`.
+   */
+  def deleteReturning[A: JdbcDecoder]: ZIO[ZConnection, Throwable, UpdateResult[A]] =
+    ZIO.scoped(executeWithReturning(self, JdbcDecoder[A]()))
+
+  /**
    * Performs an SQL insert query, returning a count of rows inserted.
    */
   def insert: ZIO[ZConnection, Throwable, Long] =
     ZIO.scoped(executeUpdate(self, false).map(_._1))
+
+  /**
+   * Executes a SQL insert query with a RETURNING clause, materialized
+   * as values of type `A`.
+   */
+  def insertReturning[A: JdbcDecoder]: ZIO[ZConnection, Throwable, UpdateResult[A]] =
+    ZIO.scoped(executeWithReturning(self, JdbcDecoder[A]()))
 
   /**
    * Performs an SQL insert query, returning a count of rows inserted and a
@@ -196,8 +210,15 @@ sealed trait SqlFragment { self =>
    * parsed and returned as `Chunk[Long]`. If keys are non-numeric, a
    * `Chunk.empty` is returned.
    */
-  def insertWithKeys: ZIO[ZConnection, Throwable, UpdateResult] =
-    ZIO.scoped(executeWithUpdateResult(self))
+  def insertWithKeys: ZIO[ZConnection, Throwable, UpdateResult[Long]] =
+    ZIO.scoped(executeWithReturning(self, JdbcDecoder[Long]()))
+
+  /**
+   * Executes a SQL update query with a RETURNING clause, materialized
+   * as values of type `A`.
+   */
+  def updateReturning[A: JdbcDecoder]: ZIO[ZConnection, Throwable, UpdateResult[A]] =
+    ZIO.scoped(executeWithReturning(self, JdbcDecoder[A]()))
 
   /**
    * Performs a SQL update query, returning a count of rows updated.
@@ -212,7 +233,10 @@ sealed trait SqlFragment { self =>
                   }
   } yield count
 
-  private def executeWithUpdateResult(sql: SqlFragment): ZIO[Scope with ZConnection, Throwable, UpdateResult] =
+  private def executeWithReturning[A](
+    sql: SqlFragment,
+    decoder: JdbcDecoder[A]
+  ): ZIO[Scope with ZConnection, Throwable, UpdateResult[A]] =
     for {
       updateRes  <- executeUpdate(sql, true)
       (count, rs) = updateRes
@@ -220,9 +244,9 @@ sealed trait SqlFragment { self =>
                       .fromOption(rs)
                       .flatMap(rs =>
                         ZIO.attempt {
-                          val builder = ChunkBuilder.make[Long]()
+                          val builder = ChunkBuilder.make[A]()
                           while (rs.next())
-                            builder += rs.resultSet.getLong(1)
+                            builder += decoder.unsafeDecode(1, rs.resultSet)._2
                           builder.result()
                         }
                       )

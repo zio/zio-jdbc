@@ -77,3 +77,20 @@ lazy val examples = project
       "net.logstash.logback" % "logstash-logback-encoder" % "7.3"
     )
   )
+
+lazy val integration = project
+  .in(file("integration"))
+  .dependsOn(core)
+  .settings(
+    publish / skip := true,
+    Test / fork    := true,
+    libraryDependencies ++= Seq(
+      "org.testcontainers" % "postgresql"   % "1.19.0"   % Test,
+      "org.postgresql"     % "postgresql"   % "42.6.0"   % Test,
+      "dev.zio"           %% "zio-test"     % ZioVersion % Test,
+      "dev.zio"           %% "zio-test-sbt" % ZioVersion % Test,
+      "org.slf4j"          % "slf4j-api"    % "2.0.9"    % Test,
+      "org.slf4j"          % "slf4j-simple" % "2.0.9"    % Test
+    ),
+    testFrameworks := Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
+  )

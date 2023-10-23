@@ -82,17 +82,17 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
      """.execute
   }
 
-  val insertSherlock: ZIO[ZConnectionPool with Any, Throwable, UpdateResult] =
+  val insertSherlock: ZIO[ZConnectionPool with Any, Throwable, UpdateResult[Long]] =
     transaction {
       sql"insert into users values (default, ${sherlockHolmes.name}, ${sherlockHolmes.age}, ARRAY[1,2,3])".insertWithKeys
     }
 
-  val insertWatson: ZIO[ZConnectionPool with Any, Throwable, UpdateResult] =
+  val insertWatson: ZIO[ZConnectionPool with Any, Throwable, UpdateResult[Long]] =
     transaction {
       sql"insert into users values (default, ${johnWatson.name}, ${johnWatson.age}, ARRAY[])".insertWithKeys
     }
 
-  val insertJohn: ZIO[ZConnectionPool with Any, Throwable, UpdateResult] =
+  val insertJohn: ZIO[ZConnectionPool with Any, Throwable, UpdateResult[Long]] =
     transaction {
       sql"insert into users values (default, ${johnDoe.name}, ${johnDoe.age}, ARRAY[])".insertWithKeys
     }
