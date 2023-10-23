@@ -763,11 +763,18 @@ trait JdbcDecoderLowPriorityImplicits {
 
   private def mapComplexType(resultSet: ResultSet, columnIndex: Int): PartialFunction[Int, DynamicValue] = {
     case SqlTypes.ARRAY =>
-      val arrayRs  = resultSet.getArray(columnIndex).getResultSet
-      val metaData = arrayRs.getMetaData
-      val data     = mutable.ArrayBuffer.empty[DynamicValue]
+      val arrayRs = resultSet.getArray(columnIndex).getResultSet
+      val data    = mutable.ArrayBuffer.empty[DynamicValue]
+      val sqlType = arrayRs.getMetaData.getColumnType(2)
       while (arrayRs.next())
-        data += mapPrimitiveType(arrayRs, 2)(metaData.getColumnType(2))
+        data += mapPrimitiveType(arrayRs, 2)
+          .applyOrElse(
+            sqlType,
+            (_: Int) =>
+              throw new SQLException(
+                s"Unsupported SQL type ${sqlType} when attempting to decode Schema.Sequence from ARRAY result set"
+              )
+          )
 
       DynamicValue.Sequence(Chunk.fromArray(data.toArray))
   }
