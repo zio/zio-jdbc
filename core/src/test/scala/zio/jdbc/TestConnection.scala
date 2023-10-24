@@ -612,7 +612,7 @@ class DummyResultSet(failNext: Boolean, elems: Int) extends ResultSet {
 
   override def getStatement() = ???
 
-  override def getObject(columnIndex: Int, map: util.Map[String, Class[_ <: Object]]) = ???
+  override def getObject(columnIndex: Int, map: util.Map[String, Class[_]]) = ???
 
   override def getRef(columnIndex: Int) = ???
 
@@ -622,7 +622,7 @@ class DummyResultSet(failNext: Boolean, elems: Int) extends ResultSet {
 
   override def getArray(columnIndex: Int) = ???
 
-  override def getObject(columnLabel: String, map: util.Map[String, Class[_ <: Object]]) = ???
+  override def getObject(columnLabel: String, map: util.Map[String, Class[_]]) = ???
 
   override def getRef(columnLabel: String) = ???
 
