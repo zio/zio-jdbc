@@ -4,7 +4,21 @@ import zio.RuntimeFlags
 
 import java.io.{ InputStream, Reader }
 import java.net.URL
-import java.sql.{Blob, CallableStatement, Clob, Connection, DatabaseMetaData, NClob, PreparedStatement, ResultSet, SQLWarning, SQLXML, Savepoint, Statement, Struct}
+import java.sql.{
+  Blob,
+  CallableStatement,
+  Clob,
+  Connection,
+  DatabaseMetaData,
+  NClob,
+  PreparedStatement,
+  ResultSet,
+  SQLWarning,
+  SQLXML,
+  Savepoint,
+  Statement,
+  Struct
+}
 import java.util.{ Properties, concurrent }
 import java.{ sql, util }
 
