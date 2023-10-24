@@ -320,7 +320,7 @@ object SqlFragmentSpec extends ZIOSpecDefault {
 
               object UserNoId {
                 implicit val jdbcDecoder: JdbcDecoder[UserNoId] =
-                  JdbcDecoder[(String, Int)]().map[UserNoId](t => UserNoId(t._1, t._2))
+                  JdbcDecoder[(String, Int)].map[UserNoId](t => UserNoId(t._1, t._2))
 
                 implicit val jdbcEncoder: JdbcEncoder[UserNoId] = (value: UserNoId) => {
                   val name = value.name
