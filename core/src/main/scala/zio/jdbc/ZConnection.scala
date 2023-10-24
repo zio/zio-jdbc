@@ -316,32 +316,32 @@ object ZConnection {
 
       case object AutoCommit extends Flag {
         val index = 1
-        val mask  = 1 << index
+        val mask: Int  = 1 << index
       }
 
       case object Catalog extends Flag {
         val index = 2
-        val mask  = 1 << index
+        val mask: Int  = 1 << index
       }
 
       case object ClientInfo extends Flag {
         val index = 3
-        val mask  = 1 << index
+        val mask: Int  = 1 << index
       }
 
       case object ReadOnly extends Flag {
         val index = 4
-        val mask  = 1 << index
+        val mask: Int  = 1 << index
       }
 
       case object Schema extends Flag {
         val index = 5
-        val mask  = 1 << index
+        val mask: Int  = 1 << index
       }
 
       case object TransactionIsolation extends Flag {
         val index = 6
-        val mask  = 1 << index
+        val mask: Int  = 1 << index
       }
     }
   }

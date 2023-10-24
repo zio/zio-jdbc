@@ -29,7 +29,7 @@ trait JdbcEncoder[-A] {
 }
 
 object JdbcEncoder extends JdbcEncoder0LowPriorityImplicits {
-  def apply[A](implicit encoder: JdbcEncoder[A]): JdbcEncoder[A] = encoder
+  def apply[A](implicit encoder: JdbcEncoder[A]): JdbcEncoder[A]          = encoder
   implicit val intEncoder: JdbcEncoder[Int]                               = value => sql"$value"
   implicit val longEncoder: JdbcEncoder[Long]                             = value => sql"$value"
   implicit val doubleEncoder: JdbcEncoder[Double]                         = value => sql"$value"

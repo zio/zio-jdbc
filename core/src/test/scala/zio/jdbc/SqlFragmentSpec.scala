@@ -1,11 +1,12 @@
 package zio.jdbc
 
 import zio._
-import zio.test._
 import zio.jdbc.SqlFragment.Setter
 import zio.jdbc.{ transaction => transact }
 import zio.schema.{ Schema, TypeId }
 import zio.test.Assertion._
+import zio.test._
+
 import java.sql.SQLException
 
 final case class Person(name: String, age: Int)

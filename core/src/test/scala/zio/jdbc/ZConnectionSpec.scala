@@ -2,6 +2,7 @@ package zio.jdbc
 
 import zio.test._
 import zio.{ Random, ZIO }
+
 import java.sql.PreparedStatement
 
 object ZConnectionSpec extends ZIOSpecDefault {

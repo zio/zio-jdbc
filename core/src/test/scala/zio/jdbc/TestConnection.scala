@@ -1,25 +1,12 @@
 package zio.jdbc
 
-import java.sql.{
-  Blob,
-  CallableStatement,
-  Clob,
-  Connection,
-  DatabaseMetaData,
-  NClob,
-  PreparedStatement,
-  SQLWarning,
-  SQLXML,
-  Savepoint,
-  Statement,
-  Struct,
-  ResultSet
-}
-import java.util.{ Properties, concurrent }
-import java.{ sql, util }
+import zio.RuntimeFlags
+
 import java.io.{ InputStream, Reader }
 import java.net.URL
-import zio.RuntimeFlags
+import java.sql.{Blob, CallableStatement, Clob, Connection, DatabaseMetaData, NClob, PreparedStatement, ResultSet, SQLWarning, SQLXML, Savepoint, Statement, Struct}
+import java.util.{ Properties, concurrent }
+import java.{ sql, util }
 
 class TestConnection(failNext: Boolean = false, elems: Int = 0) extends Connection { self =>
 
@@ -174,7 +161,7 @@ class DummyPreparedStatement(failNext: Boolean, elemns: Int) extends PreparedSta
 
   override def executeUpdate(sql: String) = ???
 
-  override def close() = closed = true
+  override def close(): Unit = closed = true
 
   override def getMaxFieldSize() = ???
 
@@ -377,7 +364,7 @@ class DummyResultSet(failNext: Boolean, elems: Int) extends ResultSet {
 
   override def isWrapperFor(x$1: Class[_ <: Object]) = ???
 
-  override def next() =
+  override def next(): Boolean =
     if (failNext) {
       throw new sql.SQLException()
     } else if (currentElem < elems) {
@@ -387,7 +374,7 @@ class DummyResultSet(failNext: Boolean, elems: Int) extends ResultSet {
       false
     }
 
-  override def close() = closed = true
+  override def close(): Unit = closed = true
 
   override def wasNull() = ???
 
