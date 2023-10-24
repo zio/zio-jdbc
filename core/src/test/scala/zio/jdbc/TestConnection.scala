@@ -167,9 +167,9 @@ class DummyPreparedStatement(failNext: Boolean, elemns: Int) extends PreparedSta
 
   var closed = false
 
-  override def unwrap[T <: Object](iface: Class[T]) = ???
+  override def unwrap[T <: Object](iface: Class[T]): T = ???
 
-  override def isWrapperFor(iface: Class[_ <: Object]) = ???
+  override def isWrapperFor(iface: Class[_ <: Object]): Boolean = ???
 
   override def executeQuery(sql: String) = new DummyResultSet(failNext, elemns)
 
