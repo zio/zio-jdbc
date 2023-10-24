@@ -167,9 +167,9 @@ class DummyPreparedStatement(failNext: Boolean, elemns: Int) extends PreparedSta
 
   var closed = false
 
-  override def unwrap[T <: Object](iface: Class[T]): T = ???
+  override def unwrap[T](iface: Class[T]): T = ???
 
-  override def isWrapperFor(iface: Class[_ <: Object]): Boolean = ???
+  override def isWrapperFor(iface: Class[_]): Boolean = ???
 
   override def executeQuery(sql: String) = new DummyResultSet(failNext, elemns)
 
@@ -374,9 +374,9 @@ class DummyResultSet(failNext: Boolean, elems: Int) extends ResultSet {
   var closed      = false
   var currentElem = 0
 
-  override def unwrap[T <: Object](x$1: Class[T]) = ???
+  override def unwrap[T](x$1: Class[T]): T = ???
 
-  override def isWrapperFor(x$1: Class[_ <: Object]) = ???
+  override def isWrapperFor(x$1: Class[_]): Boolean = ???
 
   override def next(): Boolean =
     if (failNext) {
@@ -760,8 +760,8 @@ class DummyResultSet(failNext: Boolean, elems: Int) extends ResultSet {
 
   override def updateNClob(columnLabel: String, reader: Reader) = ???
 
-  override def getObject[T <: Object](columnIndex: Int, `type`: Class[T]) = ???
+  override def getObject[T](columnIndex: Int, `type`: Class[T]) = ???
 
-  override def getObject[T <: Object](columnLabel: String, `type`: Class[T]) = ???
+  override def getObject[T](columnLabel: String, `type`: Class[T]) = ???
 
 }
