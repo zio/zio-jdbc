@@ -1,17 +1,17 @@
-import explicitdeps.ExplicitDepsPlugin.autoImport._
-import sbt.Keys._
-import sbt._
-import sbtbuildinfo.BuildInfoKeys._
-import sbtbuildinfo._
-import scalafix.sbt.ScalafixPlugin.autoImport._
+import explicitdeps.ExplicitDepsPlugin.autoImport.*
+import sbt.*
+import sbt.Keys.*
+import sbtbuildinfo.*
+import sbtbuildinfo.BuildInfoKeys.*
+import scalafix.sbt.ScalafixPlugin.autoImport.*
 
 object BuildHelper {
 
   private val versions: Map[String, String] = {
-    import org.snakeyaml.engine.v2.api.{ Load, LoadSettings }
+    import org.snakeyaml.engine.v2.api.{Load, LoadSettings}
 
-    import java.util.{ List => JList, Map => JMap }
-    import scala.jdk.CollectionConverters._
+    import java.util.{List as JList, Map as JMap}
+    import scala.jdk.CollectionConverters.*
 
     val doc  = new Load(LoadSettings.builder().build())
       .loadFromReader(scala.io.Source.fromFile(".github/workflows/ci.yml").bufferedReader())
@@ -183,16 +183,6 @@ object BuildHelper {
       crossScalaVersions                     := Seq(Scala212, Scala213, Scala3),
       ThisBuild / scalaVersion               := Scala213,
       ThisBuild / scalacOptions              := stdOptions ++ extraOptions(scalaVersion.value, optimize = !isSnapshot.value),
-      libraryDependencies ++= {
-        CrossVersion.partialVersion(scalaVersion.value) match {
-          case Some((3, _)) => Nil
-          case _            =>
-            Seq(
-              "com.github.ghik" % "silencer-lib" % SilencerVersion % Provided cross CrossVersion.full,
-              compilerPlugin("com.github.ghik" % "silencer-plugin" % SilencerVersion cross CrossVersion.full)
-            )
-        }
-      },
       semanticdbEnabled                      := true,                        // enable SemanticDB
       semanticdbOptions ++= {
         CrossVersion.partialVersion(scalaVersion.value) match {
@@ -203,7 +193,6 @@ object BuildHelper {
       semanticdbVersion                      := scalafixSemanticdb.revision, // use Scalafix compatible version
       ThisBuild / scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(scalaVersion.value),
       ThisBuild / scalafixDependencies ++= List(
-        "com.github.liancheng" %% "organize-imports" % "0.6.0",
         "com.github.vovapolu"  %% "scaluzzi"         % "0.1.23"
       ),
       Test / parallelExecution               := true,
@@ -261,12 +250,10 @@ object BuildHelper {
 
   def welcomeMessage =
     onLoadMessage := {
-      import scala.Console
+      def header(text: String): String = s"${scala.Console.RED}$text${scala.Console.RESET}"
 
-      def header(text: String): String = s"${Console.RED}$text${Console.RESET}"
-
-      def item(text: String): String    = s"${Console.GREEN}> ${Console.CYAN}$text${Console.RESET}"
-      def subItem(text: String): String = s"  ${Console.YELLOW}> ${Console.CYAN}$text${Console.RESET}"
+      def item(text: String): String    = s"${scala.Console.GREEN}> ${scala.Console.CYAN}$text${scala.Console.RESET}"
+      def subItem(text: String): String = s"  ${scala.Console.YELLOW}> ${scala.Console.CYAN}$text${scala.Console.RESET}"
 
       s"""|${header(" ________ ___")}
           |${header("|__  /_ _/ _ \\")}
