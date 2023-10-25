@@ -64,10 +64,6 @@ object BuildHelper {
       buildInfoPackage := packageName
     )
 
-  val scalaReflectSettings = Seq(
-    libraryDependencies ++= Seq("dev.zio" %% "izumi-reflect" % "1.0.0-M10")
-  )
-
   // Keep this consistent with the version in .core-tests/shared/src/test/scala/REPLSpec.scala
   val replSettings = makeReplSettings {
     """|import zio._
@@ -252,12 +248,6 @@ object BuildHelper {
       doc / skip              := true,
       Compile / doc / sources := Seq.empty
     )
-
-  val scalaReflectTestSettings: List[Setting[_]] = List(
-    libraryDependencies ++= {
-      Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value % Test)
-    }
-  )
 
   def welcomeMessage =
     onLoadMessage := {
