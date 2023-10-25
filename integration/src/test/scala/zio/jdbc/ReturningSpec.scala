@@ -31,7 +31,7 @@ object ReturningSpec extends PgSpec {
                         (sql"""INSERT INTO users(internalId, name, age)""".values(
                           users.toChunk
                         ) ++ " RETURNING id, internalId, name, age")
-                          .insertReturning[(Int, String, Int)]
+                          .insertReturning[(Int, UUID, String, Int)]
                       }
             _      <- transaction(sql"DELETE FROM users".delete)
           } yield assert(result.rowsUpdated)(Assertion.equalTo(users.size.toLong)) &&
