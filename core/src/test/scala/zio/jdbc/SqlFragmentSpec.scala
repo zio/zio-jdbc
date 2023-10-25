@@ -46,7 +46,7 @@ object SqlFragmentSpec extends ZIOSpecDefault {
         } +
         test("type safe interpolation") {
           final case class Foo(value: String)
-          implicit val fooParamSetter: SqlFragment.Setter[Foo] = SqlFragment.Setter[String]().contramap(_.toString)
+          implicit val fooParamSetter: SqlFragment.Setter[Foo] = SqlFragment.Setter[String].contramap(_.toString)
 
           val testSql = sql"${Foo("test")}"
 
@@ -320,7 +320,7 @@ object SqlFragmentSpec extends ZIOSpecDefault {
 
               object UserNoId {
                 implicit val jdbcDecoder: JdbcDecoder[UserNoId] =
-                  JdbcDecoder[(String, Int)]().map[UserNoId](t => UserNoId(t._1, t._2))
+                  JdbcDecoder[(String, Int)].map[UserNoId](t => UserNoId(t._1, t._2))
 
                 implicit val jdbcEncoder: JdbcEncoder[UserNoId] = (value: UserNoId) => {
                   val name = value.name

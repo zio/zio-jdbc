@@ -69,7 +69,7 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     A.unsafeDecode(n, rs)._2
   }
 
-  def apply[A]()(implicit decoder: JdbcDecoder[A]): JdbcDecoder[A] = decoder
+  def apply[A](implicit decoder: JdbcDecoder[A]): JdbcDecoder[A] = decoder
 
   def apply[A](f: ResultSet => (Int => A), expected: String = "value"): JdbcDecoder[A] =
     new JdbcDecoder[A] {
