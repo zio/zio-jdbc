@@ -10,9 +10,9 @@ object ReturningSpec extends PgSpec {
 
   object User {
     implicit val jdbcDecoder: JdbcDecoder[User] =
-      JdbcDecoder[(UUID, String, Int)]().map((User.apply _).tupled)
+      JdbcDecoder[(UUID, String, Int)].map((User.apply _).tupled)
     implicit val jdbcEncoder: JdbcEncoder[User] =
-      JdbcEncoder[(UUID, String, Int)]().contramap(User.unapply(_).get)
+      JdbcEncoder[(UUID, String, Int)].contramap(User.unapply(_).get)
   }
 
   val genUser: Gen[Any, User] =

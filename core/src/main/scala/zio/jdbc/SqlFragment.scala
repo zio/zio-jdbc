@@ -189,7 +189,7 @@ sealed trait SqlFragment { self =>
    * as values of type `A`.
    */
   def deleteReturning[A: JdbcDecoder]: ZIO[ZConnection, Throwable, UpdateResult[A]] =
-    ZIO.scoped(executeWithReturning(self, JdbcDecoder[A]()))
+    ZIO.scoped(executeWithReturning(self, JdbcDecoder[A]))
 
   /**
    * Performs an SQL insert query, returning a count of rows inserted.
@@ -202,7 +202,7 @@ sealed trait SqlFragment { self =>
    * as values of type `A`.
    */
   def insertReturning[A: JdbcDecoder]: ZIO[ZConnection, Throwable, UpdateResult[A]] =
-    ZIO.scoped(executeWithReturning(self, JdbcDecoder[A]()))
+    ZIO.scoped(executeWithReturning(self, JdbcDecoder[A]))
 
   /**
    * Performs an SQL insert query, returning a count of rows inserted and a
@@ -211,14 +211,14 @@ sealed trait SqlFragment { self =>
    * `Chunk.empty` is returned.
    */
   def insertWithKeys: ZIO[ZConnection, Throwable, UpdateResult[Long]] =
-    ZIO.scoped(executeWithReturning(self, JdbcDecoder[Long]()))
+    ZIO.scoped(executeWithReturning(self, JdbcDecoder[Long]))
 
   /**
    * Executes a SQL update query with a RETURNING clause, materialized
    * as values of type `A`.
    */
   def updateReturning[A: JdbcDecoder]: ZIO[ZConnection, Throwable, UpdateResult[A]] =
-    ZIO.scoped(executeWithReturning(self, JdbcDecoder[A]()))
+    ZIO.scoped(executeWithReturning(self, JdbcDecoder[A]))
 
   /**
    * Performs a SQL update query, returning a count of rows updated.
@@ -307,7 +307,7 @@ object SqlFragment {
   }
 
   object Setter {
-    def apply[A]()(implicit setter: Setter[A]): Setter[A] = setter
+    def apply[A](implicit setter: Setter[A]): Setter[A] = setter
 
     def apply[A](onValue: (PreparedStatement, Int, A) => Unit, onNull: (PreparedStatement, Int) => Unit): Setter[A] =
       new Setter[A] {
