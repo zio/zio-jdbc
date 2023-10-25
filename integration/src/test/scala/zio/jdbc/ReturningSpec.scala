@@ -28,7 +28,9 @@ object ReturningSpec extends PgSpec {
         check(Gen.chunkOf1(genUser)) { users =>
           for {
             result <- transaction {
-                        (sql"""INSERT INTO users(internalId, name, age)""".values(users.toChunk) ++ " RETURNING id, internalId, name, age")
+                        (sql"""INSERT INTO users(internalId, name, age)""".values(
+                          users.toChunk
+                        ) ++ " RETURNING id, internalId, name, age")
                           .insertReturning[(Int, String, Int)]
                       }
             _      <- transaction(sql"DELETE FROM users".delete)
