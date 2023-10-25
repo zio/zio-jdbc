@@ -47,7 +47,6 @@ lazy val core = project
       "dev.zio"       %% "zio-test-sbt" % ZioVersion % Test,
       "com.h2database" % "h2"           % H2Version  % Test
     ),
-    testFrameworks := Seq(new TestFramework("zio.test.sbt.ZTestFramework")),
     Test / fork    := true,
     run / fork     := true
   )
@@ -92,5 +91,4 @@ lazy val integration = project
       "org.slf4j"          % "slf4j-api"    % "2.0.9"    % Test,
       "org.slf4j"          % "slf4j-simple" % "2.0.9"    % Test
     ),
-    testFrameworks := Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
   )
