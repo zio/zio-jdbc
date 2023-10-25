@@ -1,8 +1,8 @@
 import explicitdeps.ExplicitDepsPlugin.autoImport._
-import sbt.Keys._
 import sbt._
-import sbtbuildinfo.BuildInfoKeys._
+import sbt.Keys._
 import sbtbuildinfo._
+import sbtbuildinfo.BuildInfoKeys._
 import scalafix.sbt.ScalafixPlugin.autoImport._
 
 object BuildHelper {
@@ -22,9 +22,7 @@ object BuildHelper {
 
   lazy val Scala212: String = versions("2.12")
   lazy val Scala213: String = versions("2.13")
-  lazy val Scala3: String   = versions("3.2")
-
-  val SilencerVersion = "1.7.12"
+  lazy val Scala3: String   = versions("3.3")
 
   private val stdOptions = Seq(
     "-deprecation",
@@ -183,16 +181,6 @@ object BuildHelper {
       crossScalaVersions                     := Seq(Scala212, Scala213, Scala3),
       ThisBuild / scalaVersion               := Scala213,
       ThisBuild / scalacOptions              := stdOptions ++ extraOptions(scalaVersion.value, optimize = !isSnapshot.value),
-      libraryDependencies ++= {
-        CrossVersion.partialVersion(scalaVersion.value) match {
-          case Some((3, _)) => Nil
-          case _            =>
-            Seq(
-              "com.github.ghik" % "silencer-lib" % SilencerVersion % Provided cross CrossVersion.full,
-              compilerPlugin("com.github.ghik" % "silencer-plugin" % SilencerVersion cross CrossVersion.full)
-            )
-        }
-      },
       semanticdbEnabled                      := true,                        // enable SemanticDB
       semanticdbOptions ++= {
         CrossVersion.partialVersion(scalaVersion.value) match {
@@ -203,8 +191,7 @@ object BuildHelper {
       semanticdbVersion                      := scalafixSemanticdb.revision, // use Scalafix compatible version
       ThisBuild / scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(scalaVersion.value),
       ThisBuild / scalafixDependencies ++= List(
-        "com.github.liancheng" %% "organize-imports" % "0.6.0",
-        "com.github.vovapolu"  %% "scaluzzi"         % "0.1.23"
+        "com.github.vovapolu" %% "scaluzzi" % "0.1.23"
       ),
       Test / parallelExecution               := true,
       incOptions ~= (_.withLogRecompileOnMacro(false)),
@@ -261,12 +248,10 @@ object BuildHelper {
 
   def welcomeMessage =
     onLoadMessage := {
-      import scala.Console
+      def header(text: String): String = s"${scala.Console.RED}$text${scala.Console.RESET}"
 
-      def header(text: String): String = s"${Console.RED}$text${Console.RESET}"
-
-      def item(text: String): String    = s"${Console.GREEN}> ${Console.CYAN}$text${Console.RESET}"
-      def subItem(text: String): String = s"  ${Console.YELLOW}> ${Console.CYAN}$text${Console.RESET}"
+      def item(text: String): String    = s"${scala.Console.GREEN}> ${scala.Console.CYAN}$text${scala.Console.RESET}"
+      def subItem(text: String): String = s"  ${scala.Console.YELLOW}> ${scala.Console.CYAN}$text${scala.Console.RESET}"
 
       s"""|${header(" ________ ___")}
           |${header("|__  /_ _/ _ \\")}

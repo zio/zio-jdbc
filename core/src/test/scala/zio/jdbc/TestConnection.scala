@@ -1,25 +1,12 @@
 package zio.jdbc
 
-import java.sql.{
-  Blob,
-  CallableStatement,
-  Clob,
-  Connection,
-  DatabaseMetaData,
-  NClob,
-  PreparedStatement,
-  SQLWarning,
-  SQLXML,
-  Savepoint,
-  Statement,
-  Struct,
-  ResultSet
-}
-import java.util.{ Properties, concurrent }
-import java.{ sql, util }
+import zio.RuntimeFlags
+
 import java.io.{ InputStream, Reader }
 import java.net.URL
-import zio.RuntimeFlags
+import java.sql.{Blob, CallableStatement, Clob, Connection, DatabaseMetaData, NClob, PreparedStatement, ResultSet, SQLWarning, SQLXML, Savepoint, Statement, Struct}
+import java.util.{ Properties, concurrent }
+import java.{ sql, util }
 
 class TestConnection(failNext: Boolean = false, elems: Int = 0) extends Connection { self =>
 
@@ -166,15 +153,15 @@ class DummyPreparedStatement(failNext: Boolean, elemns: Int) extends PreparedSta
 
   var closed = false
 
-  override def unwrap[T <: Object](iface: Class[T]) = ???
+  override def unwrap[T](iface: Class[T]) = ???
 
-  override def isWrapperFor(iface: Class[_ <: Object]) = ???
+  override def isWrapperFor(iface: Class[_]) = ???
 
   override def executeQuery(sql: String) = new DummyResultSet(failNext, elemns)
 
   override def executeUpdate(sql: String) = ???
 
-  override def close() = closed = true
+  override def close(): Unit = closed = true
 
   override def getMaxFieldSize() = ???
 
@@ -373,11 +360,11 @@ class DummyResultSet(failNext: Boolean, elems: Int) extends ResultSet {
   var closed      = false
   var currentElem = 0
 
-  override def unwrap[T <: Object](x$1: Class[T]) = ???
+  override def unwrap[T](x$1: Class[T]) = ???
 
-  override def isWrapperFor(x$1: Class[_ <: Object]) = ???
+  override def isWrapperFor(x$1: Class[_]) = ???
 
-  override def next() =
+  override def next(): Boolean =
     if (failNext) {
       throw new sql.SQLException()
     } else if (currentElem < elems) {
@@ -387,7 +374,7 @@ class DummyResultSet(failNext: Boolean, elems: Int) extends ResultSet {
       false
     }
 
-  override def close() = closed = true
+  override def close(): Unit = closed = true
 
   override def wasNull() = ???
 
@@ -611,7 +598,7 @@ class DummyResultSet(failNext: Boolean, elems: Int) extends ResultSet {
 
   override def getStatement() = ???
 
-  override def getObject(columnIndex: Int, map: util.Map[String, Class[_ <: Object]]) = ???
+  override def getObject(columnIndex: Int, map: util.Map[String, Class[_]]) = ???
 
   override def getRef(columnIndex: Int) = ???
 
@@ -621,7 +608,7 @@ class DummyResultSet(failNext: Boolean, elems: Int) extends ResultSet {
 
   override def getArray(columnIndex: Int) = ???
 
-  override def getObject(columnLabel: String, map: util.Map[String, Class[_ <: Object]]) = ???
+  override def getObject(columnLabel: String, map: util.Map[String, Class[_]]) = ???
 
   override def getRef(columnLabel: String) = ???
 
@@ -759,8 +746,8 @@ class DummyResultSet(failNext: Boolean, elems: Int) extends ResultSet {
 
   override def updateNClob(columnLabel: String, reader: Reader) = ???
 
-  override def getObject[T <: Object](columnIndex: Int, `type`: Class[T]) = ???
+  override def getObject[T](columnIndex: Int, `type`: Class[T]) = ???
 
-  override def getObject[T <: Object](columnLabel: String, `type`: Class[T]) = ???
+  override def getObject[T](columnLabel: String, `type`: Class[T]) = ???
 
 }

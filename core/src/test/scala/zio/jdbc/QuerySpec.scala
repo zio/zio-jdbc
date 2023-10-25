@@ -139,7 +139,7 @@ object QuerySpec extends ZIOSpecDefault {
               closed        <- rsClosedTuple._1.access(_.isClosed())
             } yield assertTrue(
               closed && !rsClosedTuple._2 && rsClosedTuple._3 == elements
-            ) //Assert ResultSet is closed Outside scope but was open inside scope
+            ) // Assert ResultSet is closed Outside scope but was open inside scope
           }.provide(ZLayer.fromZIO(liveConnection))
         }
       }
