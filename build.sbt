@@ -47,8 +47,8 @@ lazy val core = project
       "dev.zio"       %% "zio-test-sbt" % ZioVersion % Test,
       "com.h2database" % "h2"           % H2Version  % Test
     ),
-    Test / fork    := true,
-    run / fork     := true
+    Test / fork := true,
+    run / fork  := true
   )
 
 lazy val docs = project
@@ -90,5 +90,5 @@ lazy val integration = project
       "dev.zio"           %% "zio-test-sbt" % ZioVersion % Test,
       "org.slf4j"          % "slf4j-api"    % "2.0.9"    % Test,
       "org.slf4j"          % "slf4j-simple" % "2.0.9"    % Test
-    ),
+    )
   )
