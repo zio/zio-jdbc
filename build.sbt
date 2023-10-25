@@ -33,7 +33,7 @@ lazy val root = project
   .settings(
     publish / skip := true
   )
-  .aggregate(core, docs, examples)
+  .aggregate(core, docs, examples, integration)
 
 lazy val core = project
   .in(file("core"))
@@ -85,7 +85,7 @@ lazy val integration = project
     publish / skip := true,
     Test / fork    := true,
     libraryDependencies ++= Seq(
-      "org.testcontainers" % "postgresql"   % "1.19.0"   % Test,
+      "org.testcontainers" % "postgresql"   % "1.19.1"   % Test,
       "org.postgresql"     % "postgresql"   % "42.6.0"   % Test,
       "dev.zio"           %% "zio-test"     % ZioVersion % Test,
       "dev.zio"           %% "zio-test-sbt" % ZioVersion % Test,

@@ -104,7 +104,9 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
   implicit val blobDecoder: JdbcDecoder[Blob]                       = JdbcDecoder(_.getBlob)
   implicit val dateDecoder: JdbcDecoder[java.sql.Date]              = JdbcDecoder(_.getDate)
   implicit val timeDecoder: JdbcDecoder[java.sql.Time]              = JdbcDecoder(_.getTime)
-  implicit val timestampDecoder: JdbcDecoder[java.sql.Timestamp]    = JdbcDecoder(_.getTimestamp)
+  implicit val uuidDecoder: JdbcDecoder[java.util.UUID] =
+    // See: https://stackoverflow.com/a/56267754/2431728
+    JdbcDecoder(rs => i => rs.getObject(i, classOf[java.util.UUID]), "UUID")
 
   implicit def optionDecoder[A](implicit decoder: JdbcDecoder[A]): JdbcDecoder[Option[A]] =
     JdbcDecoder(rs =>
