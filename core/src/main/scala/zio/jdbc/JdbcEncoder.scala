@@ -654,7 +654,7 @@ trait JdbcEncoder0LowPriorityImplicits { self =>
       case _                           => throw JdbcEncoderError(s"Unsupported type: $standardType", new IllegalArgumentException)
     }
 
-  //scalafmt: { maxColumn = 325, optIn.configStyleArguments = false }
+  // scalafmt: { maxColumn = 325, optIn.configStyleArguments = false }
   def fromSchema[A](implicit schema: Schema[A]): JdbcEncoder[A] =
     schema match {
       case Schema.Primitive(standardType, _) =>

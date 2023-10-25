@@ -1,11 +1,12 @@
 package zio.jdbc
 
 import zio._
-import zio.test._
 import zio.jdbc.SqlFragment.Setter
 import zio.jdbc.{ transaction => transact }
 import zio.schema.{ Schema, TypeId }
 import zio.test.Assertion._
+import zio.test._
+
 import java.sql.SQLException
 
 final case class Person(name: String, age: Int)
@@ -364,7 +365,7 @@ object SqlFragmentSpec extends ZIOSpecDefault {
                   closed        <- rsClosedTuple._1.get.access(_.isClosed())
                 } yield assertTrue(
                   closed && !rsClosedTuple._2 && rsClosedTuple._3 == elements && rsClosedTuple._4 == elements.toLong
-                ) //Assert ResultSet is closed Outside scope but was open inside scope
+                ) // Assert ResultSet is closed Outside scope but was open inside scope
               }.provide(ZLayer.fromZIO(liveConnection))
             }
           }

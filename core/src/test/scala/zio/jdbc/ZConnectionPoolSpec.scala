@@ -7,8 +7,8 @@ import zio.test.Assertion._
 import zio.test.TestAspect._
 import zio.test._
 
-import scala.util.Random
 import java.sql.Connection
+import scala.util.Random
 
 object ZConnectionPoolSpec extends ZIOSpecDefault {
   final case class Person(name: String, age: Int)
@@ -149,8 +149,8 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
         test("transaction") {
           ZIO.scoped {
             for {
-              pool <- testPool().map(_._2)
-              conn <- pool.transaction.build.map(_.get)
+              pool      <- testPool().map(_._2)
+              conn      <- pool.transaction.build.map(_.get)
               connClosed = conn.underlying.isClosed // temp workaround for assertTrue eval out of scope
             } yield assertTrue(!connClosed)
           }
@@ -158,11 +158,11 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
         test("invalidate close connection") {
           ZIO.scoped {
             for {
-              pool <- testPool().map(_._2)
-              conn <- ZIO.scoped(for {
-                        conn <- pool.transaction.build.map(_.get)
-                        _    <- pool.invalidate(conn)
-                      } yield conn.underlying)
+              pool             <- testPool().map(_._2)
+              conn             <- ZIO.scoped(for {
+                                    conn <- pool.transaction.build.map(_.get)
+                                    _    <- pool.invalidate(conn)
+                                  } yield conn.underlying)
               invalidatedClosed = conn.isClosed // temp workaround for assertTrue eval out of scope
             } yield assertTrue(invalidatedClosed)
           }
@@ -170,18 +170,18 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
         test("auto invalidate dead connections") {
           def testPoolSingle = testPool(
             ZConnectionPoolConfig(1, 1, ZConnectionPoolConfig.defaultRetryPolicy, 300.seconds)
-          ).map(_._2) //Pool with only one connection
+          ).map(_._2) // Pool with only one connection
 
           ZIO.scoped {
             for {
-              pool       <- testPoolSingle
-              conn       <- ZIO.scoped(for {
-                              conn <- pool.transaction.build.map(_.get)
-                              _    <- conn.close
-                            } yield conn.underlying)
+              pool             <- testPoolSingle
+              conn             <- ZIO.scoped(for {
+                                    conn <- pool.transaction.build.map(_.get)
+                                    _    <- conn.close
+                                  } yield conn.underlying)
               invalidatedClosed = conn.isClosed // temp workaround for assertTrue eval out of scope
-              conn2      <- pool.transaction.build.map(_.get)
-              conn2Closed = conn2.underlying.isClosed
+              conn2            <- pool.transaction.build.map(_.get)
+              conn2Closed       = conn2.underlying.isClosed
             } yield assertTrue(
               invalidatedClosed && !conn2Closed
             )

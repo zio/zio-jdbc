@@ -2,6 +2,7 @@ package zio.jdbc
 
 import zio.test._
 import zio.{ Random, ZIO }
+
 import java.sql.PreparedStatement
 
 object ZConnectionSpec extends ZIOSpecDefault {
@@ -39,7 +40,7 @@ object ZConnectionSpec extends ZIOSpecDefault {
                   )(ps => ZIO.fail(new DummyException("Error Ocurred", ps, ps.isClosed())))
                   .catchSome { case e: DummyException => ZIO.succeed((e.preparedStatement, e.closedInScope)) }
             } yield assertTrue(statementClosedTuple._1.isClosed() && !statementClosedTuple._2)
-          } //A bit of a hack, DummyException receives the prepared Statement so that its closed State can be checked outside ZConnection's Scope
+          } // A bit of a hack, DummyException receives the prepared Statement so that its closed State can be checked outside ZConnection's Scope
         }
     } +
       suite("ZConnectionSpec LiveConnection") {
