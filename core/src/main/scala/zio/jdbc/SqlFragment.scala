@@ -382,7 +382,28 @@ object SqlFragment {
     implicit val bigIntSetter: Setter[java.math.BigInteger]           = bigDecimalSetter.contramap(new java.math.BigDecimal(_))
     implicit val bigDecimalScalaSetter: Setter[scala.math.BigDecimal] = bigDecimalSetter.contramap(_.bigDecimal)
     implicit val byteChunkSetter: Setter[Chunk[Byte]]                 = byteArraySetter.contramap(_.toArray)
-    implicit val instantSetter: Setter[java.time.Instant]             = sqlTimestampSetter.contramap(java.sql.Timestamp.from)
+
+    // These `java.time.*` are inspired from Quill ones. See `ObjectGenericTimeEncoders` in Quill.
+    // Notes:
+    //   1. We didn't copy Quill's implementation of the `java.time.Instant` decoder as it's not using the correct JDBC type. See https://github.com/zio/zio-protoquill/pull/251
+    //   2. These setters probably don't work for SQLite. Quill as a separate trait, named `BasicTimeDecoders` which seems dedicated to SQLite.
+    implicit val localDateSetter: Setter[java.time.LocalDate] =
+    sqlDateSetter.contramap(java.sql.Date.valueOf)
+    implicit val localTimeSetter: Setter[java.time.LocalTime] =
+      sqlTimeSetter.contramap(java.sql.Time.valueOf)
+    implicit val localDateTimeSetter: Setter[java.time.LocalDateTime] =
+      sqlTimestampSetter.contramap(java.sql.Timestamp.valueOf)
+    implicit val zonedDateTimeSetter: Setter[java.time.ZonedDateTime] =
+      forSqlType(
+        (ps, i, value) => ps.setObject(i, value.toOffsetDateTime, Types.TIMESTAMP_WITH_TIMEZONE),
+        Types.TIMESTAMP_WITH_TIMEZONE
+      )
+    implicit val instantSetter: Setter[java.time.Instant] =
+      sqlTimestampSetter.contramap(java.sql.Timestamp.from)
+    implicit val offsetTimeSetter: Setter[java.time.OffsetTime] =
+      forSqlType((ps, i, value) => ps.setObject(i, value, Types.TIME_WITH_TIMEZONE), Types.TIME_WITH_TIMEZONE)
+    implicit val offsetDateTimeSetter: Setter[java.time.OffsetDateTime] =
+      forSqlType((ps, i, value) => ps.setObject(i, value, Types.TIMESTAMP_WITH_TIMEZONE), Types.TIMESTAMP_WITH_TIMEZONE)
   }
 
   def apply(sql: String): SqlFragment = sql
