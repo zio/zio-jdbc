@@ -7,6 +7,7 @@ import zio.ZIO
 import zio.test.ZIOSpec
 
 abstract class PgSpec extends ZIOSpec[ZConnectionPool] {
+
   def bootstrap: ZLayer[Any, Throwable, ZConnectionPool] =
     (ZLayer.scoped {
       ZIO.fromAutoCloseable {
