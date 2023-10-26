@@ -2,6 +2,7 @@ package zio.jdbc
 
 import zio.Scope
 import zio.test._
+import zio.test.TestAspect._
 
 object JavaTimeSupportSpec extends PgSpec {
 
@@ -17,7 +18,6 @@ object JavaTimeSupportSpec extends PgSpec {
     timeLocalDateTime: java.time.LocalDateTime,  // TIMESTAMP
     timeZonedDateTime: java.time.ZonedDateTime,  // TIMESTAMP_WITH_TIMEZONE
     timeInstant: java.time.Instant,              // TIMESTAMP
-    timeOffsetTime: java.time.OffsetTime,        // TIME_WITH_TIMEZONE
     timeOffsetDateTime: java.time.OffsetDateTime // TIMESTAMP_WITH_TIMEZONE
   )
   object TimeEntity {
@@ -32,7 +32,6 @@ object JavaTimeSupportSpec extends PgSpec {
           java.time.LocalDateTime,
           java.time.ZonedDateTime,
           java.time.Instant,
-          java.time.OffsetTime,
           java.time.OffsetDateTime
         )
       ].map((TimeEntity.apply _).tupled)
@@ -48,7 +47,6 @@ object JavaTimeSupportSpec extends PgSpec {
           java.time.LocalDateTime,
           java.time.ZonedDateTime,
           java.time.Instant,
-          java.time.OffsetTime,
           java.time.OffsetDateTime
         )
       ].contramap(TimeEntity.unapply(_).get)
@@ -64,7 +62,6 @@ object JavaTimeSupportSpec extends PgSpec {
       timeLocalDateTime  <- Gen.localDateTime
       timeZonedDateTime  <- Gen.zonedDateTime
       timeInstant        <- Gen.instant
-      timeOffsetTime     <- Gen.offsetTime
       timeOffsetDateTime <- Gen.offsetDateTime
     } yield TimeEntity(
       sqlDate = sqlDate,
@@ -75,7 +72,6 @@ object JavaTimeSupportSpec extends PgSpec {
       timeLocalDateTime = timeLocalDateTime,
       timeZonedDateTime = timeZonedDateTime,
       timeInstant = timeInstant,
-      timeOffsetTime = timeOffsetTime,
       timeOffsetDateTime = timeOffsetDateTime
     )
 
@@ -94,7 +90,6 @@ object JavaTimeSupportSpec extends PgSpec {
                                 timeLocalDateTime,
                                 timeZonedDateTime,
                                 timeInstant,
-                                timeOffsetTime,
                                 timeOffsetDateTime
                               ) VALUES (
                                 ${timeEntity.sqlDate},
@@ -105,7 +100,6 @@ object JavaTimeSupportSpec extends PgSpec {
                                 ${timeEntity.timeLocalDateTime},
                                 ${timeEntity.timeZonedDateTime},
                                 ${timeEntity.timeInstant},
-                                ${timeEntity.timeOffsetTime},
                                 ${timeEntity.timeOffsetDateTime}
                               )""".insert
                             }
@@ -117,7 +111,7 @@ object JavaTimeSupportSpec extends PgSpec {
           )
         }
       }
-    ) @@ TestAspect.sequential @@ TestAspect.around(
+    ) @@ sequential @@ shrinks(0) @@ around(
       before = transaction(
         sql"""CREATE TABLE time (
                 id SERIAL,
@@ -129,7 +123,6 @@ object JavaTimeSupportSpec extends PgSpec {
                 timeLocalDateTime TIMESTAMP,
                 timeZonedDateTime TIMESTAMPTZ,
                 timeInstant TIMESTAMP,
-                timeOffsetTime TIMETZ,
                 timeOffsetDateTime TIMESTAMPTZ
               )""".execute
       ),

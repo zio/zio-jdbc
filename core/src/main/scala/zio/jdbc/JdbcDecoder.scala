@@ -107,11 +107,16 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
   implicit val uuidDecoder: JdbcDecoder[java.util.UUID] =
     // See: https://stackoverflow.com/a/56267754/2431728
     JdbcDecoder(rs => i => rs.getObject(i, classOf[java.util.UUID]), "UUID")
+
   implicit val dateDecoder: JdbcDecoder[java.sql.Date]                      = JdbcDecoder(_.getDate)
   implicit val timeDecoder: JdbcDecoder[java.sql.Time]                      = JdbcDecoder(_.getTime)
   implicit val timestampDecoder: JdbcDecoder[java.sql.Timestamp]            = JdbcDecoder(_.getTimestamp)
+
   // These `java.time.*` decoders are copied from Quill's 'ObjectGenericTimeDecoders' trait.
-  // Note: These decoders probably don't work for SQLite. Quill as a separate trait, named `BasicTimeDecoders` which seems dedicated to SQLite.
+  // Note:
+  //   1. These decoders probably don't work for SQLite. Quill as a separate trait, named `BasicTimeDecoders` which seems dedicated to SQLite.
+  //   2. We deliberately decided not to support `java.time.OffsetTime`.
+  //      The reasons for this choice are detailed next to the `java.time.*` Setters implementation
   implicit val localDateDecoder: JdbcDecoder[java.time.LocalDate]           =
     JdbcDecoder(rs => i => rs.getObject(i, classOf[java.time.LocalDate]), "java.time.LocalDate")
   implicit val localTimeDecoder: JdbcDecoder[java.time.LocalTime]           =
@@ -125,8 +130,6 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     )
   implicit val instantDecoder: JdbcDecoder[java.time.Instant]               =
     JdbcDecoder(rs => i => rs.getObject(i, classOf[java.time.OffsetDateTime]).toInstant, "java.time.Instant")
-  implicit val offsetTimeDecoder: JdbcDecoder[java.time.OffsetTime]         =
-    JdbcDecoder(rs => i => rs.getObject(i, classOf[java.time.OffsetTime]), "java.time.OffsetTime")
   implicit val offsetDateTimeDecoder: JdbcDecoder[java.time.OffsetDateTime] =
     JdbcDecoder(rs => i => rs.getObject(i, classOf[java.time.OffsetDateTime]), "java.time.OffsetDateTime")
 
