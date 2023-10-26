@@ -121,9 +121,9 @@ object JavaTimeSupportSpec extends PgSpec {
                 timeLocalDate DATE,
                 timeLocalTime TIME,
                 timeLocalDateTime TIMESTAMP,
-                timeZonedDateTime TIMESTAMPTZ,
+                timeZonedDateTime TIMESTAMP WITH TIME ZONE,
                 timeInstant TIMESTAMP,
-                timeOffsetDateTime TIMESTAMPTZ
+                timeOffsetDateTime TIMESTAMP WITH TIME ZONE
               )""".execute
       ),
       after = transaction(sql"DROP TABLE time".execute).orDie
