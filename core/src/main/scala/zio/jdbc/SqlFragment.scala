@@ -387,20 +387,20 @@ object SqlFragment {
     // Notes:
     //   1. We didn't copy Quill's implementation of the `java.time.Instant` decoder as it's not using the correct JDBC type. See https://github.com/zio/zio-protoquill/pull/251
     //   2. These setters probably don't work for SQLite. Quill as a separate trait, named `BasicTimeDecoders` which seems dedicated to SQLite.
-    implicit val localDateSetter: Setter[java.time.LocalDate] =
-    sqlDateSetter.contramap(java.sql.Date.valueOf)
-    implicit val localTimeSetter: Setter[java.time.LocalTime] =
+    implicit val localDateSetter: Setter[java.time.LocalDate]           =
+      sqlDateSetter.contramap(java.sql.Date.valueOf)
+    implicit val localTimeSetter: Setter[java.time.LocalTime]           =
       sqlTimeSetter.contramap(java.sql.Time.valueOf)
-    implicit val localDateTimeSetter: Setter[java.time.LocalDateTime] =
+    implicit val localDateTimeSetter: Setter[java.time.LocalDateTime]   =
       sqlTimestampSetter.contramap(java.sql.Timestamp.valueOf)
-    implicit val zonedDateTimeSetter: Setter[java.time.ZonedDateTime] =
+    implicit val zonedDateTimeSetter: Setter[java.time.ZonedDateTime]   =
       forSqlType(
         (ps, i, value) => ps.setObject(i, value.toOffsetDateTime, Types.TIMESTAMP_WITH_TIMEZONE),
         Types.TIMESTAMP_WITH_TIMEZONE
       )
-    implicit val instantSetter: Setter[java.time.Instant] =
+    implicit val instantSetter: Setter[java.time.Instant]               =
       sqlTimestampSetter.contramap(java.sql.Timestamp.from)
-    implicit val offsetTimeSetter: Setter[java.time.OffsetTime] =
+    implicit val offsetTimeSetter: Setter[java.time.OffsetTime]         =
       forSqlType((ps, i, value) => ps.setObject(i, value, Types.TIME_WITH_TIMEZONE), Types.TIME_WITH_TIMEZONE)
     implicit val offsetDateTimeSetter: Setter[java.time.OffsetDateTime] =
       forSqlType((ps, i, value) => ps.setObject(i, value, Types.TIMESTAMP_WITH_TIMEZONE), Types.TIMESTAMP_WITH_TIMEZONE)

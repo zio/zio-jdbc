@@ -91,38 +91,41 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
         }
     }
 
-  implicit val intDecoder: JdbcDecoder[Int]                               = JdbcDecoder(_.getInt)
-  implicit val longDecoder: JdbcDecoder[Long]                             = JdbcDecoder(_.getLong)
-  implicit val doubleDecoder: JdbcDecoder[Double]                         = JdbcDecoder(_.getDouble)
-  implicit val stringDecoder: JdbcDecoder[String]                         = JdbcDecoder(_.getString)
-  implicit val booleanDecoder: JdbcDecoder[Boolean]                       = JdbcDecoder(_.getBoolean)
-  implicit val bigDecimalDecoder: JdbcDecoder[java.math.BigDecimal]       = JdbcDecoder(_.getBigDecimal)
-  implicit val bigDecimalDecoderScala: JdbcDecoder[scala.math.BigDecimal] =
+  implicit val intDecoder: JdbcDecoder[Int]                                 = JdbcDecoder(_.getInt)
+  implicit val longDecoder: JdbcDecoder[Long]                               = JdbcDecoder(_.getLong)
+  implicit val doubleDecoder: JdbcDecoder[Double]                           = JdbcDecoder(_.getDouble)
+  implicit val stringDecoder: JdbcDecoder[String]                           = JdbcDecoder(_.getString)
+  implicit val booleanDecoder: JdbcDecoder[Boolean]                         = JdbcDecoder(_.getBoolean)
+  implicit val bigDecimalDecoder: JdbcDecoder[java.math.BigDecimal]         = JdbcDecoder(_.getBigDecimal)
+  implicit val bigDecimalDecoderScala: JdbcDecoder[scala.math.BigDecimal]   =
     bigDecimalDecoder.map(scala.math.BigDecimal.javaBigDecimal2bigDecimal)
-  implicit val shortDecoder: JdbcDecoder[Short]                           = JdbcDecoder(_.getShort)
-  implicit val floatDecoder: JdbcDecoder[Float]                           = JdbcDecoder(_.getFloat)
-  implicit val byteDecoder: JdbcDecoder[Byte]                             = JdbcDecoder(_.getByte)
-  implicit val byteArrayDecoder: JdbcDecoder[Array[Byte]]                 = JdbcDecoder(_.getBytes)
-  implicit val blobDecoder: JdbcDecoder[Blob]                             = JdbcDecoder(_.getBlob)
+  implicit val shortDecoder: JdbcDecoder[Short]                             = JdbcDecoder(_.getShort)
+  implicit val floatDecoder: JdbcDecoder[Float]                             = JdbcDecoder(_.getFloat)
+  implicit val byteDecoder: JdbcDecoder[Byte]                               = JdbcDecoder(_.getByte)
+  implicit val byteArrayDecoder: JdbcDecoder[Array[Byte]]                   = JdbcDecoder(_.getBytes)
+  implicit val blobDecoder: JdbcDecoder[Blob]                               = JdbcDecoder(_.getBlob)
   implicit val uuidDecoder: JdbcDecoder[java.util.UUID] =
     // See: https://stackoverflow.com/a/56267754/2431728
     JdbcDecoder(rs => i => rs.getObject(i, classOf[java.util.UUID]), "UUID")
-  implicit val dateDecoder: JdbcDecoder[java.sql.Date] = JdbcDecoder(_.getDate)
-  implicit val timeDecoder: JdbcDecoder[java.sql.Time] = JdbcDecoder(_.getTime)
-  implicit val timestampDecoder: JdbcDecoder[java.sql.Timestamp] = JdbcDecoder(_.getTimestamp)
+  implicit val dateDecoder: JdbcDecoder[java.sql.Date]                      = JdbcDecoder(_.getDate)
+  implicit val timeDecoder: JdbcDecoder[java.sql.Time]                      = JdbcDecoder(_.getTime)
+  implicit val timestampDecoder: JdbcDecoder[java.sql.Timestamp]            = JdbcDecoder(_.getTimestamp)
   // These `java.time.*` decoders are copied from Quill's 'ObjectGenericTimeDecoders' trait.
   // Note: These decoders probably don't work for SQLite. Quill as a separate trait, named `BasicTimeDecoders` which seems dedicated to SQLite.
-  implicit val localDateDecoder: JdbcDecoder[java.time.LocalDate] =
-  JdbcDecoder(rs => i => rs.getObject(i, classOf[java.time.LocalDate]), "java.time.LocalDate")
-  implicit val localTimeDecoder: JdbcDecoder[java.time.LocalTime] =
+  implicit val localDateDecoder: JdbcDecoder[java.time.LocalDate]           =
+    JdbcDecoder(rs => i => rs.getObject(i, classOf[java.time.LocalDate]), "java.time.LocalDate")
+  implicit val localTimeDecoder: JdbcDecoder[java.time.LocalTime]           =
     JdbcDecoder(rs => i => rs.getObject(i, classOf[java.time.LocalTime]), "java.time.LocalTime")
-  implicit val localDateTimeDecoder: JdbcDecoder[java.time.LocalDateTime] =
+  implicit val localDateTimeDecoder: JdbcDecoder[java.time.LocalDateTime]   =
     JdbcDecoder(rs => i => rs.getObject(i, classOf[java.time.LocalDateTime]), "java.time.LocalDateTime")
-  implicit val zonedDateTimeDecoder: JdbcDecoder[java.time.ZonedDateTime] =
-    JdbcDecoder(rs => i => rs.getObject(i, classOf[java.time.OffsetDateTime]).toZonedDateTime, "java.time.ZonedDateTime")
-  implicit val instantDecoder: JdbcDecoder[java.time.Instant] =
+  implicit val zonedDateTimeDecoder: JdbcDecoder[java.time.ZonedDateTime]   =
+    JdbcDecoder(
+      rs => i => rs.getObject(i, classOf[java.time.OffsetDateTime]).toZonedDateTime,
+      "java.time.ZonedDateTime"
+    )
+  implicit val instantDecoder: JdbcDecoder[java.time.Instant]               =
     JdbcDecoder(rs => i => rs.getObject(i, classOf[java.time.OffsetDateTime]).toInstant, "java.time.Instant")
-  implicit val offsetTimeDecoder: JdbcDecoder[java.time.OffsetTime] =
+  implicit val offsetTimeDecoder: JdbcDecoder[java.time.OffsetTime]         =
     JdbcDecoder(rs => i => rs.getObject(i, classOf[java.time.OffsetTime]), "java.time.OffsetTime")
   implicit val offsetDateTimeDecoder: JdbcDecoder[java.time.OffsetDateTime] =
     JdbcDecoder(rs => i => rs.getObject(i, classOf[java.time.OffsetDateTime]), "java.time.OffsetDateTime")
