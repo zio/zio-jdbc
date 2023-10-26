@@ -19,6 +19,7 @@ import zio._
 import zio.jdbc.SqlFragment.Segment
 
 import java.sql.{ PreparedStatement, Types }
+import java.time.{ OffsetDateTime, ZoneOffset }
 import scala.language.implicitConversions
 
 /**
@@ -345,8 +346,6 @@ object SqlFragment {
     implicit val byteSetter: Setter[Byte]             = forSqlType((ps, i, value) => ps.setByte(i, value), Types.TINYINT)
     implicit val byteArraySetter: Setter[Array[Byte]] = forSqlType((ps, i, value) => ps.setBytes(i, value), Types.ARRAY)
     implicit val blobSetter: Setter[java.sql.Blob]    = forSqlType((ps, i, value) => ps.setBlob(i, value), Types.BLOB)
-    implicit val sqlDateSetter: Setter[java.sql.Date] = forSqlType((ps, i, value) => ps.setDate(i, value), Types.DATE)
-    implicit val sqlTimeSetter: Setter[java.sql.Time] = forSqlType((ps, i, value) => ps.setTime(i, value), Types.TIME)
 
     implicit def chunkSetter[A](implicit setter: Setter[A]): Setter[Chunk[A]]   = iterableSetter[A, Chunk[A]]
     implicit def listSetter[A](implicit setter: Setter[A]): Setter[List[A]]     = iterableSetter[A, List[A]]
@@ -373,8 +372,6 @@ object SqlFragment {
 
     implicit val bigDecimalSetter: Setter[java.math.BigDecimal] =
       forSqlType((ps, i, value) => ps.setBigDecimal(i, value), Types.NUMERIC)
-    implicit val sqlTimestampSetter: Setter[java.sql.Timestamp] =
-      forSqlType((ps, i, value) => ps.setTimestamp(i, value), Types.TIMESTAMP)
 
     implicit val uuidParamSetter: Setter[java.util.UUID] = other((ps, i, value) => ps.setObject(i, value), "uuid")
 
@@ -382,7 +379,40 @@ object SqlFragment {
     implicit val bigIntSetter: Setter[java.math.BigInteger]           = bigDecimalSetter.contramap(new java.math.BigDecimal(_))
     implicit val bigDecimalScalaSetter: Setter[scala.math.BigDecimal] = bigDecimalSetter.contramap(_.bigDecimal)
     implicit val byteChunkSetter: Setter[Chunk[Byte]]                 = byteArraySetter.contramap(_.toArray)
-    implicit val instantSetter: Setter[java.time.Instant]             = sqlTimestampSetter.contramap(java.sql.Timestamp.from)
+
+    // These `java.time.*` are inspired from Quill encoders. See `ObjectGenericTimeEncoders` in Quill.
+    // Notes:
+    //   1. These setters probably don't work for SQLite. Quill as a separate trait, named `BasicTimeDecoders` which seems dedicated to SQLite.
+    //   2. We deliberately decided not to support `java.time.OffsetTime`.
+    //      Because:
+    //        - See https://github.com/h2database/h2database/issues/521#issuecomment-333517705
+    //        - It's supposed to be mapped to `java.sql.Types.TIME_WITH_TIMEZONE` but this type isn't supported by the PG JDBC driver.
+    //          See: https://github.com/pgjdbc/pgjdbc/blob/9cf9f36a1d3a1edd9286721f9c0b9cfa9e8422e3/pgjdbc/src/main/java/org/postgresql/jdbc/PgPreparedStatement.java#L557-L741
+    //      Note that Quill made a different choice. For PG, it uses `java.sql.Types.TIME` but as we don't support yet differences between DBs and `OffsetTime` is almost never used
+    //      it's simpler, for now, to not support it and to document this choice.
+    //      If you need it, please open an issue or a PR explaining your use case.
+    implicit val sqlDateSetter: Setter[java.sql.Date]                   = forSqlType((ps, i, value) => ps.setDate(i, value), Types.DATE)
+    implicit val sqlTimeSetter: Setter[java.sql.Time]                   = forSqlType((ps, i, value) => ps.setTime(i, value), Types.TIME)
+    implicit val sqlTimestampSetter: Setter[java.sql.Timestamp]         =
+      forSqlType((ps, i, value) => ps.setTimestamp(i, value), Types.TIMESTAMP)
+    implicit val localDateSetter: Setter[java.time.LocalDate]           =
+      sqlDateSetter.contramap(java.sql.Date.valueOf)
+    implicit val localTimeSetter: Setter[java.time.LocalTime]           =
+      sqlTimeSetter.contramap(java.sql.Time.valueOf)
+    implicit val localDateTimeSetter: Setter[java.time.LocalDateTime]   =
+      sqlTimestampSetter.contramap(java.sql.Timestamp.valueOf)
+    implicit val zonedDateTimeSetter: Setter[java.time.ZonedDateTime]   =
+      forSqlType(
+        (ps, i, value) => ps.setObject(i, value.toOffsetDateTime, Types.TIMESTAMP_WITH_TIMEZONE),
+        Types.TIMESTAMP_WITH_TIMEZONE
+      )
+    implicit val instantSetter: Setter[java.time.Instant]               =
+      forSqlType(
+        (ps, i, value) => ps.setObject(i, OffsetDateTime.ofInstant(value, ZoneOffset.UTC)),
+        Types.TIMESTAMP_WITH_TIMEZONE
+      )
+    implicit val offsetDateTimeSetter: Setter[java.time.OffsetDateTime] =
+      forSqlType((ps, i, value) => ps.setObject(i, value, Types.TIMESTAMP_WITH_TIMEZONE), Types.TIMESTAMP_WITH_TIMEZONE)
   }
 
   def apply(sql: String): SqlFragment = sql
