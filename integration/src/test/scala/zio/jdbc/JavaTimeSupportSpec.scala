@@ -131,13 +131,12 @@ object JavaTimeSupportSpec extends PgSpec {
       test("java.sql.Timestamp - Gen") {
         check(genSqlTimestamp) { sqlTimestamp =>
           for {
-            _ <- transaction(sql"""CREATE TABLE sql_timestamp (value TIMESTAMP)""".execute)
-            i <- transaction(sql"""INSERT INTO sql_timestamp VALUES ($sqlTimestamp)""".insert)
-            d <- transaction(sql"""SELECT * FROM sql_timestamp""".query[java.sql.Timestamp].selectOne)
-            _ <- transaction(sql"DROP TABLE sql_timestamp".execute)
-            rounded = nanosRoundedUpToMicros(sqlTimestamp.getNanos)
-            expected = sqlTimestamp
-                         .toInstant
+            _       <- transaction(sql"""CREATE TABLE sql_timestamp (value TIMESTAMP)""".execute)
+            i       <- transaction(sql"""INSERT INTO sql_timestamp VALUES ($sqlTimestamp)""".insert)
+            d       <- transaction(sql"""SELECT * FROM sql_timestamp""".query[java.sql.Timestamp].selectOne)
+            _       <- transaction(sql"DROP TABLE sql_timestamp".execute)
+            rounded  = nanosRoundedUpToMicros(sqlTimestamp.getNanos)
+            expected = sqlTimestamp.toInstant
                          .`with`(ChronoField.MICRO_OF_SECOND, rounded) // Replaces the micros with the rounded value
                          .truncatedTo(ChronoUnit.MICROS)
           } yield assertTrue(
@@ -228,11 +227,11 @@ object JavaTimeSupportSpec extends PgSpec {
       test("java.time.Instant - Gen") {
         check(genPGInstant) { instant =>
           for {
-            _ <- transaction(sql"""CREATE TABLE instant (value TIMESTAMP)""".execute)
-            i <- transaction(sql"""INSERT INTO instant VALUES ($instant)""".insert)
-            d <- transaction(sql"""SELECT * FROM instant""".query[java.time.Instant].selectOne)
-            _ <- transaction(sql"DROP TABLE instant".execute)
-            rounded = nanosRoundedUpToMicros(instant.getNano)
+            _       <- transaction(sql"""CREATE TABLE instant (value TIMESTAMP)""".execute)
+            i       <- transaction(sql"""INSERT INTO instant VALUES ($instant)""".insert)
+            d       <- transaction(sql"""SELECT * FROM instant""".query[java.time.Instant].selectOne)
+            _       <- transaction(sql"DROP TABLE instant".execute)
+            rounded  = nanosRoundedUpToMicros(instant.getNano)
             expected = instant
                          .`with`(ChronoField.MICRO_OF_SECOND, rounded) // Replaces the micros with the rounded value
                          .truncatedTo(ChronoUnit.MICROS)
