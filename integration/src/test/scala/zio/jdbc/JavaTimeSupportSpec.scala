@@ -1,12 +1,12 @@
 package zio.jdbc
 
-import zio.Scope
 import zio.test.TestAspect._
 import zio.test._
+import zio.{ Scope, ZIO }
 
 import java.time._
 import java.time.chrono.IsoEra
-import java.time.temporal.{ChronoField, ChronoUnit}
+import java.time.temporal.{ ChronoField, ChronoUnit }
 
 object JavaTimeSupportSpec extends PgSpec {
 
@@ -60,7 +60,8 @@ object JavaTimeSupportSpec extends PgSpec {
   val genPGLocalTime: Gen[Any, LocalTime]           = Gen.localTime(LocalTime.MIN, MAX_TIME)
   val genPGLocalDateTime: Gen[Any, LocalDateTime]   = Gen.localDateTime(MIN_LOCAL_DATETIME, MAX_LOCAL_DATETIME)
   // We need to set `UTC` as PG will move the date to UTC and so can generate a date that is not in the range of `MIN_TIMESTAMP` and `MAX_TIMESTAMP`
-  val genPGOffsetDateTime: Gen[Any, OffsetDateTime] = Gen.offsetDateTime(MIN_OFFSET_DATETIME, MAX_OFFSET_DATETIME).map(_.withOffsetSameInstant(ZoneOffset.UTC))
+  val genPGOffsetDateTime: Gen[Any, OffsetDateTime] =
+    Gen.offsetDateTime(MIN_OFFSET_DATETIME, MAX_OFFSET_DATETIME).map(_.withOffsetSameInstant(ZoneOffset.UTC))
   val genPGInstant: Gen[Any, Instant]               = Gen.instant(MIN_TIMESTAMP, MAX_TIMESTAMP)
 
   /**
@@ -114,17 +115,35 @@ object JavaTimeSupportSpec extends PgSpec {
           )
         }
       },
-      test("java.sql.Timestamp") {
+      test("java.sql.Timestamp - now") {
+        for {
+          now <- ZIO.clockWith(_.instant).map(java.sql.Timestamp.from)
+          _   <- transaction(sql"""CREATE TABLE sql_timestamp (value TIMESTAMP)""".execute)
+          i   <- transaction(sql"""INSERT INTO sql_timestamp VALUES ($now)""".insert)
+          d   <- transaction(sql"""SELECT * FROM sql_timestamp""".query[java.sql.Timestamp].selectOne)
+          _   <- transaction(sql"DROP TABLE sql_timestamp".execute)
+        } yield assertTrue(
+          i == 1L,
+          d.isDefined,
+          d.get == now
+        )
+      },
+      test("java.sql.Timestamp - Gen") {
         check(genSqlTimestamp) { sqlTimestamp =>
           for {
-            _ <- transaction(sql"""CREATE TABLE sql_timestamp (value TIME)""".execute)
+            _ <- transaction(sql"""CREATE TABLE sql_timestamp (value TIMESTAMP)""".execute)
             i <- transaction(sql"""INSERT INTO sql_timestamp VALUES ($sqlTimestamp)""".insert)
             d <- transaction(sql"""SELECT * FROM sql_timestamp""".query[java.sql.Timestamp].selectOne)
             _ <- transaction(sql"DROP TABLE sql_timestamp".execute)
+            rounded = nanosRoundedUpToMicros(sqlTimestamp.getNanos)
+            expected = sqlTimestamp
+                         .toInstant
+                         .`with`(ChronoField.MICRO_OF_SECOND, rounded) // Replaces the micros with the rounded value
+                         .truncatedTo(ChronoUnit.MICROS)
           } yield assertTrue(
             i == 1L,
             d.isDefined,
-            d.get == sqlTimestamp
+            d.get == java.sql.Timestamp.from(expected)
           )
         }
       },
@@ -193,17 +212,34 @@ object JavaTimeSupportSpec extends PgSpec {
           )
         }
       },
-      test("java.time.Instant") {
+      test("java.time.Instant - now") {
+        for {
+          now <- ZIO.clockWith(_.instant)
+          _   <- transaction(sql"""CREATE TABLE instant (value TIMESTAMP)""".execute)
+          i   <- transaction(sql"""INSERT INTO instant VALUES ($now)""".insert)
+          d   <- transaction(sql"""SELECT * FROM instant""".query[java.time.Instant].selectOne)
+          _   <- transaction(sql"DROP TABLE instant".execute)
+        } yield assertTrue(
+          i == 1L,
+          d.isDefined,
+          d.get == now
+        )
+      },
+      test("java.time.Instant - Gen") {
         check(genPGInstant) { instant =>
           for {
             _ <- transaction(sql"""CREATE TABLE instant (value TIMESTAMP)""".execute)
             i <- transaction(sql"""INSERT INTO instant VALUES ($instant)""".insert)
             d <- transaction(sql"""SELECT * FROM instant""".query[java.time.Instant].selectOne)
             _ <- transaction(sql"DROP TABLE instant".execute)
+            rounded = nanosRoundedUpToMicros(instant.getNano)
+            expected = instant
+                         .`with`(ChronoField.MICRO_OF_SECOND, rounded) // Replaces the micros with the rounded value
+                         .truncatedTo(ChronoUnit.MICROS)
           } yield assertTrue(
             i == 1L,
             d.isDefined,
-            d.get == instant
+            d.get == expected
           )
         }
       },
@@ -226,5 +262,5 @@ object JavaTimeSupportSpec extends PgSpec {
           )
         }
       }
-    ) @@ sequential @@ shrinks(0) @@ repeats(100)
+    ) @@ sequential @@ shrinks(0) @@ repeats(100) @@ withLiveClock
 }

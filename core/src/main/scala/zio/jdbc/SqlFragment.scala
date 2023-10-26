@@ -19,6 +19,7 @@ import zio._
 import zio.jdbc.SqlFragment.Segment
 
 import java.sql.{ PreparedStatement, Types }
+import java.time.{ OffsetDateTime, ZoneOffset }
 import scala.language.implicitConversions
 
 /**
@@ -381,8 +382,7 @@ object SqlFragment {
 
     // These `java.time.*` are inspired from Quill encoders. See `ObjectGenericTimeEncoders` in Quill.
     // Notes:
-    //   1. We didn't copy Quill's implementation of the `java.time.Instant` decoder as it's not using the correct JDBC type. See https://github.com/zio/zio-protoquill/pull/251
-    //   2. These setters probably don't work for SQLite. Quill as a separate trait, named `BasicTimeDecoders` which seems dedicated to SQLite.
+    //   1. These setters probably don't work for SQLite. Quill as a separate trait, named `BasicTimeDecoders` which seems dedicated to SQLite.
     //   3. We deliberately decided not to support `java.time.OffsetTime`.
     //      Because:
     //        - See https://github.com/h2database/h2database/issues/521#issuecomment-333517705
@@ -407,7 +407,10 @@ object SqlFragment {
         Types.TIMESTAMP_WITH_TIMEZONE
       )
     implicit val instantSetter: Setter[java.time.Instant]               =
-      sqlTimestampSetter.contramap(java.sql.Timestamp.from)
+      forSqlType(
+        (ps, i, value) => ps.setObject(i, OffsetDateTime.ofInstant(value, ZoneOffset.UTC)),
+        Types.TIMESTAMP_WITH_TIMEZONE
+      )
     implicit val offsetDateTimeSetter: Setter[java.time.OffsetDateTime] =
       forSqlType((ps, i, value) => ps.setObject(i, value, Types.TIMESTAMP_WITH_TIMEZONE), Types.TIMESTAMP_WITH_TIMEZONE)
   }
