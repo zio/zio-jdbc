@@ -388,7 +388,7 @@ object SqlFragment {
     //        - See https://github.com/h2database/h2database/issues/521#issuecomment-333517705
     //        - It's supposed to be mapped to `java.sql.Types.TIME_WITH_TIMEZONE` but this type isn't supported by the PG JDBC driver.
     //          See: https://github.com/pgjdbc/pgjdbc/blob/9cf9f36a1d3a1edd9286721f9c0b9cfa9e8422e3/pgjdbc/src/main/java/org/postgresql/jdbc/PgPreparedStatement.java#L557-L741
-    //      Note that Quill made a different choice. For PG, it uses `java.sql.Types.TIME` but as we don't support yet differences between DBs and this `OffsetTime` almost never used
+    //      Note that Quill made a different choice. For PG, it uses `java.sql.Types.TIME` but as we don't support yet differences between DBs and this `OffsetTime` is almost never used
     //      it's simpler to just not support it for now and document this choice.
     //      If you need it, please open an issue or a PR explaining your use case.
     implicit val sqlDateSetter: Setter[java.sql.Date]                   = forSqlType((ps, i, value) => ps.setDate(i, value), Types.DATE)
