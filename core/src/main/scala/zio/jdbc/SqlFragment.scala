@@ -383,7 +383,7 @@ object SqlFragment {
     // These `java.time.*` are inspired from Quill encoders. See `ObjectGenericTimeEncoders` in Quill.
     // Notes:
     //   1. These setters probably don't work for SQLite. Quill as a separate trait, named `BasicTimeDecoders` which seems dedicated to SQLite.
-    //   3. We deliberately decided not to support `java.time.OffsetTime`.
+    //   2. We deliberately decided not to support `java.time.OffsetTime`.
     //      Because:
     //        - See https://github.com/h2database/h2database/issues/521#issuecomment-333517705
     //        - It's supposed to be mapped to `java.sql.Types.TIME_WITH_TIMEZONE` but this type isn't supported by the PG JDBC driver.
