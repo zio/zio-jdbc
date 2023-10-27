@@ -248,7 +248,8 @@ sealed trait SqlFragment { self =>
                           val builder = ChunkBuilder.make[A]()
                           while (rs.next()) {
                             try {
-                              builder += decoder.unsafeDecode(1, rs.resultSet)._2
+                              val v = decoder.unsafeDecode(1, rs.resultSet)._2
+                              builder += v
                             } catch {
                               case NonFatal(e) => ()
                             }
