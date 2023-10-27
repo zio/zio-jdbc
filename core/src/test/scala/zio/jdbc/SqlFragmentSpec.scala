@@ -32,7 +32,7 @@ object SqlFragmentSpec extends ZIOSpecDefault {
         test("Empty Segment instances are insignificant") {
           val age  = 42
           val name = "sholmes"
-          val sql = sql"select name, age from users where age = $age and name = $name"
+          val sql  = sql"select name, age from users where age = $age and name = $name"
           assertTrue(
             sql.segments.size == 5,
             sql.segments.last == SqlFragment.Segment.Empty, // Empty Syntax instances are insignificant
