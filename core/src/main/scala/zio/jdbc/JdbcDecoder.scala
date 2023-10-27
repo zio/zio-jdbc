@@ -71,7 +71,7 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
 
   def apply[A](implicit decoder: JdbcDecoder[A]): JdbcDecoder[A] = decoder
 
-  def apply[A](f: ResultSet => (Int => A), expected: String = "value"): JdbcDecoder[A] =
+  def apply[A: zio.Tag](f: ResultSet => (Int => A)): JdbcDecoder[A] =
     new JdbcDecoder[A] {
       override def unsafeDecode(
         inputColumnIndex: Int,
@@ -83,7 +83,7 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
         } catch {
           case t: Throwable if !t.isInstanceOf[VirtualMachineError] =>
             throw JdbcDecoderError(
-              s"Error decoding $expected from ResultSet",
+              s"Error decoding ${Tag[A].getClass.getName} from ResultSet",
               t,
               inputResultSet.getMetaData,
               inputResultSet.getRow
@@ -109,9 +109,9 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
   implicit val timestampDecoder: JdbcDecoder[java.sql.Timestamp]          = JdbcDecoder(_.getTimestamp)
   implicit val uuidDecoder: JdbcDecoder[java.util.UUID] =
     // See: https://stackoverflow.com/a/56267754/2431728
-    JdbcDecoder(rs => i => rs.getObject(i, classOf[java.util.UUID]), "UUID")
+    JdbcDecoder(rs => i => rs.getObject(i, classOf[java.util.UUID]))
 
-  implicit def optionDecoder[A](implicit decoder: JdbcDecoder[A]): JdbcDecoder[Option[A]] =
+  implicit def optionDecoder[A](implicit decoder: JdbcDecoder[A], tag: Tag[Option[A]]): JdbcDecoder[Option[A]] =
     JdbcDecoder(rs =>
       int =>
         decoder.decode(int, rs) match {
