@@ -35,7 +35,7 @@ object SqlFragmentSpec extends ZIOSpecDefault {
           val sql  = sql"select name, age from users where age = $age and name = $name"
           assertTrue(
             sql.segments.size == 5,
-            sql.segments.last == SqlFragment.Segment.Empty, // Empty Syntax instances are insignificant
+            sql.segments.last == SqlFragment.Segment.Empty,
             sql.toString == "Sql(select name, age from users where age = ? and name = ?, 42, sholmes)"
           )
         } +
