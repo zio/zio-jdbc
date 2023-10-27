@@ -272,6 +272,7 @@ sealed trait SqlFragment { self =>
 
   private[jdbc] def foreachSegment(addSyntax: Segment.Syntax => Any)(addParam: Segment.Param => Any): Unit =
     segments.foreach {
+      case Segment.Empty          => ()
       case syntax: Segment.Syntax => addSyntax(syntax)
       case param: Segment.Param   => addParam(param)
       case nested: Segment.Nested => nested.sql.foreachSegment(addSyntax)(addParam)
@@ -288,9 +289,12 @@ object SqlFragment {
 
   sealed trait Segment
   object Segment {
+    case object Empty                                       extends Segment
     final case class Syntax(value: String)                  extends Segment
     final case class Param(value: Any, setter: Setter[Any]) extends Segment
     final case class Nested(sql: SqlFragment)               extends Segment
+
+    @inline def empty: Segment = Empty
 
     implicit def paramSegment[A](a: A)(implicit setter: Setter[A]): Segment.Param =
       Segment.Param(a, setter.asInstanceOf[Setter[Any]])
@@ -385,7 +389,7 @@ object SqlFragment {
     implicit val instantSetter: Setter[java.time.Instant]             = sqlTimestampSetter.contramap(java.sql.Timestamp.from)
   }
 
-  def apply(sql: String): SqlFragment = sql
+  def apply(sql: String): SqlFragment = SqlFragment(Chunk.single(SqlFragment.Segment.Syntax(sql)))
 
   def apply(segments: Chunk[Segment]): SqlFragment =
     SqlFragment.Append(segments)
