@@ -32,7 +32,8 @@ object ZConnectionPoolConfig {
 
   lazy val default: ZConnectionPoolConfig = ZConnectionPoolConfig(8, 32, defaultRetryPolicy, 300.seconds)
 
-  lazy val defaultRetryPolicy: Schedule.WithState[Long, Any, Any, Duration] = Schedule.exponential(10.millis)
+  lazy val defaultRetryPolicy: Schedule.WithState[(Long, Long), Any, Any, (Long, Duration)] =
+    Schedule.recurs(10) && Schedule.exponential(15.millis)
 
   implicit val config: Config[ZConnectionPoolConfig] =
     (Config.int("minConnections") zip
