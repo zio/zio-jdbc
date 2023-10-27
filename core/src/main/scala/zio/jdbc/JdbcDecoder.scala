@@ -39,7 +39,7 @@ trait JdbcDecoder[+A] { self =>
         inputResultSet: ResultSet
       ): (Int, B) = {
         val (columnIndex, a) = self.unsafeDecode(inputColumnIndex, inputResultSet)
-        (columnIndex, f(a))
+        (columnIndex, if (a == null) null.asInstanceOf[B] else f(a))
       }
     }
 
@@ -49,8 +49,8 @@ trait JdbcDecoder[+A] { self =>
         inputColumnIndex: Int,
         inputResultSet: ResultSet
       ): (Int, B) = {
-        val (columnIndex, a) = self.unsafeDecode(inputColumnIndex, inputResultSet)
-        f(a).unsafeDecode(columnIndex + 1, inputResultSet)
+        val v @ (columnIndex, a) = self.unsafeDecode(inputColumnIndex, inputResultSet)
+        if (a == null) v.asInstanceOf[(Int, B)] else f(a).unsafeDecode(columnIndex + 1, inputResultSet)
       }
     }
 
