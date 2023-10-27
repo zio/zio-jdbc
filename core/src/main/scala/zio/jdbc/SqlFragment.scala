@@ -251,7 +251,7 @@ sealed trait SqlFragment { self =>
                               val v = decoder.unsafeDecode(1, rs.resultSet)._2
                               builder += v
                             } catch {
-                              case NonFatal(e) => ()
+                              case NonFatal(e) => println(e)
                             }
                           }
                           builder.result()
