@@ -116,7 +116,7 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
       int =>
         decoder.decode(int, rs) match {
           case Left(_)      => None
-          case Right(value) => if (value eq null) None else Some(value._2)
+          case Right(value) => if (value eq null) None else Option(value._2)
         },
       "Option[A]"
     )
