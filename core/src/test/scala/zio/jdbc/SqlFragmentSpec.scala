@@ -29,10 +29,15 @@ object SqlFragmentSpec extends ZIOSpecDefault {
               s"Sql(select name, age from users where id = ?, $id)"
           )
         } +
-        test("ensure no empty Syntax instances") {
+        test("Empty Segment instances are insignificant") {
           val age  = 42
           val name = "sholmes"
-          assertTrue(sql"select name, age from users where age = $age and name = $name".segments.size == 4)
+          val sql  = sql"select name, age from users where age = $age and name = $name"
+          assertTrue(
+            sql.segments.size == 5,
+            sql.segments.last == SqlFragment.Segment.Empty,
+            sql.toString == "Sql(select name, age from users where age = ? and name = ?, 42, sholmes)"
+          )
         } +
         test("interpolate Sql values") {
           val tableName    = sql"table1"
@@ -246,6 +251,15 @@ object SqlFragmentSpec extends ZIOSpecDefault {
           val result = SqlFragment.update("persons")
           assertTrue(
             result.toString == "Sql(UPDATE persons)"
+          )
+        } +
+        test("'interpolation <=> ++ operator' equivalence") {
+          val s1 = sql"${"1"}::varchar"
+          val s2 = (sql"${"1"}" ++ sql"::varchar")
+
+          assertTrue(
+            s1.toString == "Sql(?::varchar, 1)",
+            s1.toString == s2.toString
           )
         }
     } +

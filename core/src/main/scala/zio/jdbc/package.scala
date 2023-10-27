@@ -24,7 +24,7 @@ package object jdbc {
   /**
    * Converts a String into a pure SQL expression
    */
-  implicit def stringToSql(s: String): SqlFragment = SqlFragment(Chunk(SqlFragment.Segment.Syntax(s)))
+  implicit def stringToSql(s: String): SqlFragment = SqlFragment(s)
 
   /**
    * A new transaction, which may be applied to ZIO effects that require a

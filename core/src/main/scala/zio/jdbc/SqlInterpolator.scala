@@ -29,10 +29,8 @@ final class SqlInterpolator(val context: StringContext) extends AnyVal {
 
     while (syntaxIterator.hasNext) {
       val syntax = syntaxIterator.next()
-      if (syntax.nonEmpty) {
-        chunkBuilder += SqlFragment.Segment.Syntax(syntax)
-        if (paramsIterator.hasNext) chunkBuilder += paramsIterator.next()
-      }
+      chunkBuilder += (if (syntax.isEmpty) SqlFragment.Segment.empty else SqlFragment.Segment.Syntax(syntax))
+      if (paramsIterator.hasNext) chunkBuilder += paramsIterator.next()
     }
     while (paramsIterator.hasNext)
       chunkBuilder += paramsIterator.next()
