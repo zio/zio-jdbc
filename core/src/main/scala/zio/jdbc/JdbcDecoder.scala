@@ -20,7 +20,6 @@ import zio._
 import java.io._
 import java.sql.{Array => _, _}
 import scala.collection.immutable.ListMap
-import scala.reflect.ClassTag
 
 /**
  * A type class that describes the ability to decode  a value of type `A` from
@@ -72,7 +71,7 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
 
   def apply[A](implicit decoder: JdbcDecoder[A]): JdbcDecoder[A] = decoder
 
-  def apply[A](f: ResultSet => (Int => A))(implicit ct: ClassTag[A]): JdbcDecoder[A] =
+  def apply[A](f: ResultSet => (Int => A), `type`: String): JdbcDecoder[A] =
     new JdbcDecoder[A] {
       override def unsafeDecode(
         inputColumnIndex: Int,
@@ -84,7 +83,7 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
         } catch {
           case t: Throwable if !t.isInstanceOf[VirtualMachineError] =>
             throw JdbcDecoderError(
-              s"Error decoding ${ct.runtimeClass.getCanonicalName} from ResultSet",
+              s"Error decoding ${`type`} from ResultSet",
               t,
               inputResultSet.getMetaData,
               inputResultSet.getRow
@@ -92,34 +91,35 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
         }
     }
 
-  implicit val intDecoder: JdbcDecoder[Int]                               = JdbcDecoder(_.getInt)
-  implicit val longDecoder: JdbcDecoder[Long]                             = JdbcDecoder(_.getLong)
-  implicit val doubleDecoder: JdbcDecoder[Double]                         = JdbcDecoder(_.getDouble)
-  implicit val stringDecoder: JdbcDecoder[String]                         = JdbcDecoder(_.getString)
-  implicit val booleanDecoder: JdbcDecoder[Boolean]                       = JdbcDecoder(_.getBoolean)
-  implicit val bigDecimalDecoder: JdbcDecoder[java.math.BigDecimal]       = JdbcDecoder(_.getBigDecimal)
+  implicit val intDecoder: JdbcDecoder[Int]                               = JdbcDecoder(_.getInt, "Int")
+  implicit val longDecoder: JdbcDecoder[Long]                             = JdbcDecoder(_.getLong, "Long")
+  implicit val doubleDecoder: JdbcDecoder[Double]                         = JdbcDecoder(_.getDouble, "Double")
+  implicit val stringDecoder: JdbcDecoder[String]                         = JdbcDecoder(_.getString, "String")
+  implicit val booleanDecoder: JdbcDecoder[Boolean]                       = JdbcDecoder(_.getBoolean, "Boolean")
+  implicit val bigDecimalDecoder: JdbcDecoder[java.math.BigDecimal]       = JdbcDecoder(_.getBigDecimal, "java.math.BigDecimal")
   implicit val bigDecimalDecoderScala: JdbcDecoder[scala.math.BigDecimal] =
     bigDecimalDecoder.map(scala.math.BigDecimal.javaBigDecimal2bigDecimal)
-  implicit val shortDecoder: JdbcDecoder[Short]                           = JdbcDecoder(_.getShort)
-  implicit val floatDecoder: JdbcDecoder[Float]                           = JdbcDecoder(_.getFloat)
-  implicit val byteDecoder: JdbcDecoder[Byte]                             = JdbcDecoder(_.getByte)
-  implicit val byteArrayDecoder: JdbcDecoder[Array[Byte]]                 = JdbcDecoder(_.getBytes)
-  implicit val blobDecoder: JdbcDecoder[Blob]                             = JdbcDecoder(_.getBlob)
-  implicit val dateDecoder: JdbcDecoder[java.sql.Date]                    = JdbcDecoder(_.getDate)
-  implicit val timeDecoder: JdbcDecoder[java.sql.Time]                    = JdbcDecoder(_.getTime)
-  implicit val timestampDecoder: JdbcDecoder[java.sql.Timestamp]          = JdbcDecoder(_.getTimestamp)
+  implicit val shortDecoder: JdbcDecoder[Short]                           = JdbcDecoder(_.getShort, "Short")
+  implicit val floatDecoder: JdbcDecoder[Float]                           = JdbcDecoder(_.getFloat, "Float")
+  implicit val byteDecoder: JdbcDecoder[Byte]                             = JdbcDecoder(_.getByte, "Byte")
+  implicit val byteArrayDecoder: JdbcDecoder[Array[Byte]]                 = JdbcDecoder(_.getBytes, "Array[Byte]")
+  implicit val blobDecoder: JdbcDecoder[Blob]                             = JdbcDecoder(_.getBlob, "Blob")
+  implicit val dateDecoder: JdbcDecoder[java.sql.Date]                    = JdbcDecoder(_.getDate, "java.sql.Date")
+  implicit val timeDecoder: JdbcDecoder[java.sql.Time]                    = JdbcDecoder(_.getTime, "java.sql.Time")
+  implicit val timestampDecoder: JdbcDecoder[java.sql.Timestamp]          = JdbcDecoder(_.getTimestamp, "java.sql.Timestamp")
   implicit val uuidDecoder: JdbcDecoder[java.util.UUID] =
     // See: https://stackoverflow.com/a/56267754/2431728
-    JdbcDecoder(rs => i => rs.getObject(i, classOf[java.util.UUID]))
+    JdbcDecoder(rs => i => rs.getObject(i, classOf[java.util.UUID]), "java.util.UUID")
 
-  implicit def optionDecoder[A: ClassTag](implicit decoder: JdbcDecoder[A]): JdbcDecoder[Option[A]] =
+  implicit def optionDecoder[A](implicit decoder: JdbcDecoder[A]): JdbcDecoder[Option[A]] =
     JdbcDecoder(rs =>
       int =>
         decoder.decode(int, rs) match {
           case Left(_)      => None
           case Right(value) => Option(value._2)
-        }
-    )(implicitly[ClassTag[Option[A]]])
+        },
+      "Option[A]"
+    )
 
   implicit def tuple2Decoder[A, B](implicit
     a: JdbcDecoder[A],
@@ -553,7 +553,7 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
 trait JdbcDecoderLowPriorityImplicits {
   import zio.schema._
 
-  import java.sql.{ Types => SqlTypes }
+  import java.sql.{Types => SqlTypes}
 
   private def getBinary(binary: InputStream): Chunk[Byte] = {
     val baos = new ByteArrayOutputStream()
