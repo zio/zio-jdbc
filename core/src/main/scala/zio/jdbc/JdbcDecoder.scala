@@ -18,8 +18,9 @@ package zio.jdbc
 import zio._
 
 import java.io._
-import java.sql.{ Array => _, _ }
+import java.sql.{Array => _, _}
 import scala.collection.immutable.ListMap
+import scala.reflect.ClassTag
 
 /**
  * A type class that describes the ability to decode  a value of type `A` from
@@ -71,7 +72,7 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
 
   def apply[A](implicit decoder: JdbcDecoder[A]): JdbcDecoder[A] = decoder
 
-  def apply[A: zio.Tag](f: ResultSet => (Int => A)): JdbcDecoder[A] =
+  def apply[A](f: ResultSet => (Int => A))(implicit ct: ClassTag[A]): JdbcDecoder[A] =
     new JdbcDecoder[A] {
       override def unsafeDecode(
         inputColumnIndex: Int,
@@ -83,7 +84,7 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
         } catch {
           case t: Throwable if !t.isInstanceOf[VirtualMachineError] =>
             throw JdbcDecoderError(
-              s"Error decoding ${Tag[A].getClass.getName} from ResultSet",
+              s"Error decoding ${ct.runtimeClass.getCanonicalName} from ResultSet",
               t,
               inputResultSet.getMetaData,
               inputResultSet.getRow
@@ -111,14 +112,14 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
     // See: https://stackoverflow.com/a/56267754/2431728
     JdbcDecoder(rs => i => rs.getObject(i, classOf[java.util.UUID]))
 
-  implicit def optionDecoder[A](implicit decoder: JdbcDecoder[A], tag: Tag[Option[A]]): JdbcDecoder[Option[A]] =
+  implicit def optionDecoder[A: ClassTag](implicit decoder: JdbcDecoder[A]): JdbcDecoder[Option[A]] =
     JdbcDecoder(rs =>
       int =>
         decoder.decode(int, rs) match {
           case Left(_)      => None
           case Right(value) => Option(value._2)
         }
-    )
+    )(implicitly[ClassTag[Option[A]]])
 
   implicit def tuple2Decoder[A, B](implicit
     a: JdbcDecoder[A],
