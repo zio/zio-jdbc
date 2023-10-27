@@ -18,8 +18,9 @@ package zio.jdbc
 import zio._
 import zio.jdbc.SqlFragment.Segment
 
-import java.sql.{ PreparedStatement, Types }
+import java.sql.{PreparedStatement, Types}
 import scala.language.implicitConversions
+import scala.util.control.NonFatal
 
 /**
  * A `SqlFragment` represents part or all of a SQL query. The SQL
@@ -240,17 +241,21 @@ sealed trait SqlFragment { self =>
     for {
       updateRes  <- executeUpdate(sql, true)
       (count, rs) = updateRes
-      keys       <- ZIO
-                      .fromOption(rs)
-                      .flatMap(rs =>
-                        ZIO.attempt {
+      keys       <- rs match {
+                      case None     => ZIO.succeed(Chunk.empty[A])
+                      case Some(rs) =>
+                        ZIO.succeed {
                           val builder = ChunkBuilder.make[A]()
-                          while (rs.next())
-                            builder += decoder.unsafeDecode(1, rs.resultSet)._2
+                          while (rs.next()) {
+                            try {
+                              builder += decoder.unsafeDecode(1, rs.resultSet)._2
+                            } catch {
+                              case NonFatal(e) => ()
+                            }
+                          }
                           builder.result()
                         }
-                      )
-                      .orElseSucceed(Chunk.empty)
+                    }
     } yield UpdateResult(count, keys)
 
   private[jdbc] def executeUpdate(
