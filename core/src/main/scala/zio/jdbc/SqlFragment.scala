@@ -436,10 +436,7 @@ object SqlFragment {
   def update(table: String): SqlFragment =
     s"UPDATE $table"
 
-  private[jdbc] def intersperse(
-    sep: SqlFragment,
-    elements: Iterable[SqlFragment]
-  ): SqlFragment = {
+  def intersperse(sep: SqlFragment, elements: Iterable[SqlFragment]): SqlFragment = {
     var first = true
     elements.foldLeft(empty) { (acc, element) =>
       if (!first) acc ++ sep ++ element
