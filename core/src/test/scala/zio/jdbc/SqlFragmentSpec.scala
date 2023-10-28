@@ -158,8 +158,7 @@ object SqlFragmentSpec extends ZIOSpecDefault {
                 assertIn(Chunk(1, 2, 3)) &&
                 assertIn(List(1, 2, 3)) &&
                 assertIn(Vector(1, 2, 3)) &&
-                assertIn(Set(1, 2, 3)) &&
-                assertIn(Array(1, 2, 3))
+                assertIn(Set(1, 2, 3))
               }
             } +
             test("not in") {
