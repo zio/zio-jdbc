@@ -1,8 +1,8 @@
 import BuildHelper._
 
-val ZioVersion       = "2.0.6"
-val H2Version        = "2.1.214"
-val ZioSchemaVersion = "0.4.8"
+val ZioVersion       = "2.0.18"
+val H2Version        = "2.2.224"
+val ZioSchemaVersion = "0.4.14"
 
 name := "zio-jdbc"
 
@@ -47,9 +47,8 @@ lazy val core = project
       "dev.zio"       %% "zio-test-sbt" % ZioVersion % Test,
       "com.h2database" % "h2"           % H2Version  % Test
     ),
-    testFrameworks := Seq(new TestFramework("zio.test.sbt.ZTestFramework")),
-    Test / fork    := true,
-    run / fork     := true
+    Test / fork := true,
+    run / fork  := true
   )
 
 lazy val docs = project
@@ -91,6 +90,5 @@ lazy val integration = project
       "dev.zio"           %% "zio-test-sbt" % ZioVersion % Test,
       "org.slf4j"          % "slf4j-api"    % "2.0.9"    % Test,
       "org.slf4j"          % "slf4j-simple" % "2.0.9"    % Test
-    ),
-    testFrameworks := Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
+    )
   )

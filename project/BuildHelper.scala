@@ -24,8 +24,6 @@ object BuildHelper {
   lazy val Scala213: String = versions("2.13")
   lazy val Scala3: String   = versions("3.3")
 
-  val SilencerVersion = "1.7.12"
-
   private val stdOptions = Seq(
     "-deprecation",
     "-encoding",
@@ -63,10 +61,6 @@ object BuildHelper {
       buildInfoKeys    := Seq[BuildInfoKey](organization, moduleName, name, version, scalaVersion, sbtVersion, isSnapshot),
       buildInfoPackage := packageName
     )
-
-  val scalaReflectSettings = Seq(
-    libraryDependencies ++= Seq("dev.zio" %% "izumi-reflect" % "1.0.0-M10")
-  )
 
   // Keep this consistent with the version in .core-tests/shared/src/test/scala/REPLSpec.scala
   val replSettings = makeReplSettings {
@@ -183,16 +177,6 @@ object BuildHelper {
       crossScalaVersions                     := Seq(Scala212, Scala213, Scala3),
       ThisBuild / scalaVersion               := Scala213,
       ThisBuild / scalacOptions              := stdOptions ++ extraOptions(scalaVersion.value, optimize = !isSnapshot.value),
-      libraryDependencies ++= {
-        CrossVersion.partialVersion(scalaVersion.value) match {
-          case Some((3, _)) => Nil
-          case _            =>
-            Seq(
-              "com.github.ghik" % "silencer-lib" % SilencerVersion % Provided cross CrossVersion.full,
-              compilerPlugin("com.github.ghik" % "silencer-plugin" % SilencerVersion cross CrossVersion.full)
-            )
-        }
-      },
       semanticdbEnabled                      := true,                        // enable SemanticDB
       semanticdbOptions ++= {
         CrossVersion.partialVersion(scalaVersion.value) match {
@@ -252,12 +236,6 @@ object BuildHelper {
       doc / skip              := true,
       Compile / doc / sources := Seq.empty
     )
-
-  val scalaReflectTestSettings: List[Setting[_]] = List(
-    libraryDependencies ++= {
-      Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value % Test)
-    }
-  )
 
   def welcomeMessage =
     onLoadMessage := {
