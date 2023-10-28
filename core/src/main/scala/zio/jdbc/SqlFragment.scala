@@ -288,6 +288,22 @@ object SqlFragment {
   def fromFunction(f: ChunkBuilder[Segment] => Unit): SqlFragment =
     SqlFragment.FromFunction(f)
 
+  implicit final class FragmentOps[I[t] <: Iterable[t]](private val fragments: I[SqlFragment]) extends AnyVal {
+    def mkFragment(sep: SqlFragment): SqlFragment =
+      intersperse(sep, fragments)
+
+    def mkFragment(start: SqlFragment, sep: SqlFragment, end: SqlFragment): SqlFragment =
+      start ++ fragments.mkFragment(sep) ++ end
+  }
+
+  implicit final class NonEmptyChunkOps(private val fragments: NonEmptyChunk[SqlFragment]) extends AnyVal {
+    def mkFragment(sep: SqlFragment): SqlFragment =
+      fragments.toChunk.mkFragment(sep)
+
+    def mkFragment(start: SqlFragment, sep: SqlFragment, end: SqlFragment): SqlFragment =
+      fragments.toChunk.mkFragment(start, sep, end)
+  }
+
   sealed trait Segment
   object Segment {
     case object Empty                                       extends Segment
