@@ -52,11 +52,6 @@ final class ZConnection(private[jdbc] val underlying: ZConnection.Restorable) ex
                                                Seq.fill(iterable.iterator.size)("?").mkString(", ")
                                              )
 
-                                           case array: Array[_] =>
-                                             sb.append(
-                                               Seq.fill(array.length)("?").mkString(", ")
-                                             )
-
                                            case _ => sb.append("?")
                                          }
                                        }
