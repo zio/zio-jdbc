@@ -356,15 +356,6 @@ object SqlFragment {
     implicit def vectorSetter[A](implicit setter: Setter[A]): Setter[Vector[A]] = iterableSetter[A, Vector[A]]
     implicit def setSetter[A](implicit setter: Setter[A]): Setter[Set[A]]       = iterableSetter[A, Set[A]]
 
-    implicit def arraySetter[A](implicit setter: Setter[A]): Setter[Array[A]] =
-      forSqlType(
-        (ps, i, iterable) =>
-          iterable.zipWithIndex.foreach { case (value, valueIdx) =>
-            setter.setValue(ps, i + valueIdx, value)
-          },
-        Types.OTHER
-      )
-
     private def iterableSetter[A, I <: Iterable[A]](implicit setter: Setter[A]): Setter[I] =
       forSqlType(
         (ps, i, iterable) =>

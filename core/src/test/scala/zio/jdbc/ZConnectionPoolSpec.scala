@@ -294,8 +294,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
                   assertUsersFound(namesToSearch) &&
                     assertUsersFound(namesToSearch.toList) &&
                     assertUsersFound(namesToSearch.toVector) &&
-                    assertUsersFound(namesToSearch.toSet) &&
-                    assertUsersFound(namesToSearch.toArray)
+                    assertUsersFound(namesToSearch.toSet)
 
                 for {
                   _          <- createUsers *> insertSherlock *> insertWatson *> insertJohn
