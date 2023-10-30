@@ -214,7 +214,7 @@ object JavaTimeSupportSpec extends PgSpec {
       test("java.time.Instant - now") {
         for {
           now <- ZIO.clockWith(_.instant)
-          _   <- transaction(sql"""CREATE TABLE instant (value TIMESTAMP)""".execute)
+          _   <- transaction(sql"""CREATE TABLE instant (value TIMESTAMP WITH TIME ZONE)""".execute)
           i   <- transaction(sql"""INSERT INTO instant VALUES ($now)""".insert)
           d   <- transaction(sql"""SELECT * FROM instant""".query[java.time.Instant].selectOne)
           _   <- transaction(sql"DROP TABLE instant".execute)
@@ -227,7 +227,7 @@ object JavaTimeSupportSpec extends PgSpec {
       test("java.time.Instant - Gen") {
         check(genPGInstant) { instant =>
           for {
-            _       <- transaction(sql"""CREATE TABLE instant (value TIMESTAMP)""".execute)
+            _       <- transaction(sql"""CREATE TABLE instant (value TIMESTAMP WITH TIME ZONE)""".execute)
             i       <- transaction(sql"""INSERT INTO instant VALUES ($instant)""".insert)
             d       <- transaction(sql"""SELECT * FROM instant""".query[java.time.Instant].selectOne)
             _       <- transaction(sql"DROP TABLE instant".execute)
