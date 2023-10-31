@@ -98,6 +98,7 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
   implicit val booleanDecoder: JdbcDecoder[Boolean]                       = JdbcDecoder(_.getBoolean)
   implicit val bigDecimalDecoder: JdbcDecoder[java.math.BigDecimal]       = JdbcDecoder(_.getBigDecimal)
   implicit val bigDecimalDecoderScala: JdbcDecoder[scala.math.BigDecimal] =
+    // This `if null` check is only needed because of Scala 2.12. Can be removed once Scala 2.12 support is dropped.
     bigDecimalDecoder.map(v => if (v eq null) null else scala.math.BigDecimal.javaBigDecimal2bigDecimal(v))
   implicit val shortDecoder: JdbcDecoder[Short]                           = JdbcDecoder(_.getShort)
   implicit val floatDecoder: JdbcDecoder[Float]                           = JdbcDecoder(_.getFloat)
