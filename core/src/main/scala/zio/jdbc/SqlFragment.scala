@@ -239,19 +239,18 @@ sealed trait SqlFragment { self =>
     decoder: JdbcDecoder[A]
   ): ZIO[Scope with ZConnection, Throwable, UpdateResult[A]] =
     for {
-      updateRes  <- executeUpdate(sql, true)
-      (count, rs) = updateRes
-      keys       <- ZIO
-                      .fromOption(rs)
-                      .flatMap(rs =>
-                        ZIO.attempt {
-                          val builder = ChunkBuilder.make[A]()
-                          while (rs.next())
-                            builder += decoder.unsafeDecode(1, rs.resultSet)._2
-                          builder.result()
-                        }
-                      )
-                      .orElseSucceed(Chunk.empty)
+      updateRes       <- executeUpdate(sql, true)
+      (count, maybeRs) = updateRes
+      keys            <- maybeRs match {
+                           case None     => ZIO.succeed(Chunk.empty)
+                           case Some(rs) =>
+                             ZIO.attempt {
+                               val builder = ChunkBuilder.make[A]()
+                               while (rs.next())
+                                 builder += decoder.unsafeDecode(1, rs.resultSet)._2
+                               builder.result()
+                             }
+                         }
     } yield UpdateResult(count, keys)
 
   private[jdbc] def executeUpdate(
