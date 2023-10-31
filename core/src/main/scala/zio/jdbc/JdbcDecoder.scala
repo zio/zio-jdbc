@@ -98,7 +98,7 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
   implicit val booleanDecoder: JdbcDecoder[Boolean]                       = JdbcDecoder(_.getBoolean)
   implicit val bigDecimalDecoder: JdbcDecoder[java.math.BigDecimal]       = JdbcDecoder(_.getBigDecimal)
   implicit val bigDecimalDecoderScala: JdbcDecoder[scala.math.BigDecimal] =
-    bigDecimalDecoder.map(scala.math.BigDecimal.javaBigDecimal2bigDecimal)
+    bigDecimalDecoder.map(v => if (v eq null) null else scala.math.BigDecimal.javaBigDecimal2bigDecimal(v))
   implicit val shortDecoder: JdbcDecoder[Short]                           = JdbcDecoder(_.getShort)
   implicit val floatDecoder: JdbcDecoder[Float]                           = JdbcDecoder(_.getFloat)
   implicit val byteDecoder: JdbcDecoder[Byte]                             = JdbcDecoder(_.getByte)
