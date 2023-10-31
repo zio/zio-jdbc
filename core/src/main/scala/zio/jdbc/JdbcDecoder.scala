@@ -91,19 +91,20 @@ object JdbcDecoder extends JdbcDecoderLowPriorityImplicits {
         }
     }
 
-  implicit val intDecoder: JdbcDecoder[Int]                               = JdbcDecoder(_.getInt)
-  implicit val longDecoder: JdbcDecoder[Long]                             = JdbcDecoder(_.getLong)
-  implicit val doubleDecoder: JdbcDecoder[Double]                         = JdbcDecoder(_.getDouble)
-  implicit val stringDecoder: JdbcDecoder[String]                         = JdbcDecoder(_.getString)
-  implicit val booleanDecoder: JdbcDecoder[Boolean]                       = JdbcDecoder(_.getBoolean)
-  implicit val bigDecimalDecoder: JdbcDecoder[java.math.BigDecimal]       = JdbcDecoder(_.getBigDecimal)
+  implicit val intDecoder: JdbcDecoder[Int]                         = JdbcDecoder(_.getInt)
+  implicit val longDecoder: JdbcDecoder[Long]                       = JdbcDecoder(_.getLong)
+  implicit val doubleDecoder: JdbcDecoder[Double]                   = JdbcDecoder(_.getDouble)
+  implicit val stringDecoder: JdbcDecoder[String]                   = JdbcDecoder(_.getString)
+  implicit val booleanDecoder: JdbcDecoder[Boolean]                 = JdbcDecoder(_.getBoolean)
+  implicit val bigDecimalDecoder: JdbcDecoder[java.math.BigDecimal] = JdbcDecoder(_.getBigDecimal)
   implicit val bigDecimalDecoderScala: JdbcDecoder[scala.math.BigDecimal] =
-    bigDecimalDecoder.map(scala.math.BigDecimal.javaBigDecimal2bigDecimal)
-  implicit val shortDecoder: JdbcDecoder[Short]                           = JdbcDecoder(_.getShort)
-  implicit val floatDecoder: JdbcDecoder[Float]                           = JdbcDecoder(_.getFloat)
-  implicit val byteDecoder: JdbcDecoder[Byte]                             = JdbcDecoder(_.getByte)
-  implicit val byteArrayDecoder: JdbcDecoder[Array[Byte]]                 = JdbcDecoder(_.getBytes)
-  implicit val blobDecoder: JdbcDecoder[Blob]                             = JdbcDecoder(_.getBlob)
+    // This `if null` check is only needed because of Scala 2.12. Can be removed once Scala 2.12 support is dropped.
+    bigDecimalDecoder.map(v => if (v eq null) null else scala.math.BigDecimal.javaBigDecimal2bigDecimal(v))
+  implicit val shortDecoder: JdbcDecoder[Short]                     = JdbcDecoder(_.getShort)
+  implicit val floatDecoder: JdbcDecoder[Float]                     = JdbcDecoder(_.getFloat)
+  implicit val byteDecoder: JdbcDecoder[Byte]                       = JdbcDecoder(_.getByte)
+  implicit val byteArrayDecoder: JdbcDecoder[Array[Byte]]           = JdbcDecoder(_.getBytes)
+  implicit val blobDecoder: JdbcDecoder[Blob]                       = JdbcDecoder(_.getBlob)
   implicit val uuidDecoder: JdbcDecoder[java.util.UUID] =
     // See: https://stackoverflow.com/a/56267754/2431728
     JdbcDecoder(rs => i => rs.getObject(i, classOf[java.util.UUID]), "UUID")
