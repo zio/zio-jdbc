@@ -168,19 +168,7 @@ object ZConnectionPool {
                       connection <- pool.get
                       _          <- ZIO.addFinalizerExit { exit =>
                                       ZIO
-                                        .ifZIO(
-                                          connection
-                                            .isValid()
-                                            .tapErrorCause(cause =>
-                                              ZIO.logLevel(LogLevel.Warning) {
-                                                ZIO.logCause(
-                                                  "an error occurred while trying to validate a JDBC connection's health",
-                                                  cause
-                                                )
-                                              }
-                                            )
-                                            .orElse(ZIO.succeed(false))
-                                        )(
+                                        .ifZIO(connection.isValid().orElse(ZIO.succeed(false)))(
                                           onTrue = exit match {
                                             case Exit.Success(_) => connection.restore
                                             case Exit.Failure(_) =>
