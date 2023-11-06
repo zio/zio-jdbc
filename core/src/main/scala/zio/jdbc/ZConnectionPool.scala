@@ -168,7 +168,7 @@ object ZConnectionPool {
                       connection <- pool.get
                       _          <- ZIO.addFinalizerExit { exit =>
                                       ZIO
-                                        .ifZIO(connection.isValid().orDie)(
+                                        .ifZIO(connection.isValid().orElse(ZIO.succeed(false)))(
                                           onTrue = exit match {
                                             case Exit.Success(_) => connection.restore
                                             case Exit.Failure(_) =>
