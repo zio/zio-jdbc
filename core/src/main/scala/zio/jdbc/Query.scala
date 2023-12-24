@@ -72,7 +72,7 @@ final case class Query[+A](sql: SqlFragment, decode: ZResultSet => A) {
                        builder.addOne(decode(zrs))
                        i += 1
                      }
-                     (builder.result(), Option.when(hasNext)(()))
+                     (builder.result(), if (hasNext) Some(()) else None)
                    }
                  )
       } yield stream
