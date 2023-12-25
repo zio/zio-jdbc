@@ -304,7 +304,7 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
               test("select all multiple in") {
                 val names1        = Vector(sherlockHolmes.name, johnWatson.name)
                 val names2        = Chunk(johnDoe.name)
-                val namesToSearch = Chunk.from(names1) ++ names2
+                val namesToSearch = Chunk.fromIterable(names1) ++ names2
 
                 for {
                   _     <- createUsers *> insertSherlock *> insertWatson *> insertJohn
