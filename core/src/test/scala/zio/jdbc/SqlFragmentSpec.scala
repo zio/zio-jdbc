@@ -159,6 +159,13 @@ object SqlFragmentSpec extends ZIOSpecDefault {
                 assertIn(List(1, 2, 3)) &&
                 assertIn(Vector(1, 2, 3)) &&
                 assertIn(Set(1, 2, 3))
+              } + test("multiple interpolation params") {
+                val set  = Set(1, 2)
+                val list = List(3, 4)
+                assertTrue(
+                  sql"select name, age from users where 1 = 0 or id in ($set) or id in ($list)".toString ==
+                    "Sql(select name, age from users where 1 = 0 or id in (?,?) or id in (?,?), 1, 2, 3, 4)"
+                )
               }
             } +
             test("not in") {

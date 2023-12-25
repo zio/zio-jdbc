@@ -113,27 +113,28 @@ sealed trait SqlFragment { self =>
     foreachSegment { syntax =>
       sql.append(syntax.value)
     } { param =>
+      var size = 0
       param.value match {
         case iterable: Iterable[_] =>
-          iterable.iterator.foreach { item =>
+          iterable.foreach { item =>
             paramsBuilder += item.toString
+            size += 1
           }
-          sql.append(
-            Seq.fill(iterable.iterator.size)("?").mkString(",")
-          )
 
         case array: Array[_] =>
           array.foreach { item =>
             paramsBuilder += item.toString
+            size += 1
           }
-          sql.append(
-            Seq.fill(array.length)("?").mkString(",")
-          )
 
         case _ =>
-          sql.append("?")
           paramsBuilder += param.value.toString
+          size += 1
       }
+      sql.append(
+        if (size == 1) "?"
+        else Seq.fill(size)("?").mkString(",")
+      )
     }
 
     val params       = paramsBuilder.result()

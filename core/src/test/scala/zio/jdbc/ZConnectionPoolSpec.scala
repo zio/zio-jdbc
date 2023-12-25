@@ -301,6 +301,20 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
                   testResult <- asserttions
                 } yield testResult
               } +
+              test("select all multiple in") {
+                val names1        = Vector(sherlockHolmes.name, johnWatson.name)
+                val names2        = Chunk(johnDoe.name)
+                val namesToSearch = Chunk.from(names1) ++ names2
+
+                for {
+                  _     <- createUsers *> insertSherlock *> insertWatson *> insertJohn
+                  users <- transaction {
+                             sql"select name, age from users where name IN ($names1) OR name in ($names2)"
+                               .query[User]
+                               .selectAll
+                           }
+                } yield assertTrue(users.map(_.name) == namesToSearch)
+              } +
               test("select stream") {
                 for {
                   _     <- createUsers *> insertSherlock *> insertWatson
