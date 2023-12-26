@@ -315,6 +315,18 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
                            }
                 } yield assertTrue(users.map(_.name) == namesToSearch)
               } +
+              test("select all in empty") {
+                val empty = Chunk.empty[String]
+
+                for {
+                  _     <- createUsers *> insertSherlock
+                  users <- transaction {
+                    sql"select name, age from users where name IN ($empty)"
+                      .query[User]
+                      .selectAll
+                  }
+                } yield assertTrue(users.isEmpty)
+              } +
               test("select stream") {
                 for {
                   _     <- createUsers *> insertSherlock *> insertWatson

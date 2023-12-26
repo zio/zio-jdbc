@@ -159,12 +159,20 @@ object SqlFragmentSpec extends ZIOSpecDefault {
                 assertIn(List(1, 2, 3)) &&
                 assertIn(Vector(1, 2, 3)) &&
                 assertIn(Set(1, 2, 3))
-              } + test("multiple interpolation params") {
-                val set  = Set(1, 2)
-                val list = List(3, 4)
+              } + test("interpolation params are supported multiple collections") {
+                val chunk  = Chunk(1, 2, 3)
+                val list   = List(4, 5)
+                val vector = Vector(6)
+                val set    = Set(7, 8, 9)
                 assertTrue(
-                  sql"select name, age from users where 1 = 0 or id in ($set) or id in ($list)".toString ==
-                    "Sql(select name, age from users where 1 = 0 or id in (?,?) or id in (?,?), 1, 2, 3, 4)"
+                  sql"select name, age from users where (1 = 0 or id in ($chunk) or id in ($list) or id in ($vector) or id in ($set))".toString ==
+                    "Sql(select name, age from users where (1 = 0 or id in (?,?,?) or id in (?,?) or id in (?) or id in (?,?,?)), 1, 2, 3, 4, 5, 6, 7, 8, 9)"
+                )
+              } + test("interpolation param is supported empty collections") {
+                val empty  = Chunk.empty[Int]
+                assertTrue(
+                  sql"select name, age from users where id in ($empty)".toString ==
+                    "Sql(select name, age from users where id in ())"
                 )
               }
             } +
