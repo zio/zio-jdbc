@@ -321,10 +321,10 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
                 for {
                   _     <- createUsers *> insertSherlock
                   users <- transaction {
-                    sql"select name, age from users where name IN ($empty)"
-                      .query[User]
-                      .selectAll
-                  }
+                             sql"select name, age from users where name IN ($empty)"
+                               .query[User]
+                               .selectAll
+                           }
                 } yield assertTrue(users.isEmpty)
               } +
               test("select stream") {
