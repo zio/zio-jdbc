@@ -54,19 +54,27 @@ final case class Query[+A](sql: SqlFragment, decode: ZResultSet => A) {
   /**
    * Performs a SQL select query, returning a stream of results.
    */
-  def selectStream: ZStream[ZConnection, Throwable, A] =
+  def selectStream(chunkSize: => Int = ZStream.DefaultChunkSize): ZStream[ZConnection, Throwable, A] =
     ZStream.unwrapScoped {
       for {
         zrs   <- executeQuery(sql)
-        stream = ZStream.repeatZIOOption {
-                   ZIO
-                     .suspend(if (zrs.next()) ZIO.attempt(Some(decode(zrs))) else ZIO.none)
-                     .mapError(Option(_))
-                     .flatMap {
-                       case None    => ZIO.fail(None)
-                       case Some(v) => ZIO.succeed(v)
+        stream = ZStream.paginateChunkZIO(())(_ =>
+                   ZIO.attemptBlocking {
+                     val builder = ChunkBuilder.make[A](chunkSize)
+                     var hasNext = false
+                     var i       = 0
+                     while (
+                       i < chunkSize && {
+                         hasNext = zrs.next()
+                         hasNext
+                       }
+                     ) {
+                       builder.addOne(decode(zrs))
+                       i += 1
                      }
-                 }
+                     (builder.result(), if (hasNext) Some(()) else None)
+                   }
+                 )
       } yield stream
     }
 

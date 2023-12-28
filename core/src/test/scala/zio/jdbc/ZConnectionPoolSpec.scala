@@ -329,11 +329,11 @@ object ZConnectionPoolSpec extends ZIOSpecDefault {
               } +
               test("select stream") {
                 for {
-                  _     <- createUsers *> insertSherlock *> insertWatson
+                  _     <- createUsersNoId *> insertFive
                   value <- transaction {
-                             sql"select name, age from users".query[User].selectStream.runCollect
+                             sql"select name, age from users_no_id".query[UserNoId].selectStream(2).chunks.runCollect
                            }
-                } yield assertTrue(value == Chunk(sherlockHolmes, johnWatson))
+                } yield assertTrue(value == Chunk(Chunk(user1, user2), Chunk(user3, user4), Chunk(user5)))
               } +
               test("delete") {
                 for {
