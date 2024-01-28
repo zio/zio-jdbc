@@ -1,12 +1,11 @@
 package zio.jdbc
 
 import zio._
-import zio.test._
 import zio.jdbc.SqlFragment.Setter
 import zio.jdbc.{ transaction => transact }
 import zio.schema.{ Schema, TypeId }
 import zio.test.Assertion._
-import java.sql.SQLException
+import zio.test._
 
 final case class Person(name: String, age: Int)
 final case class UserLogin(username: String, password: String)
@@ -237,7 +236,7 @@ object SqlFragmentSpec extends ZIOSpecDefault {
             res   <- transact(defectiveSql.execute).exit
             error <- ZTestLogger.logOutput.map(_.filter(log => log.logLevel == zio.LogLevel.Debug))
           } yield assert(res)(
-            fails(isSubtype[SQLException](anything))
+            fails(isSubtype[ZSQLException](anything))
           ) && assert(error.head.annotations.keys)(contains("SQL"))
             && assert(error.head.message())(containsString(sqlString)))
             .provideLayer(ZConnectionPool.h2test.orDie)

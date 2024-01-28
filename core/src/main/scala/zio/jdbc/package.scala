@@ -30,7 +30,7 @@ package object jdbc {
    * A new transaction, which may be applied to ZIO effects that require a
    * connection in order to execute such effects in the transaction.
    */
-  val transaction: ZLayer[ZConnectionPool, Throwable, ZConnection] =
+  val transaction: ZLayer[ZConnectionPool, ConnectionException, ZConnection] =
     ZLayer(ZIO.serviceWith[ZConnectionPool](_.transaction)).flatten
 
   private[jdbc] val currentTransactionIsolationLevel: FiberRef[Option[TransactionIsolationLevel]] =

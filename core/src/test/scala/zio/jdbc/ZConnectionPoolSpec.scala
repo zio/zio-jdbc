@@ -7,8 +7,8 @@ import zio.test.Assertion._
 import zio.test.TestAspect._
 import zio.test._
 
-import scala.util.Random
 import java.sql.Connection
+import scala.util.Random
 
 object ZConnectionPoolSpec extends ZIOSpecDefault {
   final case class Person(name: String, age: Int)
