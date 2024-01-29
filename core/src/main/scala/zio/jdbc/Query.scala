@@ -18,62 +18,59 @@ package zio.jdbc
 import zio._
 import zio.stream._
 
-final case class Query[+A](sql: SqlFragment, decode: ZResultSet => A) {
+import java.sql.{ SQLException, SQLTimeoutException }
+
+final case class Query[+A](decode: ZResultSet => IO[CodecException, A], sql: SqlFragment) {
 
   def as[B](implicit decoder: JdbcDecoder[B]): Query[B] =
-    Query(sql, zrs => decoder.unsafeDecode(1, zrs.resultSet)._2)
+    Query(zrs => decoder.decode(1, zrs.resultSet).map(_._2), sql)
 
   def map[B](f: A => B): Query[B] =
-    Query(sql, zrs => f(decode(zrs)))
+    Query(zrs => decode(zrs).map(f), sql)
 
   /**
    * Performs a SQL select query, returning all results in a chunk.
    */
-  def selectAll: ZIO[ZConnection, Throwable, Chunk[A]] =
+  def selectAll: ZIO[ZConnection, QueryException, Chunk[A]] =
     ZIO.scoped(for {
       zrs   <- executeQuery(sql)
-      chunk <- ZIO.attempt {
-                 val builder = ChunkBuilder.make[A]()
-                 while (zrs.next())
-                   builder += decode(zrs)
-                 builder.result()
+      chunk <- ZIO.iterate(ChunkBuilder.make[A]())(_ => zrs.next()) { builder =>
+                 for {
+                   decoded <- decode(zrs)
+                 } yield builder += decoded
                }
-    } yield chunk)
+    } yield chunk.result())
 
   /**
    * Performs a SQL select query, returning the first result, if any.
    */
-  def selectOne: ZIO[ZConnection, Throwable, Option[A]] =
+  def selectOne: ZIO[ZConnection, QueryException, Option[A]] =
     ZIO.scoped(for {
       zrs    <- executeQuery(sql)
-      option <- ZIO.attempt {
-                  if (zrs.next()) Some(decode(zrs)) else None
-                }
+      option <-
+        if (zrs.next()) decode(zrs).map(Some(_))
+        else ZIO.none
     } yield option)
 
   /**
    * Performs a SQL select query, returning a stream of results.
    */
-  def selectStream(chunkSize: => Int = ZStream.DefaultChunkSize): ZStream[ZConnection, Throwable, A] =
+  def selectStream(chunkSize: => Int = ZStream.DefaultChunkSize): ZStream[ZConnection, QueryException, A] =
     ZStream.unwrapScoped {
       for {
         zrs   <- executeQuery(sql)
         stream = ZStream.paginateChunkZIO(())(_ =>
-                   ZIO.attemptBlocking {
-                     val builder = ChunkBuilder.make[A](chunkSize)
-                     var hasNext = false
-                     var i       = 0
-                     while (
-                       i < chunkSize && {
-                         hasNext = zrs.next()
-                         hasNext
-                       }
-                     ) {
-                       builder.addOne(decode(zrs))
-                       i += 1
+                   ZIO
+                     .iterate((ChunkBuilder.make[A](chunkSize), 0)) { case (_, i) =>
+                       i < chunkSize && zrs.next()
+                     } { case (builder, i) =>
+                       for {
+                         decoded <- decode(zrs)
+                       } yield (builder += decoded, i + 1)
                      }
-                     (builder.result(), if (hasNext) Some(()) else None)
-                   }
+                     .map { case (builder, i) =>
+                       (builder.result(), if (i >= chunkSize) Some(()) else None)
+                     }
                  )
       } yield stream
     }
@@ -81,11 +78,14 @@ final case class Query[+A](sql: SqlFragment, decode: ZResultSet => A) {
   def withDecode[B](f: ZResultSet => B): Query[B] =
     Query(sql, f)
 
-  private[jdbc] def executeQuery(sql: SqlFragment): ZIO[Scope with ZConnection, Throwable, ZResultSet] = for {
+  private[jdbc] def executeQuery(sql: SqlFragment): ZIO[Scope with ZConnection, QueryException, ZResultSet] = for {
     connection <- ZIO.service[ZConnection]
     zrs        <- connection.executeSqlWith(sql, false) { ps =>
                     ZIO.acquireRelease {
-                      ZIO.attempt(ZResultSet(ps.executeQuery()))
+                      ZIO.attempt(ZResultSet(ps.executeQuery())).refineOrDie {
+                        case e: SQLTimeoutException => ZSQLTimeoutException(e)
+                        case e: SQLException        => ZSQLException(e)
+                      }
                     }(_.close)
                   }
   } yield zrs
@@ -94,7 +94,15 @@ final case class Query[+A](sql: SqlFragment, decode: ZResultSet => A) {
 
 object Query {
 
+  def apply[A](sql: SqlFragment, decode: ZResultSet => A): Query[A] = {
+    def decodeZIO(zrs: ZResultSet): IO[DecodeException, A] =
+      ZIO.attempt(decode(zrs)).refineOrDie { case e: Throwable =>
+        DecodeException(e)
+      }
+    new Query[A](zrs => decodeZIO(zrs), sql)
+  }
+
   def fromSqlFragment[A](sql: SqlFragment)(implicit decoder: JdbcDecoder[A]): Query[A] =
-    Query[A](sql, zrs => decoder.unsafeDecode(1, zrs.resultSet)._2)
+    Query[A](sql, (zrs: ZResultSet) => decoder.unsafeDecode(1, zrs.resultSet)._2)
 
 }
