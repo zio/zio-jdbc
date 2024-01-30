@@ -40,6 +40,15 @@ object ZConnectionSpec extends ZIOSpecDefault {
               statementClosedTuple <- ZIO.succeed((res.preparedStatement, res.closedInScope))
             } yield assertTrue(statementClosedTuple._1.isClosed() && !statementClosedTuple._2)
           } //A bit of a hack, DummyException receives the prepared Statement so that its closed State can be checked outside ZConnection's Scope
+        } +
+        test("ZConnection Survives Null Client Info") {
+          val connection = new ZConnection(new ZConnection.Restorable({
+            val conn = new TestConnection
+            conn.setClientInfo(null)
+            conn
+          }))
+
+          assert(connection)(Assertion.anything)
         }
     } +
       suite("ZConnectionSpec LiveConnection") {
